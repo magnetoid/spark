@@ -34,6 +34,8 @@ def _compact(n: int | float | None) -> str:
 templates.env.filters["localtime"] = _localtime
 templates.env.filters["compact"] = _compact
 templates.env.globals["platforms"] = registry
+# Cache-buster for /static assets: changes on every process start (deploys, dev reloads)
+templates.env.globals["static_v"] = int(datetime.now(UTC).timestamp())
 
 
 class LoginRequired(Exception):
