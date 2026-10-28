@@ -7,9 +7,11 @@ Social autoposter and marketing app for a team or agency. Python/FastAPI, server
 - **Queue-first, like Buffer**: per-channel Queue with visible posting slots, *Add to queue* / *Share next* (bumps the rest down) / *Share now* / pick a time, Drafts · Approvals · Sent tabs per channel.
 - **Composer**: one text, per-channel customisation with live previews and character gauges, *first comment* (X, LinkedIn, Facebook, Instagram, Threads, YouTube, Bluesky, Mastodon), *Split into thread* for X / Threads / Bluesky / Mastodon.
 - **Ideas board**: a kanban scratchpad (Ideas → Drafting → Ready → Done) with tags, AI drafting, and "Turn into post".
+- **Inbox**: comments on your posts across Zernio-connected channels — read threads, reply, like — from one page.
+- **Content library**: saved hashtag groups and post templates, one click away in the composer.
 - **Scheduling**: queue slots per brand, month and week calendar with drag-to-reschedule and channel/campaign filters, approvals (editors submit, owners approve), retries with backoff, best-time suggestions.
 - **AI**: Claude writes posts in your brand voice, adapts per platform, rewrites, suggests hashtags, plans whole campaigns, drafts emails.
-- **Grow**: analytics per post/platform, UTM builder and click-tracked short links, RSS → posts, contacts and lists with CSV import, email campaigns with open/click tracking, a link-in-bio page with email capture.
+- **Grow**: analytics per post/platform, UTM builder and click-tracked short links, RSS → posts, contacts and lists with CSV import, email campaigns with open/click tracking, a link-in-bio page with email capture and per-link click counts.
 - **Multi-brand**: an agency runs every client in one install. Roles: owner / editor / viewer.
 
 ## Run it
