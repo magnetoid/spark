@@ -6,22 +6,22 @@
 <title>{% block title %}Spark{% endblock %}</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23F2A516' d='M13 2 4 14h7l-1 8 9-12h-7z'/></svg>">
 <script>
-  // Theme before paint (Basecoat convention: `dark` class on <html>, stored in localStorage.themeMode)
+  // Theme before paint (shadcn/Basecoat convention: `dark` class on <html>, stored in localStorage.themeMode)
   (function(){try{var s=localStorage.getItem("themeMode");if(s?s==="dark":matchMedia("(prefers-color-scheme: dark)").matches)document.documentElement.classList.add("dark");}catch(e){}})();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- Basecoat: shadcn/ui as plain CSS + JS from the CDN -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/basecoat-css@1.1.0/dist/basecoat.cdn.min.css">
 <script src="https://cdn.jsdelivr.net/npm/basecoat-css@1.1.0/dist/js/all.min.js" defer></script>
-<!-- Tailwind utilities after Basecoat, with our colour names mapped onto Basecoat's tokens -->
+<!-- Tailwind utilities after Basecoat, with our colour names mapped onto the shadcn tokens -->
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme: { extend: {
-  fontFamily: { sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'] },
+  fontFamily: { sans: ['Geist', '"IBM Plex Sans"', 'system-ui', 'sans-serif'] },
   colors: {
     paper: 'var(--background)', ink: 'var(--foreground)', card: 'var(--card)', line: 'var(--border)',
-    mute: 'var(--muted-foreground)', muted: 'var(--muted)',
+    mute: 'var(--muted-foreground)', muted: 'var(--muted)', primary: 'var(--primary)',
     teal: { 900: '#11302F', 800: '#174341', 700: '#1E5956' },
     amber: { DEFAULT: '#F2A516', 600: '#D98E07', 100: '#FDEFD2' },
     cobalt: { DEFAULT: '#2E5BE8', 100: '#E3E9FC' }, moss: { DEFAULT: '#1E8A5A', 100: '#DFF3E8' },
@@ -34,28 +34,31 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
 {% block head %}{% endblock %}
 </head>
 <body class="h-full font-sans antialiased">
+{% set nav = [
+  ('Publish', [('/', 'Overview'), ('/ideas', 'Ideas'), ('/compose', 'Compose'), ('/queue', 'Queue'), ('/calendar', 'Calendar'), ('/posts', 'All posts'), ('/campaigns', 'Campaigns'), ('/feeds', 'RSS feeds')]),
+  ('Grow', [('/inbox', 'Inbox'), ('/analytics', 'Analytics'), ('/links', 'Links'), ('/bio', 'Bio page'), ('/contacts', 'Contacts'), ('/email', 'Email')]),
+  ('Set up', [('/accounts', 'Social accounts'), ('/media', 'Media'), ('/settings', 'Brand & team'), ('/brands', 'All brands')]),
+] %}
+{% set ns = namespace(page='Overview') %}
+{% for group, items in nav %}{% for href, label in items %}{% if path==href or (href!='/' and path.startswith(href)) %}{% set ns.page = label %}{% endif %}{% endfor %}{% endfor %}
 {% if user %}
 <aside id="sidebar" class="sidebar" data-side="left" data-initial-mobile-open="false">
   <nav aria-label="Sidebar navigation">
     <header>
-      <a href="/" class="flex items-center gap-2 px-2 py-1.5 font-semibold text-lg tracking-tight">
-        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="#F2A516" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Spark
-      </a>
-      {% if brands %}
-      <div class="px-2 pt-1">
-        <label class="label text-xs text-mute" for="brand-switch">Brand</label>
-        <select id="brand-switch" class="select w-full mt-1" onchange="location='/brands/switch/'+this.value">
-          {% for b in brands %}<option value="{{ b.id }}" {% if brand and b.id==brand.id %}selected{% endif %}>{{ b.name }}</option>{% endfor %}
-        </select>
-      </div>
-      {% endif %}
+      {# shadcn "team switcher": the brand, with the other brands one click away #}
+      <details class="group">
+        <summary class="sidebar-user list-none cursor-pointer px-2 py-1.5 rounded-md hover:bg-muted">
+          <span class="avatar-fallback" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="#F2A516" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span>
+          <span class="meta"><span class="name">{{ brand.name if brand else 'Spark' }}</span><span class="email">{{ (brands|length) ~ ' brand' ~ ('s' if brands|length != 1) if brands else 'No brand yet' }}</span></span>
+          <svg class="ml-auto opacity-60" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg>
+        </summary>
+        <ul class="mt-1">
+          {% for b in brands %}<li><a href="/brands/switch/{{ b.id }}" {% if brand and b.id==brand.id %}data-active="true"{% endif %}><span class="w-2 h-2 rounded-full" style="background:{{ b.color }}"></span><span>{{ b.name }}</span></a></li>{% endfor %}
+          <li><a href="/brands/new"><span>+ Add brand</span></a></li>
+        </ul>
+      </details>
     </header>
     <section class="scrollbar-sm">
-      {% set nav = [
-        ('Publish', [('/', 'Overview'), ('/ideas', 'Ideas'), ('/compose', 'Compose'), ('/queue', 'Queue'), ('/calendar', 'Calendar'), ('/posts', 'All posts'), ('/campaigns', 'Campaigns'), ('/feeds', 'RSS feeds')]),
-        ('Grow', [('/inbox', 'Inbox'), ('/analytics', 'Analytics'), ('/links', 'Links'), ('/bio', 'Bio page'), ('/contacts', 'Contacts'), ('/email', 'Email')]),
-        ('Set up', [('/accounts', 'Social accounts'), ('/media', 'Media'), ('/settings', 'Brand & team'), ('/brands', 'All brands')]),
-      ] %}
       {% for group, items in nav %}
       <div role="group" aria-labelledby="nav-{{ loop.index }}">
         <h3 id="nav-{{ loop.index }}">{{ group }}</h3>
@@ -68,32 +71,42 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
       {% endfor %}
     </section>
     <footer>
-      <div class="flex items-center gap-2 px-2 py-1 text-sm">
-        <span class="flex-1 min-w-0 truncate">{{ user.name }} <span class="text-mute">· {{ user.role.value }}</span></span>
-        <button type="button" class="btn" data-variant="ghost" data-size="icon-sm" aria-label="Toggle dark mode" onclick="window.basecoat.theme.toggle()">
-          <svg class="hidden dark:block" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-          <svg class="block dark:hidden" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-        </button>
-        <form method="post" action="/logout"><button class="btn" data-variant="ghost" data-size="sm">Sign out</button></form>
-      </div>
+      {# shadcn nav-user: avatar + name/email, menu with theme and sign out #}
+      <details>
+        <summary class="sidebar-user list-none cursor-pointer px-2 py-1.5 rounded-md hover:bg-muted">
+          <span class="avatar-fallback">{{ user.name[:2]|upper }}</span>
+          <span class="meta"><span class="name">{{ user.name }}</span><span class="email">{{ user.email }}</span></span>
+          <svg class="ml-auto opacity-60" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg>
+        </summary>
+        <ul class="mt-1">
+          <li><a href="/settings#team"><span>Account &amp; team</span></a></li>
+          <li><button type="button" onclick="window.basecoat.theme.toggle()"><span class="hidden dark:inline">Light mode</span><span class="dark:hidden">Dark mode</span></button></li>
+          <li><form method="post" action="/logout"><button type="submit"><span>Log out</span></button></form></li>
+        </ul>
+      </details>
     </footer>
   </nav>
 </aside>
-<main class="min-h-full">
-  <div class="flex items-center gap-2 px-4 h-12 border-b border-line lg:hidden">
-    <button type="button" class="btn" data-variant="ghost" data-size="icon-sm" aria-label="Open menu" onclick="document.getElementById('sidebar')?.open()">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+<main class="min-h-full flex flex-col">
+  <header class="site-header">
+    <button type="button" class="btn -ml-1" data-variant="ghost" data-size="icon-sm" aria-label="Toggle sidebar" onclick="const s=document.getElementById('sidebar'); innerWidth<768 ? s.open() : s.toggle()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
     </button>
-    <span class="font-semibold">Spark</span>
-  </div>
-  <div class="hidden lg:flex justify-end px-8 pt-3 -mb-8">
-    <button type="button" class="btn" data-variant="ghost" data-size="sm" onclick="window.basecoat.theme.toggle()" aria-label="Toggle dark mode">
-      <svg class="hidden dark:block" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-      <svg class="block dark:hidden" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-      <span class="hidden dark:inline">Light</span><span class="dark:hidden">Dark</span>
-    </button>
-  </div>
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+    <span class="sep" aria-hidden="true"></span>
+    <nav class="breadcrumb-nav" aria-label="Breadcrumb">
+      <a href="/" class="hidden md:inline hover:text-ink">{{ brand.name if brand else 'Spark' }}</a>
+      <span class="hidden md:inline">/</span>
+      <span class="current">{% block page_title %}{{ ns.page }}{% endblock %}</span>
+    </nav>
+    <div class="ml-auto flex items-center gap-1">
+      <button type="button" class="btn" data-variant="ghost" data-size="icon-sm" onclick="window.basecoat.theme.toggle()" aria-label="Toggle dark mode">
+        <svg class="hidden dark:block" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <svg class="block dark:hidden" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+      {% if user.can_edit() %}<a href="/compose" class="btn" data-size="sm">New post</a>{% endif %}
+    </div>
+  </header>
+  <div class="flex-1 px-4 lg:px-6 py-4 md:py-6 max-w-7xl w-full mx-auto">
     {% for f in pop_flash(request) %}
     <div class="alert mb-4" {% if f.kind=='error' %}data-variant="destructive"{% endif %} role="status">
       {% if f.kind=='error' %}<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>

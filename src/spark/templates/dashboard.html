@@ -1,98 +1,131 @@
 {% extends "base.html" %}
 {% block title %}{{ brand.name }} · Spark{% endblock %}
+{% block page_title %}Overview{% endblock %}
+{% block head %}<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.js"></script>{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4 mb-8">
-  <div>
-    <h1 class="text-2xl font-semibold tracking-tight">{{ brand.name }}</h1>
-    <p class="text-sm text-mute mt-1">Last 30 days across {{ accounts|selectattr('is_active')|list|length }} connected account{{ 's' if accounts|length != 1 }}.</p>
-  </div>
-  <a href="/compose" class="btn">New post</a>
-</div>
+{% macro trend_badge(pct) %}
+  {% if pct is none %}<span class="badge" data-variant="outline">new</span>
+  {% elif pct >= 0 %}<span class="badge" data-variant="outline"><svg data-icon="inline-start" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6M22 7l-8.5 8.5-5-5L2 17"/></svg>+{{ pct }}%</span>
+  {% else %}<span class="badge" data-variant="outline"><svg data-icon="inline-start" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 17h6v-6M22 17l-8.5-8.5-5 5L2 7"/></svg>{{ pct }}%</span>{% endif %}
+{% endmacro %}
 
 {% if not accounts %}
-<div class="card p-8 text-center mb-8">
-  <h2 class="text-lg font-semibold">Connect your first account</h2>
-  <p class="text-sm text-mute mt-1 max-w-md mx-auto">Spark posts to X, LinkedIn, Instagram, TikTok and more. Connect through Zernio with one key, or with your own developer apps.</p>
-  <a href="/accounts" class="btn mt-4">Connect accounts</a>
+<div class="card mb-6">
+  <header><h2>Connect your first channel</h2><p>Spark posts to X, LinkedIn, Instagram, TikTok and more. Connect through Zernio with one key, or with your own developer apps.</p></header>
+  <footer><a href="/accounts" class="btn">Connect channels</a><a href="/settings" class="btn" data-variant="outline">Set brand voice</a></footer>
 </div>
 {% endif %}
 
-<div class="stat-grid grid-cols-2 lg:grid-cols-4 mb-8">
-  {% for label, value, sub in [
-    ('Impressions', data.totals.impressions|compact, 'latest snapshot per post'),
-    ('Engagements', data.engagements|compact, (data.engagement_rate|round(1)|string) + '% of impressions'),
-    ('Published', data.published, (data.scheduled|string) + ' scheduled' + (', ' + data.failed|string + ' failed' if data.failed else '')),
-    ('Audience', data.followers|compact, 'followers across accounts')] %}
-  <div>
-    <div class="text-sm text-mute">{{ label }}</div>
-    <div class="text-3xl font-semibold num mt-1">{{ value }}</div>
-    <div class="text-xs text-mute mt-1">{{ sub }}</div>
-  </div>
-  {% endfor %}
-</div>
-
-<div class="grid lg:grid-cols-3 gap-6">
-  <section class="lg:col-span-2 card">
-    <div class="flex items-center justify-between px-5 py-3 border-b border-line">
-      <h2 class="font-semibold">Coming up</h2>
-      <a href="/calendar" class="text-sm text-cobalt">Calendar</a>
+<div class="flex flex-col gap-4 md:gap-6">
+  <section class="section-cards">
+    <div class="card" data-size="sm">
+      <header><p>Impressions</p><h2 class="stat-value">{{ data.totals.impressions|compact }}</h2><div class="card-action">{{ trend_badge(trend.impressions) }}</div></header>
+      <footer class="flex-col items-start gap-1 text-sm">
+        <div class="font-medium">{{ 'Reach is growing' if trend.impressions is none or trend.impressions >= 0 else 'Reach is slipping' }}</div>
+        <div class="text-mute">Latest snapshot per post, last {{ days }} days</div>
+      </footer>
     </div>
-    {% if upcoming %}
-    <ul class="divide-y divide-line">
-      {% for p in upcoming %}
-      <li class="px-5 py-3 flex gap-4 items-start">
-        <div class="w-24 shrink-0 text-sm num text-mute">{{ p.scheduled_at|localtime(brand.timezone) }}</div>
-        <div class="min-w-0 flex-1">
-          <a href="/posts/{{ p.id }}/edit" class="text-sm line-clamp-2">{{ p.content or '(no text)' }}</a>
-          <div class="mt-1 flex flex-wrap gap-1">
-            {% for t in p.targets %}<span class="text-xs text-mute">{{ t.account.handle }}</span>{% if not loop.last %}<span class="text-xs text-mute">,</span>{% endif %}{% endfor %}
-          </div>
-        </div>
-        <span class="badge st-{{ p.status.value }}">{{ p.status.value.replace('_',' ') }}</span>
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <div class="px-5 py-10 text-center text-sm text-mute">Nothing scheduled. <a class="text-cobalt" href="/compose">Write a post</a> or <a class="text-cobalt" href="/campaigns">plan a campaign</a>.</div>
-    {% endif %}
+    <div class="card" data-size="sm">
+      <header><p>Engagements</p><h2 class="stat-value">{{ data.engagements|compact }}</h2><div class="card-action">{{ trend_badge(trend.engagements) }}</div></header>
+      <footer class="flex-col items-start gap-1 text-sm">
+        <div class="font-medium">{{ data.engagement_rate|round(1) }}% engagement rate</div>
+        <div class="text-mute">{{ 'was ' ~ trend.rate_prev|round(1) ~ '% the period before' if trend.rate_prev else 'Likes, comments, shares, clicks' }}</div>
+      </footer>
+    </div>
+    <div class="card" data-size="sm">
+      <header><p>Published</p><h2 class="stat-value">{{ data.published }}</h2><div class="card-action">{{ trend_badge(none if not trend.published_prev and not data.published else ((data.published - trend.published_prev) / trend.published_prev * 100)|round(1) if trend.published_prev else 100.0) }}</div></header>
+      <footer class="flex-col items-start gap-1 text-sm">
+        <div class="font-medium">{{ data.scheduled }} scheduled{% if data.failed %} · <span class="text-brick">{{ data.failed }} failed</span>{% endif %}</div>
+        <div class="text-mute">{{ trend.published_prev }} published the period before</div>
+      </footer>
+    </div>
+    <div class="card" data-size="sm">
+      <header><p>Audience</p><h2 class="stat-value">{{ data.followers|compact }}</h2><div class="card-action"><span class="badge" data-variant="outline">{{ accounts|selectattr('is_active')|list|length }} channel{{ 's' if accounts|length != 1 }}</span></div></header>
+      <footer class="flex-col items-start gap-1 text-sm">
+        <div class="font-medium">{{ data.link_clicks|compact }} link clicks</div>
+        <div class="text-mute">Followers across connected channels</div>
+      </footer>
+    </div>
   </section>
 
-  <div class="space-y-6">
-    {% if pending and user.can_approve() %}
-    <section class="card">
-      <div class="px-5 py-3 border-b border-line font-semibold">Awaiting your approval</div>
-      <ul class="divide-y divide-line">
-        {% for p in pending %}
-        <li class="px-5 py-3 text-sm">
-          <div class="line-clamp-2">{{ p.content }}</div>
-          <form method="post" action="/posts/{{ p.id }}/approve" class="mt-2 flex gap-2">
-            <button class="btn" data-size="sm">Approve</button>
-            <a href="/posts/{{ p.id }}/edit" class="btn" data-size="sm" data-variant="outline">Edit</a>
-          </form>
-        </li>
-        {% endfor %}
-      </ul>
-    </section>
-    {% endif %}
-    <section class="card">
-      <div class="px-5 py-3 border-b border-line font-semibold">By platform</div>
-      {% if data.by_platform %}
-      <ul class="divide-y divide-line text-sm">
-        {% for name, p in data.by_platform.items() %}
-        <li class="px-5 py-2.5 flex justify-between"><span class="capitalize">{{ platforms()[name].label if name in platforms() else name }}</span><span class="num text-mute">{{ p.impressions|compact }} views · {{ p.engagements|compact }} eng.</span></li>
-        {% endfor %}
-      </ul>
-      {% else %}<div class="px-5 py-6 text-sm text-mute">Metrics appear after your first published posts.</div>{% endif %}
-    </section>
-    <section class="card p-5 text-sm">
-      <div class="font-semibold mb-2">Shortcuts</div>
-      <div class="flex flex-wrap gap-2">
-        <a class="btn" data-size="sm" data-variant="outline" href="/compose">Compose</a>
-        {% if ai_enabled %}<a class="btn" data-size="sm" data-variant="outline" href="/campaigns">Plan with AI</a>{% endif %}
-        <a class="btn" data-size="sm" data-variant="outline" href="/links">Short link</a>
-        <a class="btn" data-size="sm" data-variant="outline" href="/email">Email campaign</a>
+  <section class="card">
+    <header>
+      <h2>Impressions &amp; engagements</h2>
+      <p><span class="hidden sm:inline">Total for the last {{ days }} days</span><span class="sm:hidden">Last {{ days }} days</span></p>
+      <div class="card-action">
+        <div class="toggle-group" role="group" aria-label="Time range">
+          {% for d, label in [(90, 'Last 3 months'), (30, 'Last 30 days'), (7, 'Last 7 days')] %}
+          <a href="/?days={{ d }}" aria-pressed="{{ 'true' if days==d else 'false' }}">{{ label }}</a>
+          {% endfor %}
+        </div>
       </div>
+    </header>
+    <section><div class="h-[250px] w-full"><canvas id="overview-chart"></canvas></div></section>
+  </section>
+
+  <section class="card" x-data="{tab: '{{ 'approvals' if pending else 'upcoming' }}'}">
+    <header>
+      <div class="tabs"><nav role="tablist" aria-orientation="horizontal">
+        {% for key, label, items in [('upcoming', 'Upcoming', upcoming), ('approvals', 'Needs approval', pending), ('failed', 'Failed', failed), ('recent', 'Recently published', recent)] %}
+        <button type="button" role="tab" :aria-selected="tab==='{{ key }}'" @click="tab='{{ key }}'">{{ label }}{% if items %} <span class="badge ml-1" data-variant="secondary">{{ items|length }}</span>{% endif %}</button>
+        {% endfor %}
+      </nav></div>
+      <div class="card-action"><a href="/queue" class="btn" data-variant="outline" data-size="sm">Open queue</a></div>
+    </header>
+    {% for key, items, empty in [('upcoming', upcoming, 'Nothing scheduled. Write a post or plan a campaign.'), ('approvals', pending, 'Nothing waiting for approval.'), ('failed', failed, 'No failed posts.'), ('recent', recent, 'Nothing published yet.')] %}
+    <section x-show="tab==='{{ key }}'" x-cloak class="!p-0">
+      {% if items %}
+      <div class="table-container"><table class="table">
+        <thead><tr><th>Post</th><th>Channels</th><th>Status</th><th class="text-end">{{ 'Published' if key=='recent' else 'When' }}</th><th></th></tr></thead>
+        <tbody>
+        {% for p in items %}
+        <tr>
+          <td class="max-w-md"><a href="/posts/{{ p.id }}/edit" class="font-medium line-clamp-2 hover:underline">{{ p.content or '(no text)' }}</a>{% if p.campaign %}<div class="text-xs" style="color:{{ p.campaign.color }}">{{ p.campaign.name }}</div>{% endif %}</td>
+          <td class="text-sm text-mute whitespace-nowrap">{% for t in p.targets %}{{ t.account.handle }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+          <td><span class="badge st-{{ p.status.value }}">{{ p.status.value.replace('_',' ') }}</span>{% if key=='failed' %}{% for t in p.targets if t.error %}<div class="text-xs text-brick max-w-xs truncate" title="{{ t.error }}">{{ t.error }}</div>{% endfor %}{% endif %}</td>
+          <td class="text-end num text-sm text-mute whitespace-nowrap">{{ p.scheduled_at|localtime(brand.timezone) }}</td>
+          <td class="text-end whitespace-nowrap">
+            {% if user.can_edit() %}
+            {% if key=='approvals' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve" class="inline"><button class="btn" data-size="xs">Approve</button></form>{% endif %}
+            {% if key=='failed' %}<form method="post" action="/posts/{{ p.id }}/retry" class="inline"><button class="btn" data-size="xs">Retry</button></form>{% endif %}
+            {% if key=='recent' %}<form method="post" action="/posts/{{ p.id }}/duplicate" class="inline"><button class="btn" data-variant="outline" data-size="xs">Reuse</button></form>{% endif %}
+            <a href="/posts/{{ p.id }}/edit" class="btn" data-variant="ghost" data-size="xs">Edit</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}
+      <div class="m-4 rounded-lg border border-dashed border-line py-10 text-center text-sm text-mute">{{ empty }} {% if key=='upcoming' %}<a class="underline" href="/compose">New post</a>{% endif %}</div>
+      {% endif %}
     </section>
-  </div>
+    {% endfor %}
+  </section>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const S = {{ data.series|tojson }};
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const ctx = document.getElementById('overview-chart').getContext('2d');
+  const grad = (color) => { const g = ctx.createLinearGradient(0, 0, 0, 250); g.addColorStop(0, color.replace(')', ' / 0.5)').replace('oklch(', 'oklch(')); g.addColorStop(1, color.replace(')', ' / 0.05)')); return g; };
+  const c1 = css('--chart-1') || '#2E5BE8', c2 = css('--chart-2') || '#1E8A5A', fg = css('--muted-foreground') || '#6B7280', grid = css('--border') || '#E5E7EB';
+  const fmt = (d) => new Date(d).toLocaleDateString(undefined, {month: 'short', day: 'numeric'});
+  new Chart(ctx, {
+    type: 'line',
+    data: { labels: S.days, datasets: [
+      { label: 'Impressions', data: S.impressions, borderColor: c1, backgroundColor: grad(c1), fill: true, tension: .4, pointRadius: 0, borderWidth: 2 },
+      { label: 'Engagements', data: S.engagements, borderColor: c2, backgroundColor: grad(c2), fill: true, tension: .4, pointRadius: 0, borderWidth: 2, yAxisID: 'y1' },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, boxHeight: 8, usePointStyle: true, color: fg } },
+                 tooltip: { callbacks: { title: (items) => fmt(items[0].label) } } },
+      scales: { x: { grid: { display: false }, ticks: { color: fg, maxTicksLimit: 8, callback: (v, i) => fmt(S.days[i]) } },
+                y: { grid: { color: grid }, ticks: { color: fg, precision: 0 }, border: { display: false } },
+                y1: { position: 'right', grid: { display: false }, ticks: { color: fg, precision: 0 }, border: { display: false } } } }
+  });
+})();
+</script>
 {% endblock %}

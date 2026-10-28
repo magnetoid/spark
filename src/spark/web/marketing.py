@@ -39,21 +39,27 @@ router = APIRouter()
 # ---- dashboard / analytics ----------------------------------------------------
 
 @router.get("/")
-async def dashboard(request: Request, db: AsyncSession = Depends(get_db),
+async def dashboard(request: Request, days: int = 30, db: AsyncSession = Depends(get_db),
                     user: User = Depends(current_user), brand: Brand | None = Depends(require_brand)):
-    data = await analytics.overview(db, brand.id, days=30)
+    """Overview after shadcn's dashboard block: section cards, chart, tabbed table."""
     from spark.models import Post, PostStatus
 
-    upcoming = (await db.execute(
-        select(Post).where(Post.brand_id == brand.id,
-                           Post.status.in_([PostStatus.scheduled, PostStatus.pending_approval]))
-        .order_by(Post.scheduled_at).limit(8)
-    )).scalars().all()
+    days = days if days in (7, 30, 90) else 30
+    data = await analytics.overview(db, brand.id, days=days)
+    trend = await analytics.compare(db, brand.id, days=days)
+
+    def q(*statuses, order=Post.scheduled_at, desc=False, limit=12):
+        stmt = select(Post).where(Post.brand_id == brand.id, Post.status.in_(statuses))
+        return stmt.order_by(order.desc() if desc else order).limit(limit)
+
+    upcoming = (await db.execute(q(PostStatus.scheduled, PostStatus.pending_approval))).scalars().all()
     pending = [p for p in upcoming if p.status == PostStatus.pending_approval]
+    failed = (await db.execute(q(PostStatus.failed, order=Post.updated_at, desc=True))).scalars().all()
+    recent = (await db.execute(q(PostStatus.published, order=Post.scheduled_at, desc=True))).scalars().all()
     accounts = (await db.execute(
         select(SocialAccount).where(SocialAccount.brand_id == brand.id))).scalars().all()
-    return await render(request, "dashboard.html", db, user, brand, data=data, upcoming=upcoming,
-                        pending=pending, accounts=accounts,
+    return await render(request, "dashboard.html", db, user, brand, data=data, trend=trend, days=days,
+                        upcoming=upcoming, pending=pending, failed=failed, recent=recent, accounts=accounts,
                         ai_enabled=bool(get_settings().anthropic_api_key))
 
 

@@ -2,12 +2,28 @@
    inputs, tables, badges, alerts, dialogs and the sidebar; this file holds the
    theme tokens and the few Spark-specific pieces (status colours, gauges, calendar). */
 
+/* shadcn/ui default theme (base colour "neutral", oklch) — the core palette.
+   Basecoat reads these same variables, so every component follows. */
 :root {
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-heading: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --radius: 0.5rem;
-  /* Spark accent: the "spark" amber is used for the brand mark, gauges and pending states.
-     Primary stays dark so the amber reads as a signal, not as chrome. */
+  --font-sans: "Geist", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Geist", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);            --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);                  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);               --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);           --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);          --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);              --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);             --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);            --input: oklch(0.922 0 0);            --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);  --chart-2: oklch(0.6 0.118 184.704);  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);           --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);   --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);     --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);    --sidebar-ring: oklch(0.708 0 0);
+  /* Spark accent: the brand mark and the character gauges only. */
   --spark: #F2A516;
   --st-draft-bg: #EEF0EA;   --st-draft-fg: #6B7280;
   --st-pending-bg: #FDEFD2; --st-pending-fg: #9A6400;
@@ -16,6 +32,21 @@
   --st-fail-bg: #FBE3E1;    --st-fail-fg: #C73A33;
 }
 .dark {
+  --background: oklch(0.145 0 0);        --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);              --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);           --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);           --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);         --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);             --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);            --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);          --input: oklch(1 0 0 / 15%);          --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376); --chart-2: oklch(0.696 0.17 162.48);  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);   --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);           --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376); --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);    --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);  --sidebar-ring: oklch(0.556 0 0);
   --st-draft-bg: #262a30;   --st-draft-fg: #a1a1aa;
   --st-pending-bg: #3a2c08; --st-pending-fg: #f3c56b;
   --st-sched-bg: #15224d;   --st-sched-fg: #93aef7;
@@ -58,6 +89,31 @@ body { background: var(--background); color: var(--foreground); }
 .sidebar:not([data-side])[aria-hidden=true] > nav,
 .sidebar[data-side=left][aria-hidden=true] > nav { translate: -100% 0; }
 .sidebar[data-side=right][aria-hidden=true] > nav { translate: 100% 0; }
+
+/* shadcn dashboard-01 pieces */
+.site-header { position: sticky; top: 0; z-index: 30; height: 3rem; display: flex; align-items: center; gap: .5rem;
+  padding: 0 1rem; border-bottom: 1px solid var(--border); background: color-mix(in oklab, var(--background) 85%, transparent); backdrop-filter: blur(8px); }
+.site-header .sep { width: 1px; height: 1rem; background: var(--border); margin: 0 .25rem; }
+.breadcrumb-nav { display: flex; align-items: center; gap: .375rem; font-size: .875rem; color: var(--muted-foreground); }
+.breadcrumb-nav .current { color: var(--foreground); font-weight: 500; }
+.section-cards { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+@media (min-width: 40rem) { .section-cards { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 80rem) { .section-cards { grid-template-columns: repeat(4, 1fr); } }
+.section-cards .card { background: linear-gradient(to top, color-mix(in oklab, var(--primary) 5%, var(--card)), var(--card)); }
+.stat-value { font-size: 1.875rem; line-height: 2.25rem; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.trend-up { color: var(--chart-2); } .trend-down { color: var(--destructive); }
+.toggle-group { display: inline-flex; border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); overflow: hidden; }
+.toggle-group a { padding: .375rem .75rem; font-size: .8125rem; color: var(--muted-foreground); }
+.toggle-group a + a { border-left: 1px solid var(--border); }
+.toggle-group a[aria-pressed=true] { background: var(--accent); color: var(--foreground); }
+.sidebar-user { display: flex; align-items: center; gap: .5rem; width: 100%; }
+.sidebar-user .avatar-fallback { width: 2rem; height: 2rem; border-radius: calc(var(--radius) - 2px); background: var(--sidebar-primary); color: var(--sidebar-primary-foreground); display: grid; place-items: center; font-size: .75rem; font-weight: 600; flex-shrink: 0; }
+.sidebar-user .meta { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; text-align: left; flex: 1; }
+.sidebar-user .name, .sidebar-user .email { display: block; }
+.sidebar details > summary::-webkit-details-marker { display: none; }
+.sidebar details[open] > summary svg.ml-auto { transform: rotate(180deg); }
+.sidebar-user .meta .name { font-size: .875rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-user .meta .email { font-size: .75rem; color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* misc */
 .textarea, .input:not([type=checkbox]):not([type=radio]), .select { width: 100%; }

@@ -72,7 +72,7 @@ async def collect_metrics(db: AsyncSession, max_age_days: int = 30) -> int:
     return saved
 
 
-async def _latest_metrics(db: AsyncSession, brand_id: int, since: datetime):
+async def _latest_metrics(db: AsyncSession, brand_id: int, since: datetime, until: datetime | None = None):
     """Latest snapshot per target for a brand's targets published since `since`."""
     sub = (
         select(Metric.target_id, func.max(Metric.captured_at).label("mx"))
@@ -87,7 +87,45 @@ async def _latest_metrics(db: AsyncSession, brand_id: int, since: datetime):
         .where(SocialAccount.brand_id == brand_id, PostTarget.published_at >= since)
         .options(selectinload(PostTarget.post))  # templates read target.text -> post.content
     )
+    if until is not None:
+        stmt = stmt.where(PostTarget.published_at < until)
     return (await db.execute(stmt)).all()
+
+
+def _pct(cur: float, prev: float) -> float | None:
+    if not prev:
+        return None if not cur else 100.0
+    return round((cur - prev) / prev * 100, 1)
+
+
+async def compare(db: AsyncSession, brand_id: int, days: int = 30) -> dict:
+    """Totals for the last `days` vs the `days` before, for the dashboard trend badges."""
+    now = datetime.now(UTC)
+    since, prev_since = now - timedelta(days=days), now - timedelta(days=2 * days)
+
+    def totals(rows) -> dict:
+        t = dict(impressions=0, engagements=0, posts=0)
+        for m, _target, _acc in rows:
+            t["impressions"] += m.impressions
+            t["engagements"] += m.engagements
+            t["posts"] += 1
+        return t
+
+    cur = totals(await _latest_metrics(db, brand_id, since))
+    prev = totals(await _latest_metrics(db, brand_id, prev_since, since))
+    published_prev = await db.scalar(
+        select(func.count(PostTarget.id))
+        .join(SocialAccount, SocialAccount.id == PostTarget.account_id)
+        .where(SocialAccount.brand_id == brand_id, PostTarget.status == PostStatus.published,
+               PostTarget.published_at >= prev_since, PostTarget.published_at < since)
+    ) or 0
+    return {
+        "impressions": _pct(cur["impressions"], prev["impressions"]),
+        "engagements": _pct(cur["engagements"], prev["engagements"]),
+        "published_prev": published_prev,
+        "rate": (cur["engagements"] / cur["impressions"] * 100) if cur["impressions"] else 0,
+        "rate_prev": (prev["engagements"] / prev["impressions"] * 100) if prev["impressions"] else 0,
+    }
 
 
 async def overview(db: AsyncSession, brand_id: int, days: int = 30) -> dict:
