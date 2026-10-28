@@ -301,3 +301,25 @@ async def test_hashtag_groups_and_templates(client, db, brand):
     assert r.status_code == 200 and "Insert hashtags" in r.text and '"hashtagGroups": [{"id"' in r.text
     r = await client.get("/settings")
     assert r.status_code == 200 and "#launch #SaaS #marketing" in r.text
+
+
+async def test_bio_links_are_tracked(client, db, brand):
+    from spark.models import ShortLink
+
+    await client.get("/bio")
+    r = await client.post("/bio", data={"title": "Acme", "link_label": "Pricing", "link_url": "https://acme.example.com/pricing",
+                                        "is_published": "on", "capture_email": "on"})
+    assert r.status_code == 303
+    link = await db.scalar(select(ShortLink).where(ShortLink.title == "Pricing"))
+    assert link and "utm_source=bio" in link.destination
+    r = await client.get("/b/acme")
+    assert f'href="/l/{link.code}"' in r.text
+    r = await client.get(f"/l/{link.code}")
+    assert r.status_code == 302
+    await db.refresh(link)
+    assert link.clicks == 1
+    # Re-saving the same link keeps the same code (and its click history)
+    await client.post("/bio", data={"title": "Acme", "link_label": "Pricing", "link_url": "https://acme.example.com/pricing",
+                                    "link_code": link.code, "is_published": "on"})
+    r = await client.get("/bio")
+    assert r.status_code == 200 and link.code in r.text and "1 link clicks" in r.text

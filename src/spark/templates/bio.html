@@ -2,9 +2,9 @@
 {% block title %}Bio page · Spark{% endblock %}
 {% block content %}
 <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
-  <div><h1 class="text-2xl font-semibold tracking-tight">Bio page</h1><p class="text-sm text-mute mt-1">A link-in-bio page with optional email capture. Public at <a href="{{ public_url }}" target="_blank" rel="noopener" class="text-cobalt">{{ public_url }}</a> · {{ page.views }} views</p></div>
+  <div><h1 class="text-2xl font-semibold tracking-tight">Bio page</h1><p class="text-sm text-mute mt-1">A link-in-bio page with optional email capture. Public at <a href="{{ public_url }}" target="_blank" rel="noopener" class="text-cobalt">{{ public_url }}</a> · {{ page.views }} views · {{ total_clicks }} link clicks</p></div>
 </div>
-<form method="post" class="form grid lg:grid-cols-3 gap-8" x-data='{links: {{ page.links|tojson }}}'>
+<form method="post" class="form grid lg:grid-cols-3 gap-8" x-data='{links: {{ page_links|tojson }}}'>
   <div class="lg:col-span-2 space-y-5">
     <div class="card p-5 space-y-4">
       <div class="grid sm:grid-cols-2 gap-4">
@@ -20,6 +20,8 @@
         <div class="flex gap-2 mb-2">
           <input type="text" name="link_label" x-model="l.label" placeholder="Label" class="w-1/3">
           <input type="url" class="input" name="link_url" x-model="l.url" placeholder="https://">
+          <input type="hidden" name="link_code" :value="l.code || ''">
+          <span class="text-xs text-mute num whitespace-nowrap pt-2" x-show="l.code" x-text="(l.clicks||0) + ' clicks'"></span>
           <button type="button" class="text-mute hover:text-brick px-2" @click="links.splice(i,1)" aria-label="Remove">×</button>
         </div>
       </template>

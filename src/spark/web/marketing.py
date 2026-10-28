@@ -420,7 +420,14 @@ async def bio_edit(request: Request, db: AsyncSession = Depends(get_db),
     lists = (await db.execute(select(ContactList).where(ContactList.brand_id == brand.id))).scalars().all()
     images = (await db.execute(select(Media).where(Media.brand_id == brand.id,
                                                    Media.content_type.like("image/%")))).scalars().all()
+    codes = [l.get("code") for l in (page.links or []) if l.get("code")]
+    clicks = {}
+    if codes:
+        clicks = {l.code: l.clicks for l in (await db.execute(
+            select(ShortLink).where(ShortLink.code.in_(codes)))).scalars()}
+    page_links = [{**l, "clicks": clicks.get(l.get("code"), 0)} for l in (page.links or [])]
     return await render(request, "bio.html", db, user, brand, page=page, lists=lists, images=images,
+                        page_links=page_links, total_clicks=sum(clicks.values()),
                         public_url=f"{get_settings().base_url.rstrip('/')}/b/{brand.slug}")
 
 
@@ -438,8 +445,26 @@ async def bio_save(request: Request, db: AsyncSession = Depends(get_db),
     page.capture_list_id = int(lid) if lid.isdigit() else None
     page.avatar_media_id = int(mid) if mid.isdigit() else None
     labels, urls = form.getlist("link_label"), form.getlist("link_url")
-    page.links = [{"label": str(l).strip(), "url": str(u).strip()} for l, u in zip(labels, urls, strict=False)
-                  if str(l).strip() and str(u).strip()]
+    codes = form.getlist("link_code")
+    codes += [""] * (len(labels) - len(codes))
+    # Each bio link is a tracked short link, so clicks show up per link and in Analytics.
+    existing = {l.code: l for l in (await db.execute(
+        select(ShortLink).where(ShortLink.brand_id == brand.id,
+                                ShortLink.code.in_([c for c in codes if c])))).scalars()}
+    links = []
+    for label, url, code in zip(labels, urls, codes, strict=False):
+        label, url, code = str(label).strip(), str(url).strip(), str(code).strip()
+        if not label or not url:
+            continue
+        tagged = add_utm(url, source="bio", medium="bio")
+        link = existing.get(code)
+        if link is None or link.destination != tagged:
+            # New link, or the URL changed: start a fresh code so old click counts stay honest.
+            link = await create_short_link(db, brand, tagged, title=label)
+        else:
+            link.title = label
+        links.append({"label": label, "url": url, "code": link.code})
+    page.links = links
     await db.commit()
     flash(request, "Bio page saved")
     return RedirectResponse("/bio", 303)

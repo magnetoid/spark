@@ -28,7 +28,7 @@
   {% if avatar %}<img class="avatar" src="{{ avatar.url }}" alt="">{% endif %}
   <h1>{{ page.title or brand.name }}</h1>
   {% if page.bio %}<p class="bio">{{ page.bio }}</p>{% endif %}
-  {% for l in page.links %}<a class="link" href="{{ l.url }}" rel="noopener">{{ l.label }}</a>{% endfor %}
+  {% for l in page.links %}<a class="link" href="{{ '/l/' ~ l.code if l.code else l.url }}" rel="noopener">{{ l.label }}</a>{% endfor %}
   {% if page.capture_email %}
     {% if done %}<div class="ok"><strong>Thanks, you're on the list.</strong></div>
     {% else %}
