@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Campaigns · Spark{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold tracking-tight mb-6">Campaigns</h1>
+<div class="grid lg:grid-cols-3 gap-8">
+<div class="lg:col-span-2 space-y-4">
+  {% for c in campaigns %}
+  <div class="card p-5">
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <span class="w-3 h-3 mt-1.5 rounded-full shrink-0" style="background:{{ c.color }}"></span>
+        <div>
+          <div class="font-semibold">{{ c.name }}</div>
+          {% if c.goal %}<div class="text-sm text-mute mt-0.5">{{ c.goal }}</div>{% endif %}
+          <div class="text-xs text-mute mt-1">{% if c.starts_on %}{{ c.starts_on|localtime(brand.timezone, '%b %d') }}{% endif %}{% if c.ends_on %} – {{ c.ends_on|localtime(brand.timezone, '%b %d, %Y') }}{% endif %}{% if c.utm_campaign %} · utm_campaign={{ c.utm_campaign }}{% endif %}</div>
+        </div>
+      </div>
+      {% if user.can_edit() %}<form method="post" action="/campaigns/{{ c.id }}/delete" onsubmit="return confirm('Delete campaign? Posts are kept.')"><button class="btn btn-sm btn-danger">Delete</button></form>{% endif %}
+    </div>
+    {% set k = counts[c.id] %}
+    <div class="mt-4 flex flex-wrap gap-4 text-sm num">
+      <span>{{ k.total }} posts</span>
+      <span class="text-moss">{{ k.published }} published</span>
+      <span class="text-cobalt">{{ k.scheduled }} scheduled</span>
+      <span class="text-mute">{{ k.draft }} drafts</span>
+      {% if k.failed %}<span class="text-brick">{{ k.failed }} failed</span>{% endif %}
+      <a href="/posts" class="text-cobalt ml-auto">View posts</a>
+    </div>
+    {% if k.total %}<div class="gauge mt-2"><span style="width:{{ (k.published / k.total * 100)|round }}%; background:#1E8A5A"></span></div>{% endif %}
+  </div>
+  {% else %}
+  <div class="card p-10 text-center text-sm text-mute">No campaigns yet. A campaign groups posts around one goal and tags their links.</div>
+  {% endfor %}
+</div>
+{% if user.can_edit() %}
+<form method="post" action="/campaigns" class="form card p-5 space-y-4 self-start" x-data="{ai:false}">
+  <h2 class="font-semibold">New campaign</h2>
+  <div><label>Name</label><input type="text" name="name" required></div>
+  <div><label>Goal</label><textarea name="goal" rows="3" placeholder="e.g. Get 200 signups for the June webinar on pricing strategy"></textarea></div>
+  <div class="grid grid-cols-2 gap-3">
+    <div><label>Starts</label><input type="date" name="starts_on"></div>
+    <div><label>Ends</label><input type="date" name="ends_on"></div>
+  </div>
+  <div class="grid grid-cols-2 gap-3">
+    <div><label>utm_campaign</label><input type="text" name="utm_campaign" placeholder="june-webinar"></div>
+    <div><label>Colour</label><input type="color" name="color" value="#6366f1" class="h-10 w-full p-1"></div>
+  </div>
+  {% if ai_enabled %}
+  <label class="flex items-start gap-2 text-sm font-normal"><input type="checkbox" name="ai_plan" value="1" x-model="ai" class="mt-0.5"><span>Draft the posts with AI<span class="block text-xs text-mute">Creates dated draft posts across the range; you review before anything is scheduled.</span></span></label>
+  <div x-show="ai" x-cloak class="space-y-3">
+    <div><label>Accounts</label>
+      {% for a in accounts %}<label class="flex items-center gap-2 text-sm font-normal"><input type="checkbox" name="account_ids" value="{{ a.id }}" checked>{{ a.handle }} <span class="text-mute">· {{ a.platform }}</span></label>{% endfor %}
+    </div>
+    <div class="max-w-[8rem]"><label>Posts per week</label><input type="number" name="per_week" value="3" min="1" max="14"></div>
+  </div>
+  {% endif %}
+  <button class="btn btn-amber">Create campaign</button>
+</form>
+{% endif %}
+</div>
+{% endblock %}

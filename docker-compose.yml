@@ -1,0 +1,48 @@
+services:
+  web:
+    build: .
+    env_file: .env
+    environment:
+      SPARK_DATABASE_URL: postgresql+asyncpg://spark:${POSTGRES_PASSWORD:-spark}@db:5432/spark
+      SPARK_REDIS_URL: redis://redis:6379/0
+    ports: ["8000:8000"]
+    volumes: ["media:/data/media"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: spark worker
+    env_file: .env
+    environment:
+      SPARK_DATABASE_URL: postgresql+asyncpg://spark:${POSTGRES_PASSWORD:-spark}@db:5432/spark
+      SPARK_REDIS_URL: redis://redis:6379/0
+    volumes: ["media:/data/media"]
+    depends_on:
+      web: { condition: service_started }
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: spark
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spark}
+      POSTGRES_DB: spark
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spark"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes: ["redis:/data"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  media:
+  redis:

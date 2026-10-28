@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}RSS feeds · Spark{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold tracking-tight mb-1">RSS feeds</h1>
+<p class="text-sm text-mute mb-6">New items become draft posts (or go straight to the queue). Checked every 30 minutes by the worker.</p>
+<div class="grid lg:grid-cols-3 gap-8">
+<div class="lg:col-span-2 card">
+  {% if feeds %}
+  <table class="tbl"><thead><tr><th>Feed</th><th>Options</th><th>Last check</th><th></th></tr></thead>
+  <tbody>{% for f in feeds %}
+  <tr>
+    <td><div class="font-medium">{{ f.name or f.url }}</div><div class="text-xs text-mute truncate max-w-xs">{{ f.url }}</div></td>
+    <td class="text-xs text-mute">{{ 'AI rewrite' if f.use_ai else 'Title + link' }}{% if f.auto_queue %} · auto-queue{% endif %} · {{ f.account_ids|length }} account(s)</td>
+    <td class="text-xs text-mute num">{{ f.last_checked_at|localtime(brand.timezone) or 'pending' }}</td>
+    <td class="text-right whitespace-nowrap">{% if user.can_edit() %}
+      <form method="post" action="/feeds/{{ f.id }}/toggle" class="inline"><button class="btn btn-sm btn-ghost">{{ 'Pause' if f.is_active else 'Resume' }}</button></form>
+      <form method="post" action="/feeds/{{ f.id }}/delete" class="inline"><button class="btn btn-sm btn-danger">Delete</button></form>{% endif %}</td>
+  </tr>{% endfor %}</tbody></table>
+  {% else %}<div class="p-10 text-center text-sm text-mute">No feeds yet.</div>{% endif %}
+</div>
+{% if user.can_edit() %}
+<form method="post" action="/feeds" class="form card p-5 space-y-3 self-start">
+  <h2 class="font-semibold">Add a feed</h2>
+  <div><label>Feed URL</label><input type="url" name="url" placeholder="https://blog.example.com/rss.xml" required></div>
+  <div><label>Name</label><input type="text" name="name"></div>
+  <div><label>Post to</label>{% for a in accounts %}<label class="flex items-center gap-2 text-sm font-normal"><input type="checkbox" name="account_ids" value="{{ a.id }}">{{ a.handle }} <span class="text-mute">· {{ a.platform }}</span></label>{% else %}<p class="hint">Connect accounts first.</p>{% endfor %}</div>
+  <label class="flex items-center gap-2 text-sm font-normal"><input type="checkbox" name="use_ai" value="true" checked>Write the post with AI (needs an API key)</label>
+  <label class="flex items-center gap-2 text-sm font-normal"><input type="checkbox" name="auto_queue" value="true">Add to queue automatically instead of saving a draft</label>
+  <button class="btn btn-amber">Add feed</button>
+</form>
+{% endif %}
+</div>
+{% endblock %}

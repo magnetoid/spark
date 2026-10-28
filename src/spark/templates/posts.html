@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Posts · Spark{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+  <h1 class="text-2xl font-semibold tracking-tight">Posts</h1>
+  <a href="/compose" class="btn btn-amber">New post</a>
+</div>
+<div class="flex flex-wrap gap-1 mb-4 text-sm">
+  <a href="/posts" class="px-3 py-1 rounded-md {{ 'bg-ink text-white' if not status else 'hover:bg-white' }}">All</a>
+  {% for s in statuses %}<a href="/posts?status={{ s.value }}" class="px-3 py-1 rounded-md {{ 'bg-ink text-white' if status==s.value else 'hover:bg-white' }}">{{ s.value.replace('_',' ')|capitalize }}</a>{% endfor %}
+</div>
+<div class="card">
+{% if posts %}
+<table class="tbl">
+  <thead><tr><th>Post</th><th>Targets</th><th>When</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for p in posts %}
+  <tr>
+    <td class="max-w-md"><a href="/posts/{{ p.id }}/edit" class="line-clamp-2 hover:text-cobalt">{{ p.content or '(no text)' }}</a>
+      <div class="text-xs text-mute mt-0.5">{% if p.campaign %}{{ p.campaign.name }} · {% endif %}{{ p.source }}{% if p.media_ids %} · {{ p.media_ids|length }} media{% endif %}</div></td>
+    <td>
+      {% for t in p.targets %}
+      <div class="flex items-center gap-1.5 text-xs whitespace-nowrap">
+        <span class="pill st-{{ t.status.value }}"></span>
+        {% if t.remote_url %}<a href="{{ t.remote_url }}" target="_blank" rel="noopener" class="hover:text-cobalt">{{ t.account.handle }}</a>{% else %}{{ t.account.handle }}{% endif %}
+        {% if t.error %}<span class="text-brick truncate max-w-[14rem]" title="{{ t.error }}">{{ t.error }}</span>{% endif %}
+      </div>
+      {% endfor %}
+    </td>
+    <td class="num whitespace-nowrap text-mute">{{ p.scheduled_at|localtime(brand.timezone) }}</td>
+    <td><span class="pill st-{{ p.status.value }}">{{ p.status.value.replace('_',' ') }}</span></td>
+    <td class="text-right whitespace-nowrap">
+      {% if user.can_edit() %}
+      {% if p.status.value=='pending_approval' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve" class="inline"><button class="btn btn-sm btn-primary">Approve</button></form>{% endif %}
+      {% if p.status.value=='failed' %}<form method="post" action="/posts/{{ p.id }}/retry" class="inline"><button class="btn btn-sm btn-ghost">Retry</button></form>{% endif %}
+      {% if p.status.value in ('scheduled','pending_approval') %}<form method="post" action="/posts/{{ p.id }}/unschedule" class="inline"><button class="btn btn-sm btn-ghost">Unschedule</button></form>{% endif %}
+      <form method="post" action="/posts/{{ p.id }}/duplicate" class="inline"><button class="btn btn-sm btn-ghost">Duplicate</button></form>
+      <form method="post" action="/posts/{{ p.id }}/delete" class="inline" onsubmit="return confirm('Delete this post?')"><button class="btn btn-sm btn-danger">Delete</button></form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<div class="px-5 py-10 text-center text-sm text-mute">No posts here yet.</div>{% endif %}
+</div>
+{% endblock %}

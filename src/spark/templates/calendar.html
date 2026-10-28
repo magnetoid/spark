@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Calendar · Spark{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+  <div class="flex items-center gap-3">
+    <a href="/calendar?month={{ prev_m }}" class="btn btn-ghost btn-sm" aria-label="Previous month">‹</a>
+    <h1 class="text-2xl font-semibold tracking-tight w-48 text-center">{{ first.strftime('%B %Y') }}</h1>
+    <a href="/calendar?month={{ next_m }}" class="btn btn-ghost btn-sm" aria-label="Next month">›</a>
+    <a href="/calendar" class="text-sm text-cobalt ml-2">Today</a>
+  </div>
+  <div class="text-xs text-mute">Drag a post to another day to reschedule. Times are {{ brand.timezone }}.</div>
+</div>
+<div class="card overflow-hidden" x-data="cal()">
+  <div class="grid grid-cols-7 text-xs text-mute border-b border-line">
+    {% for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}<div class="px-2 py-1.5">{{ d }}</div>{% endfor %}
+  </div>
+  <div class="grid grid-cols-7">
+    {% for d in days %}
+    <div class="cal-day {{ 'other' if d.month != first.month }} {{ 'today' if d == today }}" data-day="{{ d.isoformat() }}"
+         @dragover.prevent="$el.classList.add('drop')" @dragleave="$el.classList.remove('drop')" @drop.prevent="drop($event, '{{ d.isoformat() }}'); $el.classList.remove('drop')">
+      <div class="flex items-center justify-between">
+        <span class="d text-xs num w-5 h-5 grid place-items-center">{{ d.day }}</span>
+        {% if user.can_edit() and d >= today %}<a href="/compose?at={{ d.isoformat() }}T10:00" class="text-mute hover:text-ink text-xs" title="New post on this day">+</a>{% endif %}
+      </div>
+      {% for p in by_day.get(d, []) %}
+      <a href="/posts/{{ p.id }}/edit" class="chip" draggable="{{ 'true' if p.status.value in ('scheduled','pending_approval','draft') else 'false' }}" @dragstart="drag($event, {{ p.id }})"
+         style="border-color: {{ p.campaign.color if p.campaign else {'scheduled':'#2E5BE8','pending_approval':'#F2A516','published':'#1E8A5A','failed':'#C73A33','publishing':'#2E5BE8','draft':'#9CA3AF'}[p.status.value] }}" title="{{ p.content }}">
+        <span class="num text-mute">{{ p.scheduled_at|localtime(brand.timezone, '%H:%M') }}</span> {{ p.content or '(no text)' }}
+      </a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function cal(){ return {
+  drag(e, id){ e.dataTransfer.setData('text/plain', id); },
+  async drop(e, day){
+    const id = e.dataTransfer.getData('text/plain'); if(!id) return;
+    const body = new URLSearchParams({post_id: id, day});
+    const r = await fetch('/calendar/move', {method:'POST', body});
+    if (r.ok) location.reload(); else { const d = await r.json().catch(()=>({})); alert(d.detail || 'Could not move that post'); }
+  }
+}}
+</script>
+{% endblock %}

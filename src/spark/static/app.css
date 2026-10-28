@@ -1,0 +1,43 @@
+/* Small layer on top of Tailwind: form controls, buttons, gauges. */
+.field { @apply block w-full rounded-md border border-line bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber focus:border-amber; }
+input.field, select.field, textarea.field,
+.form input[type=text], .form input[type=email], .form input[type=url], .form input[type=password],
+.form input[type=number], .form input[type=datetime-local], .form input[type=date], .form input[type=time],
+.form select, .form textarea {
+  display:block; width:100%; border-radius:6px; border:1px solid #E1E5DD; background:#fff;
+  padding:.5rem .75rem; font-size:.875rem; line-height:1.25rem;
+}
+.form input:focus, .form select:focus, .form textarea:focus, .field:focus { outline:none; border-color:#F2A516; box-shadow:0 0 0 2px #FDEFD2; }
+.form label { display:block; font-size:.8125rem; font-weight:500; margin-bottom:.25rem; }
+.form .hint { font-size:.75rem; color:#6B7280; margin-top:.25rem; }
+.btn { display:inline-flex; align-items:center; gap:.375rem; border-radius:6px; padding:.5rem .875rem; font-size:.875rem; font-weight:500; line-height:1.25rem; border:1px solid transparent; white-space:nowrap; }
+.btn:focus-visible { outline:2px solid #F2A516; outline-offset:2px; }
+.btn-primary { background:#1C2128; color:#fff; } .btn-primary:hover { background:#11302F; }
+.btn-amber { background:#F2A516; color:#1C2128; } .btn-amber:hover { background:#D98E07; }
+.btn-ghost { background:#fff; border-color:#E1E5DD; color:#1C2128; } .btn-ghost:hover { background:#F6F7F4; }
+.btn-danger { background:#fff; border-color:#E1E5DD; color:#C73A33; } .btn-danger:hover { background:#FBE3E1; }
+.btn-sm { padding:.25rem .625rem; font-size:.8125rem; }
+.btn[disabled] { opacity:.5; pointer-events:none; }
+.card { background:#fff; border:1px solid #E1E5DD; border-radius:8px; }
+.tbl { width:100%; font-size:.875rem; } .tbl th { text-align:left; font-weight:500; color:#6B7280; padding:.5rem .75rem; border-bottom:1px solid #E1E5DD; }
+.tbl td { padding:.625rem .75rem; border-bottom:1px solid #EEF0EA; vertical-align:top; } .tbl tr:last-child td { border-bottom:0; }
+.num { font-variant-numeric: tabular-nums; }
+/* status pill + rail */
+.pill { display:inline-flex; align-items:center; gap:.25rem; border-radius:999px; padding:.125rem .5rem; font-size:.75rem; font-weight:500; }
+.pill::before { content:""; width:.375rem; height:.375rem; border-radius:999px; background:currentColor; }
+.st-draft { background:#EEF0EA; color:#6B7280; } .st-pending_approval { background:#FDEFD2; color:#9A6400; }
+.st-scheduled { background:#E3E9FC; color:#2E5BE8; } .st-publishing { background:#E3E9FC; color:#2E5BE8; }
+.st-published { background:#DFF3E8; color:#1E8A5A; } .st-failed { background:#FBE3E1; color:#C73A33; }
+/* the gauge: per-platform character budget */
+.gauge { height:4px; background:#EEF0EA; border-radius:2px; overflow:hidden; }
+.gauge > span { display:block; height:100%; background:#F2A516; transition:width .15s ease; }
+.gauge.over > span { background:#C73A33; }
+.gauge.warn > span { background:#D98E07; }
+/* calendar */
+.cal-day { min-height:7rem; border-right:1px solid #EEF0EA; border-bottom:1px solid #EEF0EA; padding:.375rem; }
+.cal-day.other { background:#FAFBF8; color:#9CA3AF; } .cal-day.today .d { background:#F2A516; color:#1C2128; border-radius:999px; }
+.cal-day.drop { background:#FDEFD2; }
+.chip { display:block; font-size:.75rem; border-left:3px solid; padding:.125rem .375rem; margin-top:.25rem; border-radius:3px; background:#fff; cursor:grab; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.chip:active { cursor:grabbing; }
+@media (prefers-reduced-motion: reduce) { .gauge > span { transition:none; } }
+.prose-sm p { margin:.5rem 0; }

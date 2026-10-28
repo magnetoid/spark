@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}New brand · Spark{% endblock %}
+{% block content %}
+<div class="max-w-lg">
+  <h1 class="text-2xl font-semibold tracking-tight mb-1">New brand</h1>
+  <p class="text-sm text-mute mb-6">A brand groups accounts, posts, contacts and a bio page. Agencies create one per client.</p>
+  <form method="post" class="form space-y-4">
+    <div><label>Name</label><input type="text" name="name" required autofocus></div>
+    <div><label>Website</label><input type="url" name="website" placeholder="https://"></div>
+    <div><label>Timezone</label>
+      <select name="timezone">{% for tz in timezones %}<option {% if tz=='UTC' %}selected{% endif %}>{{ tz }}</option>{% endfor %}</select>
+      <p class="hint">Queue slots and the calendar use this timezone.</p></div>
+    <button class="btn btn-amber">Create brand</button>
+  </form>
+</div>
+{% endblock %}

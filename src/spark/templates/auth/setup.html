@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Set up Spark{% endblock %}
+{% block auth %}
+<div class="mb-2 flex items-center gap-2 text-2xl font-semibold tracking-tight">
+  <svg width="28" height="28" viewBox="0 0 24 24"><path fill="#F2A516" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Spark
+</div>
+<p class="text-sm text-mute mb-6">Create the owner account. You can add editors later under Brand &amp; team.</p>
+<form method="post" class="form space-y-4">
+  <div><label>Your name</label><input type="text" name="name" required autofocus></div>
+  <div><label>Email</label><input type="email" name="email" required></div>
+  <div><label>Password</label><input type="password" name="password" minlength="8" required><p class="hint">At least 8 characters.</p></div>
+  <button class="btn btn-amber w-full justify-center">Create account</button>
+</form>
+{% endblock %}

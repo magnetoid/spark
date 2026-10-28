@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Spark{% endblock %}</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23F2A516' d='M13 2 4 14h7l-1 8 9-12h-7z'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  fontFamily: { sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'] },
+  colors: { paper:'#F6F7F4', ink:'#1C2128', teal:{900:'#11302F',800:'#174341',700:'#1E5956'},
+    amber:{DEFAULT:'#F2A516',600:'#D98E07',100:'#FDEFD2'}, cobalt:{DEFAULT:'#2E5BE8',100:'#E3E9FC'},
+    moss:{DEFAULT:'#1E8A5A',100:'#DFF3E8'}, brick:{DEFAULT:'#C73A33',100:'#FBE3E1'}, line:'#E1E5DD', mute:'#6B7280' }
+}}}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/2.0.4/htmx.min.js"></script>
+<link rel="stylesheet" href="/static/app.css">
+<style>[x-cloak]{display:none!important}</style>
+{% block head %}{% endblock %}
+</head>
+<body class="h-full bg-paper text-ink font-sans antialiased">
+{% if user %}
+<div class="min-h-full lg:flex">
+  <aside class="bg-teal-900 text-white lg:w-60 lg:shrink-0 lg:min-h-screen" x-data="{open:false}">
+    <div class="flex items-center justify-between px-5 h-14 lg:h-16">
+      <a href="/" class="flex items-center gap-2 font-semibold text-lg tracking-tight">
+        <svg width="22" height="22" viewBox="0 0 24 24"><path fill="#F2A516" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Spark
+      </a>
+      <button class="lg:hidden p-2" @click="open=!open" aria-label="Menu">☰</button>
+    </div>
+    <nav class="px-3 pb-6 space-y-6" :class="open ? 'block' : 'hidden lg:block'">
+      {% if brands %}
+      <div class="px-2">
+        <label class="block text-xs text-white/60 mb-1">Brand</label>
+        <select class="w-full bg-teal-800 border-0 rounded-md text-sm py-1.5 px-2" onchange="location='/brands/switch/'+this.value">
+          {% for b in brands %}<option value="{{ b.id }}" {% if brand and b.id==brand.id %}selected{% endif %}>{{ b.name }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      {% set nav = [
+        ('Publish', [('/', 'Overview'), ('/compose', 'Compose'), ('/calendar', 'Calendar'), ('/posts', 'Posts'), ('/campaigns', 'Campaigns'), ('/feeds', 'RSS feeds')]),
+        ('Grow', [('/analytics', 'Analytics'), ('/links', 'Links'), ('/bio', 'Bio page'), ('/contacts', 'Contacts'), ('/email', 'Email')]),
+        ('Set up', [('/accounts', 'Social accounts'), ('/media', 'Media'), ('/settings', 'Brand & team'), ('/brands', 'All brands')]),
+      ] %}
+      {% for group, items in nav %}
+      <div>
+        <div class="px-2 text-xs text-white/50 mb-1">{{ group }}</div>
+        {% for href, label in items %}
+        <a href="{{ href }}" class="block px-2 py-1.5 rounded-md text-sm {% if path==href or (href!='/' and path.startswith(href)) %}bg-white/10 text-white{% else %}text-white/80 hover:bg-white/5 hover:text-white{% endif %}">{{ label }}</a>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      <form method="post" action="/logout" class="px-2 pt-2 border-t border-white/10 text-sm text-white/70 flex items-center justify-between">
+        <span class="truncate">{{ user.name }} <span class="text-white/40">· {{ user.role.value }}</span></span>
+        <button class="hover:text-white">Sign out</button>
+      </form>
+    </nav>
+  </aside>
+  <main class="flex-1 min-w-0">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+      {% for f in pop_flash(request) %}
+      <div class="mb-4 rounded-md px-4 py-3 text-sm {% if f.kind=='error' %}bg-brick-100 text-brick{% else %}bg-moss-100 text-moss{% endif %}">{{ f.message }}</div>
+      {% endfor %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% else %}
+<main class="min-h-full flex items-center justify-center px-4">
+  <div class="w-full max-w-sm">
+    {% for f in pop_flash(request) %}<div class="mb-4 rounded-md px-4 py-3 text-sm bg-moss-100 text-moss">{{ f.message }}</div>{% endfor %}
+    {% block auth %}{% endblock %}
+  </div>
+</main>
+{% endif %}
+{% block scripts %}{% endblock %}
+<!-- Alpine last, so page scripts above have defined their components -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.9/cdn.min.js"></script>
+</body>
+</html>

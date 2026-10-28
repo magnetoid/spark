@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Social accounts · Spark{% endblock %}
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-semibold tracking-tight">Social accounts</h1>
+  <p class="text-sm text-mute mt-1">Accounts connected for {{ brand.name }}. Each post picks from these.</p>
+</div>
+
+{% if force_dry_run %}
+<div class="mb-6 rounded-md bg-amber-100 text-amber-600 px-4 py-3 text-sm">Dry-run mode is on (<code>SPARK_FORCE_DRY_RUN</code>). Every platform connects with a fake account and posts are recorded locally instead of published.</div>
+{% endif %}
+
+<section class="card mb-8">
+  <div class="px-5 py-3 border-b border-line font-semibold">Connected</div>
+  {% if accounts %}
+  <table class="tbl">
+    <thead><tr><th>Account</th><th>Platform</th><th>Via</th><th class="num">Followers</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for a in accounts %}
+      <tr>
+        <td class="flex items-center gap-3">
+          {% if a.avatar_url %}<img src="{{ a.avatar_url }}" class="w-8 h-8 rounded-full object-cover" alt="">{% else %}<span class="w-8 h-8 rounded-full bg-teal-900 text-white grid place-items-center text-xs">{{ a.handle[:1]|upper }}</span>{% endif %}
+          <div><div class="font-medium">{{ a.display_name or a.handle }}</div><div class="text-xs text-mute">@{{ a.handle }}</div></div>
+        </td>
+        <td>{{ platforms()[a.platform].label if a.platform in platforms() else zernio_platforms[a.platform].label if a.platform in zernio_platforms else a.platform }}</td>
+        <td class="text-mute">{{ 'Zernio' if a.provider=='zernio' else 'Direct' }}</td>
+        <td class="num">{{ a.followers|compact if a.followers is not none else '—' }}</td>
+        <td>
+          {% if not a.is_active %}<span class="pill st-draft">paused</span>
+          {% elif a.last_error %}<span class="pill st-failed" title="{{ a.last_error }}">needs attention</span>
+          {% else %}<span class="pill st-published">active</span>{% endif %}
+        </td>
+        <td class="text-right whitespace-nowrap">
+          {% if user.can_edit() %}
+          <form method="post" action="/accounts/{{ a.id }}/toggle" class="inline"><button class="btn btn-sm btn-ghost">{{ 'Resume' if not a.is_active else 'Pause' }}</button></form>
+          {% if a.provider=='zernio' %}<a href="/accounts/zernio/connect/{{ a.platform }}" class="btn btn-sm btn-ghost">Reconnect</a>{% endif %}
+          <form method="post" action="/accounts/{{ a.id }}/delete" class="inline" onsubmit="return confirm('Remove {{ a.handle }} from Spark?')"><button class="btn btn-sm btn-danger">Remove</button></form>
+          {% endif %}
+        </td>
+      </tr>
+      {% if a.last_error %}<tr><td colspan="6" class="text-xs text-brick pt-0">{{ a.last_error }}</td></tr>{% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="px-5 py-8 text-sm text-mute text-center">No accounts yet. Connect one below.</div>{% endif %}
+</section>
+
+{% if user.can_edit() %}
+<section class="mb-8">
+  <div class="flex items-center justify-between mb-3">
+    <div>
+      <h2 class="font-semibold">Connect through Zernio</h2>
+      <p class="text-sm text-mute">One API key, Zernio hosts the platform apps. <a class="text-cobalt" href="https://docs.zernio.com" target="_blank" rel="noopener">docs.zernio.com</a></p>
+    </div>
+    {% if zernio_ready %}<form method="post" action="/accounts/zernio/import"><button class="btn btn-ghost btn-sm">Import from Zernio</button></form>{% endif %}
+  </div>
+  {% if zernio_ready %}
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+    {% for key, zp in zernio_platforms.items() %}
+    <a href="/accounts/zernio/connect/{{ key }}" class="card px-4 py-3 text-sm hover:border-amber flex items-center justify-between">
+      <span>{{ zp.label }}</span><span class="text-mute">Connect</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card p-5 text-sm text-mute">Set <code>SPARK_ZERNIO_API_KEY</code> in <code>.env</code> and restart to connect through Zernio.</div>
+  {% endif %}
+</section>
+
+<section>
+  <h2 class="font-semibold mb-1">Connect directly</h2>
+  <p class="text-sm text-mute mb-3">Uses your own developer app for each platform (configured in <code>.env</code>). Credential-based platforms need no app.</p>
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3" x-data="{open:null}">
+    {% for name, ad in adapters %}
+    <div class="card p-4 text-sm">
+      <div class="flex items-center justify-between">
+        <div class="font-medium">{{ ad.label }}</div>
+        {% if ad.connect_mode == 'oauth' %}
+          {% if ad.is_configured() %}<a href="/accounts/connect/{{ name }}" class="btn btn-sm btn-primary">Connect</a>
+          {% else %}<span class="text-xs text-mute" title="Set the {{ name }} client id/secret in .env">not configured</span>{% endif %}
+        {% else %}
+          <button class="btn btn-sm btn-primary" @click="open = open==='{{ name }}' ? null : '{{ name }}'">Connect</button>
+        {% endif %}
+      </div>
+      {% if ad.connect_mode != 'oauth' %}
+      <form method="post" action="/accounts/connect/{{ name }}" class="form mt-3 space-y-2" x-show="open==='{{ name }}'" x-cloak>
+        {% for field, label in ad.credential_fields %}
+        <div><label>{{ label }}</label><input type="{{ 'password' if 'token' in field or 'password' in field else 'text' }}" name="{{ field }}" {% if 'optional' not in label|lower %}required{% endif %}></div>
+        {% endfor %}
+        <button class="btn btn-sm btn-amber">Save and connect</button>
+      </form>
+      {% endif %}
+      {% if ad.docs_url %}<a class="text-xs text-mute hover:text-cobalt block mt-2" href="{{ ad.docs_url }}" target="_blank" rel="noopener">Developer portal</a>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

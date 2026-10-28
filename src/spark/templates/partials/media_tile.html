@@ -1,0 +1,3 @@
+<button type="button" class="aspect-square rounded-md overflow-hidden border border-line hover:border-amber bg-paper relative" onclick="pickMedia(this)" data-id="{{ m.id }}" data-url="{{ m.url }}" data-video="{{ '1' if m.is_video else '0' }}" data-name="{{ m.filename }}" title="{{ m.filename }}">
+  {% if m.is_video %}<span class="absolute inset-0 grid place-items-center text-xs text-mute">video</span>{% else %}<img src="{{ m.url }}" class="w-full h-full object-cover" alt="{{ m.alt_text or '' }}">{% endif %}
+</button>

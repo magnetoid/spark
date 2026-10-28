@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Brands · Spark{% endblock %}
+{% block content %}
+<div class="flex items-end justify-between mb-6">
+  <h1 class="text-2xl font-semibold tracking-tight">Brands</h1>
+  {% if user.can_edit() %}<a href="/brands/new" class="btn btn-amber">New brand</a>{% endif %}
+</div>
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% for b in all_brands %}
+  <a href="/brands/switch/{{ b.id }}" class="card p-5 hover:border-amber">
+    <div class="flex items-center gap-3"><span class="w-3 h-3 rounded-full" style="background:{{ b.color }}"></span><span class="font-semibold">{{ b.name }}</span></div>
+    <div class="text-xs text-mute mt-2">{{ b.timezone }}{% if b.website %} · {{ b.website }}{% endif %}</div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}
