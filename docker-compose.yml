@@ -60,6 +60,7 @@ services:
   worker:
     <<: *spark
     command: spark worker
+    healthcheck: { disable: true }   # image HEALTHCHECK probes port 8000, which only web serves
     depends_on:
       web: { condition: service_healthy }
 
