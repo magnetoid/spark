@@ -4,7 +4,10 @@ Social autoposter and marketing app for a team or agency. Python/FastAPI, server
 
 - **Publish everywhere**: X, LinkedIn, Facebook Pages, Instagram, Threads, TikTok, YouTube, Pinterest, Bluesky, Mastodon, Telegram, Reddit and more. One post, per-platform text, media, live character gauges.
 - **Zernio first**: set one `SPARK_ZERNIO_API_KEY` and connect any platform through [Zernio](https://docs.zernio.com) — no developer apps to register. Direct adapters (your own OAuth apps) are there too.
-- **Scheduling**: queue slots per brand, calendar with drag-to-reschedule, approvals (editors submit, owners approve), retries with backoff, best-time suggestions.
+- **Queue-first, like Buffer**: per-channel Queue with visible posting slots, *Add to queue* / *Share next* (bumps the rest down) / *Share now* / pick a time, Drafts · Approvals · Sent tabs per channel.
+- **Composer**: one text, per-channel customisation with live previews and character gauges, *first comment* (X, LinkedIn, Facebook, Instagram, Threads, YouTube, Bluesky, Mastodon), *Split into thread* for X / Threads / Bluesky / Mastodon.
+- **Ideas board**: a kanban scratchpad (Ideas → Drafting → Ready → Done) with tags, AI drafting, and "Turn into post".
+- **Scheduling**: queue slots per brand, month and week calendar with drag-to-reschedule and channel/campaign filters, approvals (editors submit, owners approve), retries with backoff, best-time suggestions.
 - **AI**: Claude writes posts in your brand voice, adapts per platform, rewrites, suggests hashtags, plans whole campaigns, drafts emails.
 - **Grow**: analytics per post/platform, UTM builder and click-tracked short links, RSS → posts, contacts and lists with CSV import, email campaigns with open/click tracking, a link-in-bio page with email capture.
 - **Multi-brand**: an agency runs every client in one install. Roles: owner / editor / viewer.
@@ -74,4 +77,6 @@ uv run pytest
 uv run ruff check src tests
 ```
 
-Layout: `src/spark/platforms/` (one adapter per network + `zernio.py` provider + `dry_run.py`), `services/` (publisher, scheduler, ai, analytics, links, rss, email), `web/` (routers), `templates/`, `worker.py`.
+Layout: `src/spark/platforms/` (one adapter per network + `zernio.py` provider + `dry_run.py`), `services/` (publisher, scheduler, ai, analytics, links, rss, email), `web/` (routers: posts, queue, ideas, accounts, marketing…), `templates/` (Jinja + HTMX + Alpine on [Basecoat](https://basecoatui.com)), `worker.py`.
+
+Schema changes go through Alembic: `uv run alembic revision --autogenerate -m "..."`, then `uv run alembic upgrade head` (the Docker image runs this on start). A dev database created by `create_all` needs `uv run alembic stamp <initial revision>` once before upgrading.
