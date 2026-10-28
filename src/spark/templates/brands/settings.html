@@ -30,6 +30,64 @@
     <button class="btn">Save settings</button>
   </form>
 
+  <section class="card p-6" id="library">
+    <h2 class="font-semibold mb-1">Content library</h2>
+    <p class="text-sm text-mute mb-4">Hashtag groups and templates show up in the composer as “Insert hashtags…” and “Use a template…”.</p>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div>
+        <h3 class="text-sm font-medium mb-2">Hashtag groups</h3>
+        <ul class="divide-y divide-line text-sm mb-3">
+          {% for g in hashtag_groups %}
+          <li class="py-2 flex items-start gap-2" x-data="{edit:false}">
+            <div class="flex-1 min-w-0" x-show="!edit"><div class="font-medium">{{ g.name }}</div><div class="text-xs text-mute break-words">{{ g.text }}</div></div>
+            <form method="post" action="/settings/hashtags" class="form flex-1 space-y-1" x-show="edit" x-cloak>
+              <input type="hidden" name="group_id" value="{{ g.id }}"><input type="text" class="input" name="name" value="{{ g.name }}" required>
+              <input type="text" class="input" name="tags" value="{{ g.tags|join(' ') }}" required>
+              <div class="flex gap-1"><button class="btn" data-size="xs">Save</button><button type="button" class="btn" data-variant="ghost" data-size="xs" @click="edit=false">Cancel</button></div>
+            </form>
+            {% if user.can_edit() %}<div class="flex gap-1 shrink-0" x-show="!edit"><button type="button" class="btn" data-variant="ghost" data-size="xs" @click="edit=true">Edit</button>
+            <form method="post" action="/settings/hashtags/{{ g.id }}/delete"><button class="btn danger" data-variant="ghost" data-size="xs">Delete</button></form></div>{% endif %}
+          </li>
+          {% else %}<li class="py-3 text-xs text-mute">None yet. Groups keep your recurring hashtags one click away.</li>{% endfor %}
+        </ul>
+        {% if user.can_edit() %}
+        <form method="post" action="/settings/hashtags" class="form space-y-2">
+          <input type="text" class="input" name="name" placeholder="Group name, e.g. Product launch" required>
+          <input type="text" class="input" name="tags" placeholder="#launch #saas #marketing" required>
+          <button class="btn" data-size="sm" data-variant="outline">Add group</button>
+        </form>
+        {% endif %}
+      </div>
+      <div>
+        <h3 class="text-sm font-medium mb-2">Post templates</h3>
+        <ul class="divide-y divide-line text-sm mb-3">
+          {% for t in post_templates %}
+          <li class="py-2" x-data="{edit:false}">
+            <div class="flex items-start gap-2" x-show="!edit">
+              <div class="flex-1 min-w-0"><div class="font-medium">{{ t.name }}{% if t.category %} <span class="badge" data-variant="secondary">{{ t.category }}</span>{% endif %}</div><div class="text-xs text-mute whitespace-pre-wrap line-clamp-3">{{ t.body }}</div></div>
+              {% if user.can_edit() %}<div class="flex gap-1 shrink-0"><button type="button" class="btn" data-variant="ghost" data-size="xs" @click="edit=true">Edit</button>
+              <form method="post" action="/settings/templates/{{ t.id }}/delete"><button class="btn danger" data-variant="ghost" data-size="xs">Delete</button></form></div>{% endif %}
+            </div>
+            <form method="post" action="/settings/templates" class="form space-y-1" x-show="edit" x-cloak>
+              <input type="hidden" name="template_id" value="{{ t.id }}"><input type="text" class="input" name="name" value="{{ t.name }}" required>
+              <input type="text" class="input" name="category" value="{{ t.category or '' }}" placeholder="category">
+              <textarea class="textarea" name="body" rows="4" required>{{ t.body }}</textarea>
+              <div class="flex gap-1"><button class="btn" data-size="xs">Save</button><button type="button" class="btn" data-variant="ghost" data-size="xs" @click="edit=false">Cancel</button></div>
+            </form>
+          </li>
+          {% else %}<li class="py-3 text-xs text-mute">None yet. Try a tip, a story, a question, a how-to.</li>{% endfor %}
+        </ul>
+        {% if user.can_edit() %}
+        <form method="post" action="/settings/templates" class="form space-y-2">
+          <div class="grid grid-cols-2 gap-2"><input type="text" class="input" name="name" placeholder="Template name" required><input type="text" class="input" name="category" placeholder="tip · story · question · how-to"></div>
+          <textarea class="textarea" name="body" rows="4" placeholder="Hook line.&#10;&#10;One point per line, {{ '{{placeholders}}' }} where you fill in specifics.&#10;&#10;Question to end." required></textarea>
+          <button class="btn" data-size="sm" data-variant="outline">Add template</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
   <section class="card p-6" id="queue">
     <h2 class="font-semibold mb-1">Posting queue</h2>
     <p class="text-sm text-mute mb-4">“Next free slot” in the composer picks the earliest of these times. {{ b.timezone }}.</p>

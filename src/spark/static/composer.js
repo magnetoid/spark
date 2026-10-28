@@ -10,6 +10,23 @@ function composer(init) {
     firstComments: init.firstComments || {},
     threads: init.threads || {},
     brand: init.brand || {},
+    templates: init.templates || [],
+    hashtagGroups: init.hashtagGroups || [],
+    useTemplate(id) {
+      const t = this.templates.find(x => String(x.id) === String(id));
+      if (!t) return;
+      if (this.content.trim() && !confirm('Replace the current text with this template?')) return;
+      this.content = t.body;
+      this.validate();
+    },
+    insertHashtags(id) {
+      const g = this.hashtagGroups.find(x => String(x.id) === String(id));
+      if (!g) return;
+      const missing = g.tags.filter(tag => !new RegExp('(^|\\s)#' + tag + '(\\s|$)', 'i').test(this.content));
+      if (!missing.length) return;
+      this.content = (this.content.trimEnd() + '\n\n' + missing.map(t => '#' + t).join(' ')).trim();
+      this.validate();
+    },
     limits: init.limits || {},
     previewText(id) {
       const t = this.textFor(id) || '';

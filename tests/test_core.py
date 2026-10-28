@@ -284,3 +284,20 @@ async def test_zernio_inbox_filters_to_brand_accounts(monkeypatch):
 
     assert _json.loads(reply.calls.last.request.content) == {"accountId": "a1", "message": "Thanks!", "commentId": "c7"}
     assert "Idempotency-Key" in reply.calls.last.request.headers
+
+
+async def test_hashtag_groups_and_templates(client, db, brand):
+    from spark.models import HashtagGroup, PostTemplate
+
+    r = await client.post("/settings/hashtags", data={"name": "Launch", "tags": "#launch, SaaS #launch marketing"})
+    assert r.status_code == 303
+    g = await db.scalar(select(HashtagGroup))
+    assert g.tags == ["launch", "SaaS", "marketing"] and g.text == "#launch #SaaS #marketing"
+    r = await client.post("/settings/templates", data={"name": "Tip", "body": "Tip: {{thing}}\n\nWhy it works.", "category": "tip"})
+    assert r.status_code == 303
+    t = await db.scalar(select(PostTemplate))
+    assert t.category == "tip"
+    r = await client.get("/compose")
+    assert r.status_code == 200 and "Insert hashtags" in r.text and '"hashtagGroups": [{"id"' in r.text
+    r = await client.get("/settings")
+    assert r.status_code == 200 and "#launch #SaaS #marketing" in r.text

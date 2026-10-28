@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spark.config import get_settings
 from spark.db import get_db
-from spark.models import Brand, Media, QueueSlot, Role, User
+from spark.models import Brand, HashtagGroup, Media, PostTemplate, QueueSlot, Role, User
 from spark.security import hash_password, token
 from spark.web.deps import current_user, editor, flash, owner, render, require_brand
 
@@ -78,8 +78,72 @@ async def brand_settings(request: Request, db: AsyncSession = Depends(get_db),
         select(QueueSlot).where(QueueSlot.brand_id == brand.id).order_by(QueueSlot.weekday, QueueSlot.time)
     )).scalars().all()
     users = (await db.execute(select(User).order_by(User.name))).scalars().all()
+    groups = (await db.execute(select(HashtagGroup).where(HashtagGroup.brand_id == brand.id)
+                               .order_by(HashtagGroup.name))).scalars().all()
+    tpls = (await db.execute(select(PostTemplate).where(PostTemplate.brand_id == brand.id)
+                             .order_by(PostTemplate.name))).scalars().all()
     return await render(request, "brands/settings.html", db, user, brand, b=brand, slots=slots,
-                        weekdays=WEEKDAYS, timezones=TIMEZONES, users=users, roles=list(Role))
+                        weekdays=WEEKDAYS, timezones=TIMEZONES, users=users, roles=list(Role),
+                        hashtag_groups=groups, post_templates=tpls)
+
+
+# ---- content library: hashtag groups + templates ----------------------------
+
+def _parse_tags(raw: str) -> list[str]:
+    out, seen = [], set()
+    for t in raw.replace(",", " ").split():
+        t = t.strip().lstrip("#")
+        if t and t.lower() not in seen:
+            seen.add(t.lower())
+            out.append(t[:50])
+    return out[:30]
+
+
+@router.post("/settings/hashtags")
+async def hashtag_group_save(request: Request, name: str = Form(...), tags: str = Form(...),
+                             group_id: str = Form(""), db: AsyncSession = Depends(get_db),
+                             user: User = Depends(editor), brand: Brand = Depends(require_brand)):
+    g = await db.get(HashtagGroup, int(group_id)) if group_id.isdigit() else None
+    if g is None or g.brand_id != brand.id:
+        g = HashtagGroup(brand_id=brand.id)
+        db.add(g)
+    g.name, g.tags = name.strip()[:80], _parse_tags(tags)
+    await db.commit()
+    return RedirectResponse("/settings#library", 303)
+
+
+@router.post("/settings/hashtags/{group_id}/delete")
+async def hashtag_group_delete(group_id: int, db: AsyncSession = Depends(get_db),
+                               user: User = Depends(editor), brand: Brand = Depends(require_brand)):
+    g = await db.get(HashtagGroup, group_id)
+    if g and g.brand_id == brand.id:
+        await db.delete(g)
+        await db.commit()
+    return RedirectResponse("/settings#library", 303)
+
+
+@router.post("/settings/templates")
+async def template_save(request: Request, name: str = Form(...), body: str = Form(...),
+                        category: str = Form(""), template_id: str = Form(""),
+                        db: AsyncSession = Depends(get_db), user: User = Depends(editor),
+                        brand: Brand = Depends(require_brand)):
+    t = await db.get(PostTemplate, int(template_id)) if template_id.isdigit() else None
+    if t is None or t.brand_id != brand.id:
+        t = PostTemplate(brand_id=brand.id)
+        db.add(t)
+    t.name, t.body, t.category = name.strip()[:120], body.strip(), category.strip()[:40] or None
+    await db.commit()
+    return RedirectResponse("/settings#library", 303)
+
+
+@router.post("/settings/templates/{template_id}/delete")
+async def template_delete(template_id: int, db: AsyncSession = Depends(get_db),
+                          user: User = Depends(editor), brand: Brand = Depends(require_brand)):
+    t = await db.get(PostTemplate, template_id)
+    if t and t.brand_id == brand.id:
+        await db.delete(t)
+        await db.commit()
+    return RedirectResponse("/settings#library", 303)
 
 
 @router.post("/settings")

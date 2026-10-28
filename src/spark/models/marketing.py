@@ -110,6 +110,33 @@ class LinkClick(Base):
     user_agent: Mapped[str | None] = mapped_column(String(500))
 
 
+class HashtagGroup(TimestampMixin, Base):
+    """Named set of hashtags inserted from the composer (Buffer's saved hashtag groups)."""
+
+    __tablename__ = "hashtag_groups"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    brand_id: Mapped[int] = mapped_column(ForeignKey("brands.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    tags: Mapped[list] = mapped_column(JSON, default=list)
+
+    @property
+    def text(self) -> str:
+        return " ".join(f"#{t}" for t in self.tags)
+
+
+class PostTemplate(TimestampMixin, Base):
+    """Reusable post skeleton with {{placeholders}} the composer fills in by hand."""
+
+    __tablename__ = "post_templates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    brand_id: Mapped[int] = mapped_column(ForeignKey("brands.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    body: Mapped[str] = mapped_column(Text, default="")
+    category: Mapped[str | None] = mapped_column(String(40))  # tip, story, question, how-to, ...
+
+
 class Idea(TimestampMixin, Base):
     """Content scratchpad entry (Buffer's "Create"): moves idea → drafting → ready → done."""
 

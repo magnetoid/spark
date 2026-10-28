@@ -15,10 +15,12 @@ from spark.db import get_db
 from spark.models import (
     Brand,
     Campaign,
+    HashtagGroup,
     Media,
     Post,
     PostStatus,
     PostTarget,
+    PostTemplate,
     SocialAccount,
     User,
 )
@@ -114,6 +116,12 @@ async def compose(request: Request, post_id: int | None = None, date_: str | Non
         "firstComments": {str(t.account_id): t.first_comment or "" for t in post.targets} if post else {},
         "threads": {str(t.account_id): list(t.thread or []) for t in post.targets} if post else {},
         "brand": {"name": brand.name, "color": brand.color},
+        "templates": [{"id": t.id, "name": t.name, "body": t.body, "category": t.category}
+                      for t in (await db.execute(select(PostTemplate).where(PostTemplate.brand_id == brand.id)
+                                                 .order_by(PostTemplate.name))).scalars()],
+        "hashtagGroups": [{"id": g.id, "name": g.name, "tags": g.tags}
+                          for g in (await db.execute(select(HashtagGroup).where(HashtagGroup.brand_id == brand.id)
+                                                     .order_by(HashtagGroup.name))).scalars()],
         "limits": {str(k): v for k, v in limits.items()},
         "ai": ai_enabled,
     }
