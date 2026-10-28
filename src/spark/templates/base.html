@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full"{% if user and user.prefs and user.prefs.get("shortcuts") is false %} data-shortcuts="off"{% endif %}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -86,7 +86,8 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
           <svg class="ml-auto opacity-60" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg>
         </summary>
         <ul class="mt-1">
-          <li><a href="/settings#team"><span>Account &amp; team</span></a></li>
+          <li><a href="/me"><span>Preferences</span></a></li>
+          <li><a href="/settings#team"><span>Brand &amp; team</span></a></li>
           <li><button type="button" onclick="window.basecoat.theme.toggle()"><span class="hidden dark:inline">Light mode</span><span class="dark:hidden">Dark mode</span></button></li>
           <li><form method="post" action="/logout">{{ csrf_field(request) }}<button type="submit"><span>Log out</span></button></form></li>
         </ul>

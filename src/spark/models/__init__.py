@@ -20,6 +20,7 @@ from spark.models.social import (
     QueueSlot,
     RssFeed,
     SocialAccount,
+    WebhookEvent,
 )
 
 __all__ = [
@@ -45,4 +46,5 @@ __all__ = [
     "ShortLink",
     "SocialAccount",
     "User",
+    "WebhookEvent",
 ]

@@ -99,6 +99,8 @@ class Post(TimestampMixin, Base):
     # Written by the composer's autosave; hidden from lists until the user saves for real
     is_autosave: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str | None] = mapped_column(Text)
+    # When owners were emailed that this post waits for approval (None = not yet)
+    approval_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     targets: Mapped[list["PostTarget"]] = relationship(
         back_populates="post", cascade="all, delete-orphan", lazy="selectin"
@@ -147,6 +149,8 @@ class PostTarget(TimestampMixin, Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error: Mapped[str | None] = mapped_column(Text)
+    # When the team was emailed about this target's final failure (None = not yet)
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     post: Mapped[Post] = relationship(back_populates="targets")
     account: Mapped[SocialAccount] = relationship(lazy="selectin")
@@ -202,3 +206,13 @@ class Metric(Base):
     @property
     def engagements(self) -> int:
         return self.likes + self.comments + self.shares + self.clicks
+
+
+class WebhookEvent(Base):
+    """Ids of provider webhook deliveries we already processed (at-least-once delivery)."""
+
+    __tablename__ = "webhook_events"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    event: Mapped[str] = mapped_column(String(64))
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

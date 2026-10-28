@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Preferences · Spark{% endblock %}
+{% block page_title %}Preferences{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold tracking-tight mb-1">Preferences</h1>
+<p class="text-sm text-mute mb-6">Yours only. Brand settings and the team live under <a class="underline" href="/settings">Brand &amp; team</a>.</p>
+<div class="grid lg:grid-cols-3 gap-8">
+<div class="lg:col-span-2 space-y-8">
+  <form method="post" action="/me" class="form card p-6 space-y-6">{{ csrf_field(request) }}
+    <section class="space-y-4">
+      <h2 class="font-semibold">Profile</h2>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div class="field"><label>Name</label><input type="text" class="input" name="name" value="{{ user.name }}" required></div>
+        <div class="field"><label>Email</label><input type="email" class="input" name="email" value="{{ user.email }}" required></div>
+      </div>
+      <p class="text-xs text-mute">Role: <span class="badge st-draft">{{ user.role.value }}</span>{% if not user.can_approve() %} · an owner changes roles{% endif %}</p>
+    </section>
+    <section class="space-y-3">
+      <h2 class="font-semibold">Email notifications</h2>
+      {% if not email_live %}<div class="alert"><section>Email is in console mode on this server: notifications are logged, not delivered. Set <code>SPARK_EMAIL_BACKEND</code> to smtp or resend.</section></div>{% endif %}
+      {% if user.can_edit() %}<label class="flex items-start gap-2 text-sm font-normal"><input type="checkbox" name="notify_failed" value="true" {% if prefs.notify_failed %}checked{% endif %} class="mt-0.5"><span>A post failed to publish<span class="block text-xs text-mute">After the last retry, with the platform's error.</span></span></label>{% endif %}
+      {% if user.can_approve() %}<label class="flex items-start gap-2 text-sm font-normal"><input type="checkbox" name="notify_approvals" value="true" {% if prefs.notify_approvals %}checked{% endif %} class="mt-0.5"><span>A post waits for my approval<span class="block text-xs text-mute">Once per post, when editors schedule something.</span></span></label>{% endif %}
+      <label class="flex items-start gap-2 text-sm font-normal"><input type="checkbox" name="digest_weekly" value="true" {% if prefs.digest_weekly %}checked{% endif %} class="mt-0.5"><span>Weekly digest<span class="block text-xs text-mute">Monday morning: last week's numbers per brand, top posts, what's coming up.</span></span></label>
+    </section>
+    <section class="space-y-3">
+      <h2 class="font-semibold">Composer</h2>
+      <div class="field"><label>Default action when I open a new post</label>
+        <select class="select" name="default_action">{% for key, label in actions %}<option value="{{ key }}" {% if prefs.default_action == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+        <p class="hint">Opening from a time slot or a calendar day still preselects that time.</p></div>
+      <label class="flex items-start gap-2 text-sm font-normal"><input type="checkbox" name="shortcuts" value="true" {% if prefs.shortcuts %}checked{% endif %} class="mt-0.5"><span>Keyboard shortcuts<span class="block text-xs text-mute"><kbd>c</kbd> new post, <kbd>g</kbd> then a letter to jump, <kbd>?</kbd> for the list. ⌘K always works.</span></span></label>
+    </section>
+    <div><button class="btn">Save preferences</button></div>
+  </form>
+
+  <form method="post" action="/me/password" class="form card p-6 space-y-4">{{ csrf_field(request) }}
+    <h2 class="font-semibold">Password</h2>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div class="field"><label>Current password</label><input type="password" class="input" name="current" required autocomplete="current-password"></div>
+      <div class="field"><label>New password</label><input type="password" class="input" name="new" required minlength="10" autocomplete="new-password"><p class="hint">At least 10 characters.</p></div>
+    </div>
+    <div><button class="btn" data-variant="outline">Change password</button></div>
+  </form>
+</div>
+<aside class="space-y-4 text-sm">
+  <div class="card p-5 space-y-2">
+    <h3 class="font-semibold">What you'll get</h3>
+    <p class="text-mute">Failure and approval emails go out within a minute from the worker. The digest covers every brand you can see and skips brands without channels.</p>
+    <p class="text-mute">Replies and comments are not emailed; the <a class="underline" href="/inbox">Inbox</a> shows them live.</p>
+  </div>
+</aside>
+</div>
+{% endblock %}

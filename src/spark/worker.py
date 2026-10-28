@@ -11,7 +11,7 @@ from sqlalchemy import select
 from spark.config import get_settings
 from spark.db import SessionLocal
 from spark.models import EmailCampaign, RssFeed
-from spark.services import analytics, email, publisher, rss
+from spark.services import analytics, email, notify, publisher, rss
 from spark.services.ai import AIUnavailable, ContentAI
 
 log = logging.getLogger("spark.worker")
@@ -80,6 +80,17 @@ async def send_scheduled_emails(ctx) -> None:
             await email.send_campaign(db, cid)
 
 
+async def send_notifications(ctx) -> int:
+    """Failed posts and pending approvals, once each."""
+    async with SessionLocal() as db:
+        return await notify.notify_failed(db) + await notify.notify_approvals(db)
+
+
+async def send_weekly_digest(ctx) -> int:
+    async with SessionLocal() as db:
+        return await notify.weekly_digest(db)
+
+
 class WorkerSettings:
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
     functions = [publish_now, send_email_campaign]
@@ -89,6 +100,8 @@ class WorkerSettings:
         cron(recover_stuck, minute={0, 15, 30, 45}),
         cron(poll_feeds, minute={5, 35}),
         cron(collect_metrics, hour={0, 6, 12, 18}, minute=20),
+        cron(send_notifications, second=50),
+        cron(send_weekly_digest, weekday=0, hour=7, minute=0),  # Mondays 07:00 UTC
     ]
     max_jobs = 10
     job_timeout = 600

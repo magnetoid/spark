@@ -6,7 +6,7 @@ import pytest
 import respx
 from sqlalchemy import select
 
-from spark.models import Brand, Post, PostStatus, PostTarget, SocialAccount
+from spark.models import Brand, Post, PostStatus, PostTarget, SocialAccount, User
 from spark.platforms import PublishPayload, get_adapter
 from spark.platforms.bluesky import facets
 from spark.platforms.zernio import ZernioAdapter, from_zernio, to_zernio
@@ -403,7 +403,8 @@ def test_every_write_route_requires_a_role():
     from spark.main import app
     from spark.web import deps
 
-    allow = {"/login", "/setup", "/logout", "/b/{slug}/subscribe", "/e/u/{tok}", "/me/prefs", "/ideas/{idea_id}/move"}
+    allow = {"/login", "/setup", "/logout", "/b/{slug}/subscribe", "/e/u/{tok}", "/me/prefs", "/me", "/me/password",
+             "/webhooks/zernio", "/ideas/{idea_id}/move"}
     offenders = []
     for r in app.routes:
         if not isinstance(r, APIRoute) or not (r.methods & {"POST", "PUT", "PATCH", "DELETE"}):
@@ -434,3 +435,174 @@ async def test_prefs_and_onboarding(client, db, brand):
     assert r.json() == {"onboarding_dismissed": True}
     r = await client.get("/")
     assert "Get Spark posting" not in r.text
+
+
+# ---- Phase E: notifications, preferences, webhooks ------------------------------------
+
+async def _failed_target(db, brand, content="Broken post", error="Platform said no"):
+    from spark.models import Post, PostStatus, PostTarget, SocialAccount
+
+    acc = await db.scalar(select(SocialAccount).where(SocialAccount.brand_id == brand.id))
+    post = Post(brand_id=brand.id, content=content, status=PostStatus.failed)
+    db.add(post)
+    await db.flush()
+    t = PostTarget(post_id=post.id, account_id=acc.id, status=PostStatus.failed, error=error, attempts=3)
+    db.add(t)
+    await db.commit()
+    return post, t
+
+
+async def test_notify_failed_emails_once(db, brand):
+    from spark.services import notify
+    from spark.services.email import ConsoleSender
+
+    ConsoleSender.sent.clear()
+    _post, t = await _failed_target(db, brand)
+    assert await notify.notify_failed(db, ConsoleSender()) == 1
+    mail = ConsoleSender.sent[-1]
+    assert mail["to"] == "owner@example.com" and "failed to publish" in mail["subject"]
+    assert "Broken post" in mail["html"] and "Platform said no" in mail["html"]
+    await db.refresh(t)
+    assert t.notified_at is not None
+    assert await notify.notify_failed(db, ConsoleSender()) == 0  # not again
+
+
+async def test_notify_failed_respects_prefs(db, brand):
+    from spark.services import notify
+    from spark.services.email import ConsoleSender
+
+    user = await db.scalar(select(User))
+    user.prefs = {"notify_failed": False}
+    await db.commit()
+    await _failed_target(db, brand)
+    assert await notify.notify_failed(db, ConsoleSender()) == 0
+
+
+async def test_notify_approvals(db, brand):
+    from spark.models import Post, PostStatus
+    from spark.services import notify
+    from spark.services.email import ConsoleSender
+
+    ConsoleSender.sent.clear()
+    user = await db.scalar(select(User))
+    post = Post(brand_id=brand.id, content="Please approve me", status=PostStatus.pending_approval,
+                author_id=user.id, scheduled_at=datetime.now(UTC) + timedelta(hours=2))
+    db.add(post)
+    await db.commit()
+    assert await notify.notify_approvals(db, ConsoleSender()) == 1
+    assert "approval" in ConsoleSender.sent[-1]["subject"] and "Please approve me" in ConsoleSender.sent[-1]["html"]
+    assert await notify.notify_approvals(db, ConsoleSender()) == 0
+
+
+async def test_weekly_digest(db, brand):
+    from spark.services import notify
+    from spark.services.email import ConsoleSender
+
+    ConsoleSender.sent.clear()
+    assert await notify.weekly_digest(db, ConsoleSender()) == 1
+    mail = ConsoleSender.sent[-1]
+    assert "Your week on social" in mail["subject"] and "Coming up" in mail["html"]
+
+
+async def test_preferences_page_and_save(client, db, brand):
+    r = await client.get("/me")
+    assert r.status_code == 200 and "Weekly digest" in r.text
+    r = await client.post("/me", data={"name": "Owner Two", "email": "owner@example.com", "digest_weekly": "true",
+                                       "default_action": "next"})
+    assert r.status_code == 303
+    user = await db.scalar(select(User))
+    await db.refresh(user)
+    assert user.name == "Owner Two"
+    assert user.prefs["default_action"] == "next" and user.prefs["notify_failed"] is False
+    # composer honours the default action; shortcuts flag lands on <html>
+    r = await client.get("/compose")
+    assert "x-data=\"{mode:'next'}\"" in r.text and 'data-shortcuts="off"' in r.text
+    r = await client.post("/me/password", data={"current": "wrong", "new": "longenough123"})
+    assert r.status_code == 303
+    r = await client.post("/me/password", data={"current": "password123", "new": "longenough123"})
+    await db.refresh(user)
+    from spark.security import verify_password
+
+    assert verify_password(user.password_hash, "longenough123")
+
+
+def _signed(body: dict) -> tuple[bytes, dict]:
+    import hashlib
+    import hmac
+    import json
+
+    from spark.services.webhooks import webhook_secret
+
+    raw = json.dumps(body).encode()
+    sig = hmac.new(webhook_secret().encode(), raw, hashlib.sha256).hexdigest()
+    return raw, {"X-Zernio-Signature": sig, "Content-Type": "application/json"}
+
+
+async def test_zernio_webhook_signature_and_dedupe(client, db, brand):
+    raw, headers = _signed({"id": "evt-1", "event": "webhook.test", "test": True})
+    r = await client.post("/webhooks/zernio", content=raw, headers={"Content-Type": "application/json"})
+    assert r.status_code == 401  # no signature, no CSRF either: signature is the auth
+    r = await client.post("/webhooks/zernio", content=raw, headers={**headers, "X-Zernio-Signature": "deadbeef"})
+    assert r.status_code == 401
+    r = await client.post("/webhooks/zernio", content=raw, headers=headers)
+    assert r.status_code == 200 and r.json()["result"] == "test"
+    r = await client.post("/webhooks/zernio", content=raw, headers=headers)
+    assert r.json()["result"] == "duplicate"
+
+
+async def test_zernio_webhook_marks_target_published_and_failed(client, db, brand):
+    from spark.models import Post, PostStatus, PostTarget, SocialAccount
+
+    acc = SocialAccount(brand_id=brand.id, platform="linkedin", provider="zernio", external_id="z-acc-1",
+                        handle="imba")
+    db.add(acc)
+    await db.flush()
+    post = Post(brand_id=brand.id, content="Out via Zernio", status=PostStatus.publishing)
+    db.add(post)
+    await db.flush()
+    t = PostTarget(post_id=post.id, account_id=acc.id, status=PostStatus.publishing, remote_id="zpost-9")
+    db.add(t)
+    await db.commit()
+
+    raw, headers = _signed({"id": "evt-pub", "event": "post.platform.published",
+                            "post": {"id": "zpost-9"}, "account": {"accountId": "z-acc-1", "platform": "linkedin"},
+                            "platform": {"name": "linkedin", "status": "published",
+                                         "publishedUrl": "https://linkedin.com/posts/1"}})
+    r = await client.post("/webhooks/zernio", content=raw, headers=headers)
+    assert r.json()["result"] == "updated"
+    await db.refresh(t)
+    await db.refresh(post)
+    assert t.status == PostStatus.published and t.remote_url == "https://linkedin.com/posts/1"
+    assert post.status == PostStatus.published
+
+    # a whole-post failure for another target
+    post2 = Post(brand_id=brand.id, content="Second", status=PostStatus.publishing)
+    db.add(post2)
+    await db.flush()
+    t2 = PostTarget(post_id=post2.id, account_id=acc.id, status=PostStatus.publishing, remote_id="zpost-10")
+    db.add(t2)
+    await db.commit()
+    raw, headers = _signed({"id": "evt-fail", "event": "post.failed",
+                            "post": {"id": "zpost-10", "platforms": [{"accountId": "z-acc-1", "status": "failed",
+                                                                       "error": "Token expired"}]}})
+    r = await client.post("/webhooks/zernio", content=raw, headers=headers)
+    assert r.json()["result"] == "updated"
+    await db.refresh(t2)
+    assert t2.status == PostStatus.failed and "Token expired" in t2.error
+
+    # account disconnected -> paused with a reason; connected again -> back
+    raw, headers = _signed({"id": "evt-dc", "event": "account.disconnected",
+                            "account": {"accountId": "z-acc-1", "disconnectionType": "unintentional",
+                                        "reason": "token revoked"}})
+    assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()["result"] == "disconnected"
+    await db.refresh(acc)
+    assert acc.is_active is False and "token revoked" in acc.last_error
+
+    brand.zernio_profile_id = "prof-1"
+    await db.commit()
+    raw, headers = _signed({"id": "evt-c", "event": "account.connected",
+                            "account": {"accountId": "z-acc-1", "profileId": "prof-1", "platform": "linkedin",
+                                        "username": "imba-new"}})
+    assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()["result"] == "connected"
+    await db.refresh(acc)
+    assert acc.is_active is True and acc.handle == "imba-new" and acc.last_error is None

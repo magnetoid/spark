@@ -339,6 +339,28 @@ class ZernioAdapter(PlatformAdapter):
         method = "DELETE" if liked else "POST"
         await self._req(method, f"/inbox/comments/{post_id}/{comment_id}/like", json={"accountId": account_id})
 
+    # ---- webhooks (POST /webhooks/settings etc.) -------------------------------------
+    async def list_webhooks(self) -> list[dict]:
+        r = await self._req("GET", "/webhooks/settings")
+        data = r.json()
+        return data.get("webhooks") or data.get("data") or (data if isinstance(data, list) else [])
+
+    async def upsert_webhook(self, url: str, secret: str, events: list[str], name: str = "Spark") -> dict:
+        """Create our endpoint, or bring an existing one for the same URL up to date."""
+        for w in await self.list_webhooks():
+            if w.get("url") == url:
+                r = await self._req("PUT", "/webhooks/settings", json={
+                    "webhookId": w.get("_id"), "name": name, "url": url, "secret": secret,
+                    "events": events, "isActive": True})
+                return r.json().get("webhook") or w
+        r = await self._req("POST", "/webhooks/settings", json={
+            "name": name, "url": url, "secret": secret, "events": events, "isActive": True})
+        return r.json().get("webhook") or r.json()
+
+    async def test_webhook(self, webhook_id: str, event: str = "post.published") -> dict:
+        r = await self._req("POST", "/webhooks/test", json={"webhookId": webhook_id, "event": event})
+        return r.json()
+
     async def resolve_url(self, remote_id: str) -> str | None:
         """Scheduled/async publishes get their URL later; fetch it."""
         post = (await self._req("GET", f"/posts/{remote_id}")).json().get("post", {})

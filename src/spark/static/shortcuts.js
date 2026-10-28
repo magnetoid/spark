@@ -12,7 +12,7 @@
       if (e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); }
       return;
     }
-    if (typing(e)) return;
+    if (typing(e) || document.documentElement.dataset.shortcuts === 'off') return;
     if (pendingG) {
       pendingG = false; clearTimeout(gTimer);
       if (go[e.key]) { e.preventDefault(); location.href = go[e.key]; }

@@ -9,17 +9,31 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from spark.config import get_settings
 from spark.db import create_all
-from spark.web import accounts, api, auth, brands, ideas, inbox, marketing, posts, public, queue
+from spark.web import (
+    accounts,
+    api,
+    auth,
+    brands,
+    ideas,
+    inbox,
+    marketing,
+    me,
+    posts,
+    public,
+    queue,
+    webhooks,
+)
 from spark.web.deps import LoginRequired, templates
 
 log = logging.getLogger("spark")
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-CSRF_EXEMPT_PREFIXES = ("/e/u/",)
+CSRF_EXEMPT_PREFIXES = ("/e/u/", "/webhooks/")
 
 # ---- rate limiting (token bucket per client+bucket; in-process, good enough per web container) ----
 RATE_LIMITS = {  # path prefix -> (methods, requests, per_seconds)
     "/login": ({"POST"}, 10, 60), "/setup": ({"POST"}, 10, 60),
     "/l/": ({"GET"}, 120, 60), "/b/": ({"GET", "POST"}, 60, 60), "/e/": ({"GET", "POST"}, 120, 60),
+    "/webhooks/": ({"POST"}, 600, 60),
 }
 _buckets: dict[tuple[str, str], list] = {}
 
@@ -93,7 +107,7 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.mount("/media", StaticFiles(directory=s.media_dir), name="media")
     for r in (public.router, auth.router, brands.router, accounts.router, posts.router, queue.router,
-              ideas.router, inbox.router, api.router, marketing.router):
+              ideas.router, inbox.router, api.router, marketing.router, me.router, webhooks.router):
         app.include_router(r)
 
     @app.middleware("http")

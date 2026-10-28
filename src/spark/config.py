@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     # Zernio (https://docs.zernio.com) — one key connects every platform it supports
     zernio_api_key: str | None = None
     zernio_base_url: str = "https://zernio.com/api/v1"
+    # Secret Zernio signs webhook deliveries with; derived from secret_key when unset
+    zernio_webhook_secret: str | None = None
 
     # Direct platform developer apps (OAuth client credentials), optional when using Zernio
     x_client_id: str | None = None

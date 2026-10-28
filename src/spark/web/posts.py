@@ -159,7 +159,7 @@ async def _composer_context(request: Request, db: AsyncSession, brand: Brand, us
         "campaigns": await _campaigns(db, brand), "prefill_at": prefill_at, "ai_enabled": ai_enabled,
         "composer_state": composer_state, "modal": modal, "autosave": autosave,
         "idea_id": idea.id if idea else None, "source": "idea" if idea else "manual",
-        "default_mode": "schedule" if prefill_at else "queue",
+        "default_mode": "schedule" if prefill_at else ((user.prefs or {}).get("default_action") or "queue"),
         "action_url": f"/posts/{post.id}/edit" if post else "/compose",
     }
 
