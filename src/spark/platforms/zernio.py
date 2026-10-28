@@ -300,6 +300,45 @@ class ZernioAdapter(PlatformAdapter):
             raise PlatformError(f"Zernio returned no post id: {str(data)[:200]}")
         return PublishResult(remote_id=post_id, url=t.get("platformPostUrl"))
 
+    # ---- engagement inbox (comments) --------------------------------------------
+    async def commented_posts(self, account_ids: set[str], since: str | None = None, limit: int = 50) -> list[dict]:
+        """Posts with comments across the key's accounts, filtered to `account_ids`
+        (Zernio account ids). Each row: id, platform, accountId, accountUsername,
+        content, picture, permalink, createdTime, commentCount, likeCount."""
+        params: dict = {"limit": min(limit, 100), "sortBy": "date", "sortOrder": "desc"}
+        if since:
+            params["since"] = since
+        out: list[dict] = []
+        while True:
+            data = (await self._req("GET", "/inbox/comments", params=params)).json()
+            out += [r for r in data.get("data", []) if r.get("accountId") in account_ids and not r.get("isAd")]
+            page = data.get("pagination") or {}
+            if not page.get("hasMore") or not page.get("nextCursor") or len(out) >= limit:
+                return out[:limit]
+            params["cursor"] = page["nextCursor"]
+
+    async def post_comments(self, post_id: str, account_id: str, cursor: str | None = None) -> dict:
+        params: dict = {"accountId": account_id, "limit": 50}
+        if cursor:
+            params["cursor"] = cursor
+        return (await self._req("GET", f"/inbox/comments/{post_id}", params=params)).json()
+
+    async def reply(self, post_id: str, account_id: str, message: str, comment_id: str | None = None,
+                    bluesky: dict | None = None) -> dict:
+        import uuid
+
+        body: dict = {"accountId": account_id, "message": message}
+        if comment_id:
+            body["commentId"] = comment_id
+        if bluesky:
+            body.update({k: v for k, v in bluesky.items() if v})
+        return (await self._req("POST", f"/inbox/comments/{post_id}", json=body,
+                                headers={"Idempotency-Key": str(uuid.uuid4())})).json()
+
+    async def like_comment(self, post_id: str, comment_id: str, account_id: str, liked: bool) -> None:
+        method = "DELETE" if liked else "POST"
+        await self._req(method, f"/inbox/comments/{post_id}/{comment_id}/like", json={"accountId": account_id})
+
     async def resolve_url(self, remote_id: str) -> str | None:
         """Scheduled/async publishes get their URL later; fetch it."""
         post = (await self._req("GET", f"/posts/{remote_id}")).json().get("post", {})

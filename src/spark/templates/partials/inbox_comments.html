@@ -1,0 +1,50 @@
+{% if sent %}<div class="alert mb-3" role="status"><h2>Reply posted</h2></div>{% endif %}
+{% macro comment(c, depth=0) %}
+<div class="flex gap-2 {{ 'ml-8' if depth else '' }} py-2 {{ 'border-t border-line' if not depth }}">
+  {% if c.from and c.from.picture %}<img src="{{ c.from.picture }}" class="w-7 h-7 rounded-full object-cover shrink-0" alt="">{% else %}<span class="w-7 h-7 rounded-full bg-muted grid place-items-center text-xs shrink-0">{{ (c.from.name if c.from and c.from.name else '?')[:1]|upper }}</span>{% endif %}
+  <div class="min-w-0 flex-1 text-sm">
+    <div class="text-xs text-mute">
+      <span class="font-medium text-ink">{{ c.from.name if c.from else 'Someone' }}</span>
+      {% if c.from and c.from.username %}<span>@{{ c.from.username }}</span>{% endif %}
+      {% if c.from and c.from.isOwner %}<span class="badge st-published">you</span>{% endif %}
+      <span>· {{ c.createdTime[:16].replace('T',' ') }}</span>
+      {% if c.isHidden %}<span class="badge st-draft">hidden</span>{% endif %}
+    </div>
+    <p class="whitespace-pre-wrap break-words mt-0.5">{{ c.message }}</p>
+    <div class="flex flex-wrap items-center gap-2 mt-1 text-xs" x-data="{reply:false}">
+      <span class="text-mute num">{{ c.likeCount or 0 }} likes</span>
+      {% if user.can_edit() and c.canLike %}
+      <button class="btn" data-variant="ghost" data-size="xs" hx-post="/inbox/{{ post_id }}/like" hx-vals='{"account":"{{ account.external_id }}","comment_id":"{{ c.id }}","liked":{{ 'true' if c.isLiked else 'false' }}}' hx-swap="outerHTML">{{ '♥ Liked' if c.isLiked else '♡ Like' }}</button>
+      {% endif %}
+      {% if user.can_edit() and c.canReply %}<button type="button" class="btn" data-variant="ghost" data-size="xs" @click="reply=!reply">Reply</button>{% endif %}
+      {% if c.url %}<a href="{{ c.url }}" target="_blank" rel="noopener" class="text-mute hover:text-cobalt">Open</a>{% endif %}
+      <form x-show="reply" x-cloak class="form basis-full flex gap-2 mt-1" hx-post="/inbox/{{ post_id }}/reply" hx-target="closest .inbox-thread" hx-swap="innerHTML">
+        <input type="hidden" name="account" value="{{ account.external_id }}">
+        <input type="hidden" name="comment_id" value="{{ c.id }}">
+        {% if account.platform == 'bluesky' %}<input type="hidden" name="root_uri" value="{{ c.rootUri or '' }}"><input type="hidden" name="root_cid" value="{{ c.rootCid or '' }}"><input type="hidden" name="parent_cid" value="{{ c.cid or '' }}">{% endif %}
+        <input type="text" class="input" name="message" placeholder="Reply as {{ account.handle }}" required>
+        <button class="btn" data-size="sm">Send</button>
+      </form>
+    </div>
+    {% for r in c.replies or [] %}{{ comment(r, depth + 1) }}{% endfor %}
+    {% if c.repliesHasMore %}<p class="text-xs text-mute ml-8">More replies on the platform…</p>{% endif %}
+  </div>
+</div>
+{% endmacro %}
+<div class="inbox-thread">
+  {% if comments %}
+    {% for c in comments %}{{ comment(c) }}{% endfor %}
+    {% if pagination.hasMore and pagination.cursor %}
+    <button class="btn mt-2" data-variant="outline" data-size="xs" hx-get="/inbox/{{ post_id }}/comments?account={{ account.external_id }}&cursor={{ pagination.cursor }}" hx-target="closest .inbox-thread" hx-swap="beforeend">Load more</button>
+    {% endif %}
+  {% else %}
+    <p class="text-xs text-mute">No comments on this post.</p>
+  {% endif %}
+  {% if user.can_edit() %}
+  <form class="form flex gap-2 mt-3 pt-3 border-t border-line" hx-post="/inbox/{{ post_id }}/reply" hx-target="closest .inbox-thread" hx-swap="innerHTML">
+    <input type="hidden" name="account" value="{{ account.external_id }}">
+    <input type="text" class="input" name="message" placeholder="Comment on this post as {{ account.handle }}" required>
+    <button class="btn" data-size="sm">Post</button>
+  </form>
+  {% endif %}
+</div>

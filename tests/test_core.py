@@ -259,3 +259,28 @@ async def test_zernio_list_accounts_all_profiles(monkeypatch):
     assert [(p, a.external_id) for p, a in pairs] == [("linkedin", "a1"), ("x", "a2")]
     assert pairs[0][1].extra["zernio_profile_name"] == "Default"
     assert pairs[1][1].handle == "imba"
+
+
+@respx.mock
+async def test_zernio_inbox_filters_to_brand_accounts(monkeypatch):
+    from spark.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "zernio_api_key", "sk_test")
+    respx.get("https://zernio.com/api/v1/inbox/comments").mock(return_value=httpx.Response(200, json={
+        "data": [
+            {"id": "p1", "platform": "linkedin", "accountId": "a1", "commentCount": 3, "isAd": False},
+            {"id": "p2", "platform": "facebook", "accountId": "other", "commentCount": 1, "isAd": False},
+            {"id": "ad", "platform": "facebook", "accountId": "a1", "commentCount": 9, "isAd": True},
+        ],
+        "pagination": {"hasMore": False, "nextCursor": None},
+    }))
+    reply = respx.post("https://zernio.com/api/v1/inbox/comments/p1").mock(
+        return_value=httpx.Response(200, json={"success": True, "data": {}}))
+    z = ZernioAdapter(httpx.AsyncClient())
+    rows = await z.commented_posts({"a1"}, since="2026-10-01")
+    assert [r["id"] for r in rows] == ["p1"]
+    await z.reply("p1", "a1", "Thanks!", comment_id="c7")
+    import json as _json
+
+    assert _json.loads(reply.calls.last.request.content) == {"accountId": "a1", "message": "Thanks!", "commentId": "c7"}
+    assert "Idempotency-Key" in reply.calls.last.request.headers

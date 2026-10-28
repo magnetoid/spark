@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from spark.config import get_settings
 from spark.db import create_all
-from spark.web import accounts, auth, brands, ideas, marketing, posts, public, queue
+from spark.web import accounts, auth, brands, ideas, inbox, marketing, posts, public, queue
 from spark.web.deps import LoginRequired, templates
 
 log = logging.getLogger("spark")
@@ -40,7 +40,7 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.mount("/media", StaticFiles(directory=s.media_dir), name="media")
     for r in (public.router, auth.router, brands.router, accounts.router, posts.router, queue.router,
-              ideas.router, marketing.router):
+              ideas.router, inbox.router, marketing.router):
         app.include_router(r)
 
     @app.exception_handler(LoginRequired)
