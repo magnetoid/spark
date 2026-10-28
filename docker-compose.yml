@@ -6,7 +6,7 @@ x-spark: &spark
   build: .
   environment: &spark-env
     SPARK_ENV: ${SPARK_ENV:-production}
-    SPARK_BASE_URL: ${SERVICE_FQDN_WEB:-http://localhost:8000}
+    SPARK_BASE_URL: ${SERVICE_URL_WEB:-http://localhost:8000}   # SERVICE_URL_* carries the scheme, SERVICE_FQDN_* does not
     SPARK_SECRET_KEY: ${SERVICE_PASSWORD_64_SPARKSECRET:-dev-only-secret-change-me}
     SPARK_DATABASE_URL: postgresql+asyncpg://spark:${SERVICE_PASSWORD_POSTGRES:-spark}@db:5432/spark
     SPARK_REDIS_URL: redis://redis:6379/0
