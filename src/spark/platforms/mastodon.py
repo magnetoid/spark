@@ -83,6 +83,17 @@ class MastodonAdapter(PlatformAdapter):
                 json={"status": text, "media_ids": media_ids},
             )
         ).json()
+        last_id = res["id"]
+        for i, item in enumerate(payload.thread, start=2):
+            try:
+                reply = self.check(await self.http.post(
+                    f"{base}/api/v1/statuses", headers=auth,
+                    json={"status": item, "in_reply_to_id": last_id},
+                )).json()
+                last_id = reply["id"]
+            except PlatformError as e:
+                log.warning("Mastodon thread item %d failed after %s: %s", i, last_id, e)
+                break
         if payload.first_comment:
             try:
                 self.check(await self.http.post(

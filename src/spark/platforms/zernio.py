@@ -253,9 +253,17 @@ class ZernioAdapter(PlatformAdapter):
             "platforms": [{"platform": to_zernio(account.platform), "accountId": account.external_id}],
             "metadata": {"source": "spark"},
         }
-        if payload.media:
-            body["mediaItems"] = [await self._upload(payload, m) for m in payload.media]
-        if pdata := self._platform_data(account, payload):
+        media_items = [await self._upload(payload, m) for m in payload.media] if payload.media else []
+        pdata = self._platform_data(account, payload)
+        if payload.thread and to_zernio(account.platform) in ("twitter", "threads", "bluesky"):
+            # threadItems[0] is the root and carries the media; top-level content is display-only.
+            root: dict = {"content": text}
+            if media_items:
+                root["mediaItems"] = media_items
+            pdata["threadItems"] = [root] + [{"content": t} for t in payload.thread]
+        elif media_items:
+            body["mediaItems"] = media_items
+        if pdata:
             body["platforms"][0]["platformSpecificData"] = pdata
         import uuid
 

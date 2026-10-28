@@ -8,12 +8,56 @@ function composer(init) {
     selected: init.selected || [],
     overrides: init.overrides || {},
     firstComments: init.firstComments || {},
+    threads: init.threads || {},
     brand: init.brand || {},
     limits: init.limits || {},
     previewText(id) {
       const t = this.textFor(id) || '';
       return t.length > 320 ? t.slice(0, 320) + '…' : t;
     },
+    // --- threads ("Split into thread", like Buffer) ---
+    hasThread(id) { return (this.threads[id] || []).length > 0; },
+    threadOver(id) {
+      const max = this.limits[id] ? this.limits[id].max : Infinity;
+      return (this.threads[id] || []).some(t => t.length > max);
+    },
+    splitThread(id) {
+      // Paragraphs first, then sentences, then hard wraps; each part within the limit
+      // minus room for a " (n/m)" counter.
+      const max = Math.max(40, this.limits[id].max - 8);
+      const source = (this.overrides[id] || this.content || '').trim();
+      const parts = [];
+      const push = (s) => { s = s.trim(); if (s) parts.push(s); };
+      for (const para of source.split(/\n{2,}/)) {
+        if (para.length <= max) { push(para); continue; }
+        let buf = '';
+        for (const sent of para.split(/(?<=[.!?])\s+/)) {
+          if ((buf + ' ' + sent).trim().length <= max) { buf = (buf + ' ' + sent).trim(); continue; }
+          push(buf); buf = '';
+          if (sent.length <= max) { buf = sent; continue; }
+          for (let i = 0; i < sent.length; i += max) push(sent.slice(i, i + max));
+        }
+        push(buf);
+      }
+      // Merge short neighbours so items aren't tiny
+      const merged = [];
+      for (const p of parts) {
+        const last = merged[merged.length - 1];
+        if (last !== undefined && (last + '\n\n' + p).length <= max) merged[merged.length - 1] = last + '\n\n' + p;
+        else merged.push(p);
+      }
+      if (merged.length < 2) return;
+      const n = merged.length;
+      const numbered = merged.map((p, i) => n > 1 ? `${p} (${i + 1}/${n})` : p);
+      this.overrides[id] = numbered[0];
+      this.threads[id] = numbered.slice(1);
+      this.editing = id;
+      this.validate();
+    },
+    clearThread(id) { this.threads[id] = []; this.validate(); },
+    setThreadItem(id, i, value) { const t = [...(this.threads[id] || [])]; t[i] = value; this.threads[id] = t; },
+    removeThreadItem(id, i) { const t = [...(this.threads[id] || [])]; t.splice(i, 1); this.threads[id] = t; },
+    addThreadItem(id) { this.threads[id] = [...(this.threads[id] || []), '']; },
     ai: !!init.ai,
     problems: {},
     editing: null,
@@ -25,7 +69,7 @@ function composer(init) {
     textFor(id) { return this.overrides[id] || this.content; },
     over(id) { return this.limits[id] && this.textFor(id).length > this.limits[id].max; },
     get hasProblems() {
-      return this.selected.some(id => this.over(id) || (this.problems[id] || []).length);
+      return this.selected.some(id => this.over(id) || this.threadOver(id) || (this.problems[id] || []).length);
     },
     toggle(id) {
       const i = this.selected.indexOf(id);

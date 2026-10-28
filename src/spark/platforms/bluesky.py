@@ -120,23 +120,34 @@ class BlueskyAdapter(PlatformAdapter):
             )
         ).json()
         rkey = res["uri"].rsplit("/", 1)[-1]
-        if payload.first_comment:
-            ref = {"uri": res["uri"], "cid": res["cid"]}
-            reply = {
+        root = {"uri": res["uri"], "cid": res["cid"]}
+
+        async def reply_to(parent: dict, body_text: str) -> dict | None:
+            rec = {
                 "$type": "app.bsky.feed.post",
-                "text": payload.first_comment,
-                "reply": {"root": ref, "parent": ref},
+                "text": body_text,
+                "reply": {"root": root, "parent": parent},
                 "createdAt": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             }
-            if f := facets(payload.first_comment):
-                reply["facets"] = f
+            if f := facets(body_text):
+                rec["facets"] = f
             try:
-                self.check(await self.http.post(
+                out = self.check(await self.http.post(
                     f"{service}/xrpc/com.atproto.repo.createRecord", headers=auth,
-                    json={"repo": sess["did"], "collection": "app.bsky.feed.post", "record": reply},
-                ))
+                    json={"repo": sess["did"], "collection": "app.bsky.feed.post", "record": rec},
+                )).json()
+                return {"uri": out["uri"], "cid": out["cid"]}
             except PlatformError as e:
-                log.warning("Bluesky first comment failed for %s: %s", res["uri"], e)
+                log.warning("Bluesky reply failed under %s: %s", parent["uri"], e)
+                return None
+
+        parent = root
+        for item in payload.thread:
+            parent = await reply_to(parent, item)
+            if parent is None:
+                break
+        if payload.first_comment:
+            await reply_to(root, payload.first_comment)
         return PublishResult(res["uri"], f"https://bsky.app/profile/{account.handle}/post/{rkey}")
 
     async def fetch_metrics(self, account, remote_ids):

@@ -85,6 +85,7 @@ class PublishPayload:
     media: list[Media]
     link: str | None = None
     first_comment: str | None = None  # posted as the first reply after publishing, if supported
+    thread: list[str] = field(default_factory=list)  # follow-up items; `text` is the root
 
     def media_path(self, m: Media) -> Path:
         return get_settings().media_dir / m.path

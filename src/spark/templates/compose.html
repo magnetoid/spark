@@ -51,6 +51,7 @@
   <template x-for="id in selected" :key="'h'+id"><input type="hidden" name="account_ids" :value="id"></template>
   <template x-for="id in selected" :key="'o'+id"><input type="hidden" :name="'override_'+id" :value="overrides[id] || ''"></template>
   <template x-for="id in selected" :key="'f'+id"><input type="hidden" :name="'first_comment_'+id" :value="firstComments[id] || ''"></template>
+  <template x-for="id in selected" :key="'t'+id"><input type="hidden" :name="'thread_'+id" :value="JSON.stringify(threads[id] || [])"></template>
 
   <div class="card p-4 space-y-3" x-data="{mode:'queue'}">
     <div class="flex flex-wrap gap-2 text-sm">
@@ -97,6 +98,24 @@
             <textarea rows="4" class="textarea text-sm" :value="overrides[id] || ''" @input="overrides[id]=$event.target.value; validate()" placeholder="Leave empty to use the main text"></textarea>
             <button type="button" class="text-xs text-mute underline" @click="overrides[id]=''; validate()">Reset to main text</button>
           </div>
+          <template x-if="limits[id].threadable && over(id) && !hasThread(id)">
+            <button type="button" class="btn mt-2" data-variant="outline" data-size="xs" @click="splitThread(id)">Split into thread</button>
+          </template>
+          <template x-if="hasThread(id)">
+            <div class="mt-2 space-y-2">
+              <div class="flex items-center justify-between text-xs"><span class="font-medium" x-text="'Thread · ' + (threads[id].length + 1) + ' items'"></span><button type="button" class="text-mute underline" @click="clearThread(id)">Remove thread</button></div>
+              <template x-for="(item, i) in threads[id]" :key="id + '-' + i">
+                <div class="flex gap-2 items-start">
+                  <span class="text-xs text-mute num pt-2 w-5" x-text="(i + 2) + '.'"></span>
+                  <div class="flex-1">
+                    <textarea rows="2" class="textarea text-sm" :value="item" @input="setThreadItem(id, i, $event.target.value)"></textarea>
+                    <div class="flex items-center justify-between text-xs mt-0.5"><span class="num" :class="item.length > limits[id].max ? 'text-brick' : 'text-mute'" x-text="item.length + '/' + limits[id].max"></span><button type="button" class="text-mute hover:text-brick" @click="removeThreadItem(id, i)">remove</button></div>
+                  </div>
+                </div>
+              </template>
+              <button type="button" class="text-xs text-cobalt" @click="addThreadItem(id)">+ Add item</button>
+            </div>
+          </template>
           <template x-if="limits[id].first_comment">
             <div class="mt-2" x-data="{open: !!firstComments[id]}">
               <button type="button" class="text-xs text-cobalt" @click="open=!open" x-text="open ? 'First comment — close' : (firstComments[id] ? 'First comment set — edit' : '+ First comment')"></button>
@@ -142,6 +161,9 @@
           </template>
           <template x-if="link && !media.length">
             <div class="mt-2 rounded-md border border-line px-3 py-2 text-xs text-mute truncate" x-text="link"></div>
+          </template>
+          <template x-for="(item, i) in (threads[id] || [])" :key="'pt'+id+i">
+            <p class="mt-2 pt-2 border-t border-line whitespace-pre-wrap break-words" x-text="item"></p>
           </template>
           <template x-if="firstComments[id]">
             <div class="mt-3 ml-4 pl-3 border-l-2 border-line text-xs">

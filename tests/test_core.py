@@ -217,3 +217,23 @@ async def test_ideas_board_and_to_post(client, db, brand):
     assert post.content == "Three lessons from launch week" and idea.status == "ready"
     r = await client.get("/ideas")
     assert r.status_code == 200 and "Launch thread" in r.text
+
+
+@respx.mock
+async def test_zernio_thread_items(monkeypatch):
+    import json as _json
+
+    from spark.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "zernio_api_key", "sk_test")
+    route = respx.post("https://zernio.com/api/v1/posts").mock(
+        return_value=httpx.Response(201, json={"post": {"_id": "p9", "platforms": [{"status": "published"}]}})
+    )
+    acc = SocialAccount(id=1, brand_id=1, platform="x", provider="zernio", external_id="acc1",
+                        handle="acme", extra={})
+    await ZernioAdapter.for_platform("x", httpx.AsyncClient()).publish(
+        acc, PublishPayload(text="root (1/3)", media=[], thread=["two (2/3)", "three (3/3)"]))
+    body = _json.loads(route.calls.last.request.content)
+    items = body["platforms"][0]["platformSpecificData"]["threadItems"]
+    assert [i["content"] for i in items] == ["root (1/3)", "two (2/3)", "three (3/3)"]
+    assert "mediaItems" not in body

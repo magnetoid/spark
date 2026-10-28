@@ -32,7 +32,8 @@ async def build_payload(db: AsyncSession, target: PostTarget) -> PublishPayload:
         by_id = {m.id: m for m in rows}
         media = [by_id[i] for i in post.media_ids if i in by_id]
     return PublishPayload(text=target.text, media=media, link=post.link,
-                          first_comment=(target.first_comment or "").strip() or None)
+                          first_comment=(target.first_comment or "").strip() or None,
+                          thread=[t for t in (target.thread or []) if str(t).strip()])
 
 
 async def validate_post(db: AsyncSession, post: Post) -> list[str]:
@@ -40,7 +41,12 @@ async def validate_post(db: AsyncSession, post: Post) -> list[str]:
     for t in post.targets:
         # New targets haven't loaded .account yet; db.get hits the identity map when it has.
         account = await db.get(SocialAccount, t.account_id)
-        problems += adapter_for(account).validate(await build_payload(db, t))
+        adapter = adapter_for(account)
+        payload = await build_payload(db, t)
+        problems += adapter.validate(payload)
+        for i, item in enumerate(payload.thread, start=2):
+            if len(item) > adapter.limits.max_chars:
+                problems.append(f"{adapter.label}: thread item {i} is {len(item)}/{adapter.limits.max_chars} characters")
     return problems
 
 

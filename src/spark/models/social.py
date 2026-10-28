@@ -133,6 +133,8 @@ class PostTarget(TimestampMixin, Base):
     content_override: Mapped[str | None] = mapped_column(Text)
     # Posted as the first reply right after publishing (Buffer's "first comment")
     first_comment: Mapped[str | None] = mapped_column(Text)
+    # Follow-up items of a thread (the root is `text`); X, Threads, Bluesky, Mastodon
+    thread: Mapped[list] = mapped_column(JSON, default=list)
     status: Mapped[PostStatus] = mapped_column(
         Enum(PostStatus, native_enum=False), default=PostStatus.draft, index=True
     )

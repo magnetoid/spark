@@ -1,5 +1,6 @@
 """Composer, post list, calendar, approvals and campaigns."""
 
+import json
 import logging
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -33,6 +34,8 @@ log = logging.getLogger(__name__)
 # Platforms where a "first comment" is posted right after publishing (direct adapters and Zernio)
 FIRST_COMMENT_PLATFORMS = {"x", "mastodon", "bluesky", "threads", "facebook", "instagram", "linkedin",
                            "youtube", "dry_run"}
+# Platforms where long text can be split into a thread of replies
+THREAD_PLATFORMS = {"x", "threads", "bluesky", "mastodon", "dry_run"}
 
 
 async def enqueue(job: str, *args) -> bool:
@@ -94,7 +97,8 @@ async def compose(request: Request, post_id: int | None = None, date_: str | Non
                         "handle": a.handle, "requires_media": ad.limits.requires_media,
                         "provider": a.provider, "avatar": a.avatar_url,
                         "display_name": a.display_name or a.handle,
-                        "first_comment": a.platform in FIRST_COMMENT_PLATFORMS}
+                        "first_comment": a.platform in FIRST_COMMENT_PLATFORMS,
+                        "threadable": a.platform in THREAD_PLATFORMS}
     prefill_at = request.query_params.get("at")
     ai_enabled = bool(get_settings().anthropic_api_key)
     preselect = request.query_params.get("account")
@@ -108,6 +112,7 @@ async def compose(request: Request, post_id: int | None = None, date_: str | Non
         "selected": selected,
         "overrides": {str(t.account_id): t.content_override or "" for t in post.targets} if post else {},
         "firstComments": {str(t.account_id): t.first_comment or "" for t in post.targets} if post else {},
+        "threads": {str(t.account_id): list(t.thread or []) for t in post.targets} if post else {},
         "brand": {"name": brand.name, "color": brand.color},
         "limits": {str(k): v for k, v in limits.items()},
         "ai": ai_enabled,
@@ -160,6 +165,11 @@ async def compose_save(request: Request, post_id: int | None = None,
         override = str(form.get(f"override_{aid}", "")).strip()
         t.content_override = override if override and override != content else None
         t.first_comment = str(form.get(f"first_comment_{aid}", "")).strip() or None
+        try:
+            raw_thread = json.loads(str(form.get(f"thread_{aid}", "") or "[]"))
+        except ValueError:
+            raw_thread = []
+        t.thread = [str(x).strip() for x in raw_thread if str(x).strip()][:25] if isinstance(raw_thread, list) else []
         if t.status in (PostStatus.failed,):
             t.status = PostStatus.draft
         keep.append(t)
