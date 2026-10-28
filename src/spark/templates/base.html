@@ -86,6 +86,13 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
     </button>
     <span class="font-semibold">Spark</span>
   </div>
+  <div class="hidden lg:flex justify-end px-8 pt-3 -mb-8">
+    <button type="button" class="btn" data-variant="ghost" data-size="sm" onclick="window.basecoat.theme.toggle()" aria-label="Toggle dark mode">
+      <svg class="hidden dark:block" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      <svg class="block dark:hidden" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      <span class="hidden dark:inline">Light</span><span class="dark:hidden">Dark</span>
+    </button>
+  </div>
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
     {% for f in pop_flash(request) %}
     <div class="alert mb-4" {% if f.kind=='error' %}data-variant="destructive"{% endif %} role="status">

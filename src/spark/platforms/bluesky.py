@@ -1,5 +1,6 @@
 """Bluesky (AT Protocol) — handle + app password."""
 
+import logging
 import re
 from datetime import UTC, datetime
 
@@ -9,11 +10,13 @@ from spark.platforms.base import (
     Limits,
     MetricsSnapshot,
     PlatformAdapter,
+    PlatformError,
     PublishPayload,
     PublishResult,
     register,
 )
 
+log = logging.getLogger(__name__)
 URL_RE = re.compile(rb"https?://[^\s\)\]]+")
 TAG_RE = re.compile(rb"(?:^|\s)(#[^\d\s]\S*)")
 APPVIEW = "https://public.api.bsky.app/xrpc"
@@ -117,6 +120,23 @@ class BlueskyAdapter(PlatformAdapter):
             )
         ).json()
         rkey = res["uri"].rsplit("/", 1)[-1]
+        if payload.first_comment:
+            ref = {"uri": res["uri"], "cid": res["cid"]}
+            reply = {
+                "$type": "app.bsky.feed.post",
+                "text": payload.first_comment,
+                "reply": {"root": ref, "parent": ref},
+                "createdAt": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            }
+            if f := facets(payload.first_comment):
+                reply["facets"] = f
+            try:
+                self.check(await self.http.post(
+                    f"{service}/xrpc/com.atproto.repo.createRecord", headers=auth,
+                    json={"repo": sess["did"], "collection": "app.bsky.feed.post", "record": reply},
+                ))
+            except PlatformError as e:
+                log.warning("Bluesky first comment failed for %s: %s", res["uri"], e)
         return PublishResult(res["uri"], f"https://bsky.app/profile/{account.handle}/post/{rkey}")
 
     async def fetch_metrics(self, account, remote_ids):

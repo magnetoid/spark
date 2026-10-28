@@ -30,6 +30,9 @@ from spark.web.deps import current_user, editor, flash, owner, render, require_b
 
 router = APIRouter()
 log = logging.getLogger(__name__)
+# Platforms where a "first comment" is posted right after publishing (direct adapters and Zernio)
+FIRST_COMMENT_PLATFORMS = {"x", "mastodon", "bluesky", "threads", "facebook", "instagram", "linkedin",
+                           "youtube", "dry_run"}
 
 
 async def enqueue(job: str, *args) -> bool:
@@ -89,7 +92,9 @@ async def compose(request: Request, post_id: int | None = None, date_: str | Non
         ad = adapter_for(a)
         limits[a.id] = {"max": ad.limits.max_chars, "label": ad.label, "platform": a.platform,
                         "handle": a.handle, "requires_media": ad.limits.requires_media,
-                        "provider": a.provider}
+                        "provider": a.provider, "avatar": a.avatar_url,
+                        "display_name": a.display_name or a.handle,
+                        "first_comment": a.platform in FIRST_COMMENT_PLATFORMS}
     prefill_at = request.query_params.get("at")
     ai_enabled = bool(get_settings().anthropic_api_key)
     preselect = request.query_params.get("account")
@@ -102,6 +107,8 @@ async def compose(request: Request, post_id: int | None = None, date_: str | Non
         "media": [{"id": m.id, "url": m.url, "video": m.is_video, "name": m.filename} for m in media],
         "selected": selected,
         "overrides": {str(t.account_id): t.content_override or "" for t in post.targets} if post else {},
+        "firstComments": {str(t.account_id): t.first_comment or "" for t in post.targets} if post else {},
+        "brand": {"name": brand.name, "color": brand.color},
         "limits": {str(k): v for k, v in limits.items()},
         "ai": ai_enabled,
     }
@@ -152,6 +159,7 @@ async def compose_save(request: Request, post_id: int | None = None,
         t = existing.get(aid) or PostTarget(account_id=aid)
         override = str(form.get(f"override_{aid}", "")).strip()
         t.content_override = override if override and override != content else None
+        t.first_comment = str(form.get(f"first_comment_{aid}", "")).strip() or None
         if t.status in (PostStatus.failed,):
             t.status = PostStatus.draft
         keep.append(t)

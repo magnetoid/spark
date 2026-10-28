@@ -1,6 +1,7 @@
 """Mastodon (any instance) — instance URL + personal access token."""
 
 import asyncio
+import logging
 
 from spark.platforms.base import (
     ConnectedAccount,
@@ -12,6 +13,8 @@ from spark.platforms.base import (
     PublishResult,
     register,
 )
+
+log = logging.getLogger(__name__)
 
 
 @register
@@ -80,6 +83,14 @@ class MastodonAdapter(PlatformAdapter):
                 json={"status": text, "media_ids": media_ids},
             )
         ).json()
+        if payload.first_comment:
+            try:
+                self.check(await self.http.post(
+                    f"{base}/api/v1/statuses", headers=auth,
+                    json={"status": payload.first_comment, "in_reply_to_id": res["id"]},
+                ))
+            except PlatformError as e:
+                log.warning("Mastodon first comment failed for %s: %s", res["id"], e)
         return PublishResult(res["id"], res.get("url"))
 
     async def fetch_metrics(self, account, remote_ids):

@@ -223,18 +223,23 @@ class ZernioAdapter(PlatformAdapter):
             item["altText"] = m.alt_text
         return item
 
+    FIRST_COMMENT_PLATFORMS = {"threads", "facebook", "instagram", "linkedin", "youtube"}
+
     def _platform_data(self, account, payload: PublishPayload) -> dict:
         z = to_zernio(account.platform)
         extra = account.extra or {}
+        data: dict = {}
         if z == "youtube":
             title, _, _ = payload.text.partition("\n")
-            return {"title": (title or "Video")[:100], "visibility": extra.get("privacy_status", "public")}
-        if z == "pinterest" and extra.get("board_id"):
-            return {"boardId": extra["board_id"]}
-        if z == "reddit" and extra.get("subreddit"):
+            data = {"title": (title or "Video")[:100], "visibility": extra.get("privacy_status", "public")}
+        elif z == "pinterest" and extra.get("board_id"):
+            data = {"boardId": extra["board_id"]}
+        elif z == "reddit" and extra.get("subreddit"):
             title, _, _ = payload.text.partition("\n")
-            return {"subreddit": extra["subreddit"], "title": title[:300]}
-        return {}
+            data = {"subreddit": extra["subreddit"], "title": title[:300]}
+        if payload.first_comment and z in self.FIRST_COMMENT_PLATFORMS:
+            data["firstComment"] = payload.first_comment[:500]
+        return data
 
     async def publish(self, account, payload: PublishPayload) -> PublishResult:
         if account.extra.get("needs_reconnection"):

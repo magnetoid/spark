@@ -7,7 +7,13 @@ function composer(init) {
     mediaIds: init.mediaIds || [],
     selected: init.selected || [],
     overrides: init.overrides || {},
+    firstComments: init.firstComments || {},
+    brand: init.brand || {},
     limits: init.limits || {},
+    previewText(id) {
+      const t = this.textFor(id) || '';
+      return t.length > 320 ? t.slice(0, 320) + '…' : t;
+    },
     ai: !!init.ai,
     problems: {},
     editing: null,

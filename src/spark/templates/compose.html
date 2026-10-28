@@ -50,6 +50,7 @@
 
   <template x-for="id in selected" :key="'h'+id"><input type="hidden" name="account_ids" :value="id"></template>
   <template x-for="id in selected" :key="'o'+id"><input type="hidden" :name="'override_'+id" :value="overrides[id] || ''"></template>
+  <template x-for="id in selected" :key="'f'+id"><input type="hidden" :name="'first_comment_'+id" :value="firstComments[id] || ''"></template>
 
   <div class="card p-4 space-y-3" x-data="{mode:'queue'}">
     <div class="flex flex-wrap gap-2 text-sm">
@@ -96,6 +97,12 @@
             <textarea rows="4" class="textarea text-sm" :value="overrides[id] || ''" @input="overrides[id]=$event.target.value; validate()" placeholder="Leave empty to use the main text"></textarea>
             <button type="button" class="text-xs text-mute underline" @click="overrides[id]=''; validate()">Reset to main text</button>
           </div>
+          <template x-if="limits[id].first_comment">
+            <div class="mt-2" x-data="{open: !!firstComments[id]}">
+              <button type="button" class="text-xs text-cobalt" @click="open=!open" x-text="open ? 'First comment — close' : (firstComments[id] ? 'First comment set — edit' : '+ First comment')"></button>
+              <textarea x-show="open" x-cloak rows="2" class="textarea text-sm mt-1" :value="firstComments[id] || ''" @input="firstComments[id]=$event.target.value" placeholder="Posted as the first reply right after publishing — links, hashtags, context"></textarea>
+            </div>
+          </template>
           <ul class="mt-1 text-xs text-brick space-y-0.5"><template x-for="p in (problems[id]||[])"><li x-text="p"></li></template></ul>
         </div>
       </li>
@@ -104,6 +111,47 @@
     {% else %}
     <div class="p-4 text-sm text-mute">No active accounts. <a class="text-cobalt" href="/accounts">Connect one</a>.</div>
     {% endif %}
+  </div>
+
+  <div class="card" x-show="selected.length" x-cloak>
+    <div class="px-4 py-3 border-b border-line flex items-center justify-between">
+      <h2 class="font-semibold text-sm">Preview</h2>
+      <span class="text-xs text-mute">How it will look, per channel</span>
+    </div>
+    <div class="p-4 space-y-4">
+      <template x-for="id in selected" :key="'p'+id">
+        <article class="rounded-lg border border-line p-3 text-sm">
+          <header class="flex items-center gap-2 mb-2">
+            <template x-if="limits[id].avatar"><img :src="limits[id].avatar" class="w-8 h-8 rounded-full object-cover" alt=""></template>
+            <template x-if="!limits[id].avatar"><span class="w-8 h-8 rounded-full grid place-items-center text-xs text-white" :style="'background:'+(brand.color||'#11302F')" x-text="(limits[id].handle||'?').slice(0,1).toUpperCase()"></span></template>
+            <div class="min-w-0 leading-tight">
+              <div class="font-medium truncate" x-text="limits[id].display_name"></div>
+              <div class="text-xs text-mute truncate"><span x-text="'@'+limits[id].handle"></span> · <span x-text="limits[id].label"></span></div>
+            </div>
+          </header>
+          <p class="whitespace-pre-wrap break-words" x-text="previewText(id) || '…'" :class="{'text-mute': !textFor(id)}"></p>
+          <template x-if="media.length">
+            <div class="mt-2 grid gap-1" :class="media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'">
+              <template x-for="m in media.slice(0,4)" :key="'pm'+id+m.id">
+                <div class="aspect-video rounded-md overflow-hidden bg-muted">
+                  <template x-if="!m.video"><img :src="m.url" class="w-full h-full object-cover" alt=""></template>
+                  <template x-if="m.video"><div class="w-full h-full grid place-items-center text-xs text-mute">▶ video</div></template>
+                </div>
+              </template>
+            </div>
+          </template>
+          <template x-if="link && !media.length">
+            <div class="mt-2 rounded-md border border-line px-3 py-2 text-xs text-mute truncate" x-text="link"></div>
+          </template>
+          <template x-if="firstComments[id]">
+            <div class="mt-3 ml-4 pl-3 border-l-2 border-line text-xs">
+              <div class="text-mute mb-0.5">First comment</div>
+              <p class="whitespace-pre-wrap break-words" x-text="firstComments[id]"></p>
+            </div>
+          </template>
+        </article>
+      </template>
+    </div>
   </div>
 
   {% if ai_enabled %}

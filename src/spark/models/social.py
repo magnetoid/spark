@@ -131,6 +131,8 @@ class PostTarget(TimestampMixin, Base):
         ForeignKey("social_accounts.id", ondelete="CASCADE"), index=True
     )
     content_override: Mapped[str | None] = mapped_column(Text)
+    # Posted as the first reply right after publishing (Buffer's "first comment")
+    first_comment: Mapped[str | None] = mapped_column(Text)
     status: Mapped[PostStatus] = mapped_column(
         Enum(PostStatus, native_enum=False), default=PostStatus.draft, index=True
     )

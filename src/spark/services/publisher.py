@@ -31,7 +31,8 @@ async def build_payload(db: AsyncSession, target: PostTarget) -> PublishPayload:
         rows = (await db.execute(select(Media).where(Media.id.in_(post.media_ids)))).scalars().all()
         by_id = {m.id: m for m in rows}
         media = [by_id[i] for i in post.media_ids if i in by_id]
-    return PublishPayload(text=target.text, media=media, link=post.link)
+    return PublishPayload(text=target.text, media=media, link=post.link,
+                          first_comment=(target.first_comment or "").strip() or None)
 
 
 async def validate_post(db: AsyncSession, post: Post) -> list[str]:

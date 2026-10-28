@@ -84,6 +84,7 @@ class PublishPayload:
     text: str
     media: list[Media]
     link: str | None = None
+    first_comment: str | None = None  # posted as the first reply after publishing, if supported
 
     def media_path(self, m: Media) -> Path:
         return get_settings().media_dir / m.path

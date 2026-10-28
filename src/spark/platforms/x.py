@@ -1,5 +1,7 @@
 """X (Twitter) API v2 — OAuth 2.0 with PKCE, media upload v2, public metrics."""
 
+import logging
+
 from spark.config import get_settings
 from spark.platforms._oauth import (
     basic_auth,
@@ -20,6 +22,7 @@ from spark.platforms.base import (
     register,
 )
 
+log = logging.getLogger(__name__)
 API = "https://api.x.com/2"
 SCOPES = "tweet.read tweet.write users.read media.write offline.access"
 CHUNK = 4 * 1024 * 1024
@@ -173,6 +176,15 @@ class XAdapter(PlatformAdapter):
             body["media"] = {"media_ids": ids}
         data = self.check(await self.http.post(f"{API}/tweets", headers=headers, json=body)).json()
         tweet_id = data["data"]["id"]
+        if payload.first_comment:
+            # First comment = a reply to the fresh tweet; a failure here must not undo the post.
+            try:
+                self.check(await self.http.post(
+                    f"{API}/tweets", headers=headers,
+                    json={"text": payload.first_comment, "reply": {"in_reply_to_tweet_id": tweet_id}},
+                ))
+            except PlatformError as e:
+                log.warning("X first comment failed for %s: %s", tweet_id, e)
         return PublishResult(tweet_id, f"https://x.com/{account.handle}/status/{tweet_id}")
 
     async def fetch_metrics(self, account, remote_ids):
