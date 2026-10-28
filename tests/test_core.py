@@ -169,3 +169,31 @@ async def test_public_short_link_and_bio(client, db, brand):
     assert r.status_code == 200 and "on the list" in r.text
     b = await db.get(Brand, brand.id)
     assert b is not None
+
+
+async def test_prioritize_bumps_slot_posts(db, brand):
+    from spark.models import User
+
+    acc = await db.scalar(select(SocialAccount))
+    owner_user = await db.scalar(select(User))
+    first_slot = await scheduler.next_free_slot(db, brand)
+    a = Post(brand_id=brand.id, content="A")
+    a.targets = [PostTarget(account_id=acc.id)]
+    db.add(a)
+    await db.flush()
+    scheduler.schedule(a, first_slot, owner_user, brand)
+    await db.commit()
+
+    b = Post(brand_id=brand.id, content="B")
+    b.targets = [PostTarget(account_id=acc.id)]
+    db.add(b)
+    await db.flush()
+    await scheduler.prioritize(db, brand, b, owner_user)
+    await db.commit()
+    await db.refresh(a)
+    await db.refresh(b)
+    assert publisher.as_utc(b.scheduled_at) == first_slot
+    assert publisher.as_utc(a.scheduled_at) > first_slot
+    items = await scheduler.channel_queue(db, brand, acc)
+    queued = [i["post"].content for i in items if i["post"]]
+    assert queued[:2] == ["B", "A"]

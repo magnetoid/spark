@@ -92,12 +92,15 @@ async def compose(request: Request, post_id: int | None = None, date_: str | Non
                         "provider": a.provider}
     prefill_at = request.query_params.get("at")
     ai_enabled = bool(get_settings().anthropic_api_key)
+    preselect = request.query_params.get("account")
+    selected = [t.account_id for t in post.targets] if post else (
+        [int(preselect)] if preselect and preselect.isdigit() and int(preselect) in limits else [])
     composer_state = {
         "content": post.content if post else "",
         "link": post.link if post else "",
         "mediaIds": list(post.media_ids) if post else [],
         "media": [{"id": m.id, "url": m.url, "video": m.is_video, "name": m.filename} for m in media],
-        "selected": [t.account_id for t in post.targets] if post else [],
+        "selected": selected,
         "overrides": {str(t.account_id): t.content_override or "" for t in post.targets} if post else {},
         "limits": {str(k): v for k, v in limits.items()},
         "ai": ai_enabled,
@@ -180,6 +183,11 @@ async def compose_save(request: Request, post_id: int | None = None,
         msg = f"Queued for {when.astimezone(ZoneInfo(brand.timezone)):%a %b %d, %H:%M}"
         if status == PostStatus.pending_approval:
             msg += " (awaiting approval)"
+    elif action == "next":
+        status = await scheduler.prioritize(db, brand, post, user)
+        msg = f"Sharing next, at {post.scheduled_at.astimezone(ZoneInfo(brand.timezone)):%a %b %d, %H:%M}"
+        if status == PostStatus.pending_approval:
+            msg += " (awaiting approval)"
     else:
         raw = str(form.get("scheduled_at", ""))
         if not raw:
@@ -194,7 +202,10 @@ async def compose_save(request: Request, post_id: int | None = None,
         for t in post.targets:
             await enqueue("publish_now", t.id)
     flash(request, msg)
-    return RedirectResponse("/posts" if action != "draft" else f"/posts/{post.id}/edit", 303)
+    if action == "draft":
+        return RedirectResponse(f"/posts/{post.id}/edit", 303)
+    first = post.targets[0].account_id if post.targets else None
+    return RedirectResponse(f"/queue?account={first}" if first else "/posts", 303)
 
 
 @router.post("/compose/preview")

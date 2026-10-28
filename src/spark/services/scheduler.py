@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from spark.models import (
     Brand,
@@ -76,6 +77,70 @@ def schedule(post: Post, when: datetime, user: User, brand: Brand) -> PostStatus
         t.next_attempt_at = None
         t.error = None
     return status
+
+
+async def brand_slots(db: AsyncSession, brand: Brand) -> list[QueueSlot]:
+    slots = (await db.execute(select(QueueSlot).where(QueueSlot.brand_id == brand.id))).scalars().all()
+    return slots or [QueueSlot(weekday=d, time=t) for d in range(7) for t in DEFAULT_SLOTS]
+
+
+async def prioritize(db: AsyncSession, brand: Brand, post: Post, user: User) -> PostStatus:
+    """Buffer's "Share next": put `post` in the very next slot and bump the other queued
+    posts that sit in slots one slot down. Posts at custom times keep their time."""
+    now = datetime.now(UTC)
+    slots = await brand_slots(db, brand)
+    slot_times = next_slot_times(slots, brand.timezone, now, count=500)
+    slot_set = {t.replace(second=0, microsecond=0) for t in slot_times}
+    queued = (
+        await db.execute(
+            select(Post)
+            .where(
+                Post.brand_id == brand.id,
+                Post.id != post.id,
+                Post.scheduled_at >= now,
+                Post.status.in_([PostStatus.scheduled, PostStatus.pending_approval]),
+            )
+            .order_by(Post.scheduled_at)
+        )
+    ).scalars().all()
+    in_slots = [p for p in queued if as_utc(p.scheduled_at).replace(second=0, microsecond=0) in slot_set]
+    status = schedule(post, slot_times[0], user, brand)
+    for p, when in zip(in_slots, slot_times[1:], strict=False):
+        p.scheduled_at = when
+        for t in p.targets:
+            if t.status != PostStatus.published:
+                t.scheduled_at = when
+    return status
+
+
+async def channel_queue(db: AsyncSession, brand: Brand, account: SocialAccount, days: int = 14) -> list[dict]:
+    """Timeline for one channel: queued targets merged with the empty upcoming slots,
+    the way Buffer shows a queue. Items: {"when", "target"|None, "post"|None}."""
+    now = datetime.now(UTC)
+    horizon = now + timedelta(days=days)
+    targets = (
+        await db.execute(
+            select(PostTarget)
+            .options(selectinload(PostTarget.post).selectinload(Post.targets))
+            .join(Post, Post.id == PostTarget.post_id)
+            .where(
+                PostTarget.account_id == account.id,
+                PostTarget.status.in_([PostStatus.scheduled, PostStatus.pending_approval, PostStatus.publishing]),
+                PostTarget.scheduled_at >= now - timedelta(hours=1),
+                PostTarget.scheduled_at <= horizon,
+            )
+            .order_by(PostTarget.scheduled_at)
+        )
+    ).scalars().all()
+    items = [{"when": as_utc(t.scheduled_at), "target": t, "post": t.post} for t in targets]
+    taken = {i["when"].replace(second=0, microsecond=0) for i in items}
+    for when in next_slot_times(await brand_slots(db, brand), brand.timezone, now, count=200):
+        if when > horizon:
+            break
+        if when.replace(second=0, microsecond=0) not in taken:
+            items.append({"when": when, "target": None, "post": None})
+    items.sort(key=lambda i: i["when"])
+    return items
 
 
 def approve(post: Post) -> None:

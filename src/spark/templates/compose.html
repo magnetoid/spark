@@ -53,7 +53,7 @@
 
   <div class="card p-4 space-y-3" x-data="{mode:'queue'}">
     <div class="flex flex-wrap gap-2 text-sm">
-      {% for key, label in [('queue','Next free slot'),('schedule','Pick a time'),('now','Publish now'),('draft','Save draft')] %}
+      {% for key, label in [('queue','Next free slot'),('next','Share next'),('schedule','Pick a time'),('now','Publish now'),('draft','Save draft')] %}
       <label class="flex items-center gap-1.5"><input type="radio" class="input" name="action" value="{{ key }}" x-model="mode" {% if key=='queue' %}checked{% endif %}> {{ label }}</label>
       {% endfor %}
     </div>
@@ -63,7 +63,7 @@
     </div>
     {% if brand.require_approval and not user.can_approve() %}<p class="text-xs text-mute">This brand requires approval: an owner will review before it goes out.</p>{% endif %}
     <div class="flex items-center gap-3 pt-1">
-      <button class="btn" :disabled="hasProblems && mode!=='draft'" x-text="mode==='draft' ? 'Save draft' : mode==='now' ? 'Publish now' : 'Schedule'"></button>
+      <button class="btn" :disabled="hasProblems && mode!=='draft'" x-text="mode==='draft' ? 'Save draft' : mode==='now' ? 'Publish now' : mode==='next' ? 'Share next' : mode==='queue' ? 'Add to queue' : 'Schedule'"></button>
       <span class="text-xs text-brick" x-show="hasProblems && mode!=='draft'" x-cloak>Fix the issues on the right first.</span>
       {% if post %}<a href="/posts" class="text-sm text-mute hover:text-ink ml-auto">Cancel</a>{% endif %}
     </div>
