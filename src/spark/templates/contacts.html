@@ -12,19 +12,19 @@
     <ul class="text-sm space-y-1">
       <li><a href="/contacts" class="{{ 'font-medium' if not list_id else 'text-mute hover:text-ink' }}">Everyone</a></li>
       {% for l in lists %}<li class="flex justify-between group"><a href="/contacts?list_id={{ l.id }}" class="{{ 'font-medium' if list_id==l.id else 'text-mute hover:text-ink' }}">{{ l.name }} <span class="text-xs text-mute num">{{ l.contacts|length }}</span></a>
-        {% if user.can_edit() %}<form method="post" action="/lists/{{ l.id }}/delete" onsubmit="return confirm('Delete list? Contacts are kept.')"><button class="text-xs text-mute hover:text-brick opacity-0 group-hover:opacity-100">delete</button></form>{% endif %}</li>{% endfor %}
+        {% if user.can_edit() %}<form method="post" action="/lists/{{ l.id }}/delete" onsubmit="return confirm('Delete list? Contacts are kept.')">{{ csrf_field(request) }}<button class="text-xs text-mute hover:text-brick opacity-0 group-hover:opacity-100">delete</button></form>{% endif %}</li>{% endfor %}
     </ul>
-    {% if user.can_edit() %}<form method="post" action="/lists" class="form mt-3 flex gap-1"><input type="text" name="name" placeholder="New list" required class="!py-1"><button class="btn" data-size="sm" data-variant="outline">Add</button></form>{% endif %}
+    {% if user.can_edit() %}<form method="post" action="/lists" class="form mt-3 flex gap-1">{{ csrf_field(request) }}<input type="text" name="name" placeholder="New list" required class="!py-1"><button class="btn" data-size="sm" data-variant="outline">Add</button></form>{% endif %}
   </div>
   {% if user.can_edit() %}
-  <form method="post" action="/contacts" class="form card p-4 space-y-2">
+  <form method="post" action="/contacts" class="form card p-4 space-y-2">{{ csrf_field(request) }}
     <div class="font-semibold text-sm">Add contact</div>
     <input type="email" class="input" name="email" placeholder="Email" required>
     <div class="grid grid-cols-2 gap-2"><input type="text" class="input" name="first_name" placeholder="First name"><input type="text" class="input" name="last_name" placeholder="Last name"></div>
     {% if lists %}<div class="text-xs space-y-1">{% for l in lists %}<label class="flex items-center gap-1 font-normal"><input type="checkbox" class="input" name="list_ids" value="{{ l.id }}">{{ l.name }}</label>{% endfor %}</div>{% endif %}
     <button class="btn" data-size="sm">Add</button>
   </form>
-  <form method="post" action="/contacts/import" enctype="multipart/form-data" class="form card p-4 space-y-2">
+  <form method="post" action="/contacts/import" enctype="multipart/form-data" class="form card p-4 space-y-2">{{ csrf_field(request) }}
     <div class="font-semibold text-sm">Import CSV</div>
     <p class="hint !mt-0">Needs an <code>email</code> column; <code>first_name</code>, <code>last_name</code> or <code>name</code> are optional.</p>
     <input type="file" name="file" accept=".csv,text/csv" required class="text-sm">
@@ -43,7 +43,7 @@
     <td class="text-xs text-mute">{{ c.lists|map(attribute='name')|join(', ') }}</td>
     <td class="text-xs text-mute">{{ c.source }}</td>
     <td>{% if c.subscribed %}<span class="badge st-published">subscribed</span>{% else %}<span class="badge st-draft">unsubscribed</span>{% endif %}</td>
-    <td class="text-right">{% if user.can_edit() %}<form method="post" action="/contacts/{{ c.id }}/delete" onsubmit="return confirm('Delete {{ c.email }}?')"><button class="text-xs text-mute hover:text-brick">Delete</button></form>{% endif %}</td>
+    <td class="text-right">{% if user.can_edit() %}<form method="post" action="/contacts/{{ c.id }}/delete" onsubmit="return confirm('Delete {{ c.email }}?')">{{ csrf_field(request) }}<button class="text-xs text-mute hover:text-brick">Delete</button></form>{% endif %}</td>
   </tr>{% endfor %}</tbody></table></div>
   {% else %}<div class="p-10 text-center text-sm text-mute">No contacts yet. Add one, import a CSV, or turn on email capture on your bio page.</div>{% endif %}
 </div>

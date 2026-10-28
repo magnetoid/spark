@@ -3,7 +3,7 @@
 {% block content %}
 <div x-data='composer({{ composer_state|tojson }})' class="grid lg:grid-cols-5 gap-6">
 
-<form method="post" class="lg:col-span-3 form space-y-5" @submit="syncHidden()">
+<form method="post" class="lg:col-span-3 form space-y-5" @submit="syncHidden()">{{ csrf_field(request) }}
   <div class="flex items-center justify-between">
     <h1 class="text-2xl font-semibold tracking-tight">{{ 'Edit post' if post else 'Compose' }}</h1>
     {% if post %}<span class="badge st-{{ post.status.value }}">{{ post.status.value.replace('_',' ') }}</span>{% endif %}
@@ -211,7 +211,7 @@
   <div class="bg-card rounded-lg w-full max-w-2xl max-h-[85vh] flex flex-col">
     <div class="px-5 py-3 border-b border-line flex items-center justify-between">
       <h3 class="font-semibold">Media library</h3>
-      <form hx-post="/media" hx-encoding="multipart/form-data" hx-target="#picker-body" hx-swap="afterbegin" class="flex items-center gap-2">
+      <form hx-post="/media" hx-encoding="multipart/form-data" hx-target="#picker-body" hx-swap="afterbegin" class="flex items-center gap-2">{{ csrf_field(request) }}
         <input type="file" name="files" multiple accept="image/*,video/mp4,video/quicktime" class="text-sm" required>
         <button class="btn" data-size="sm">Upload</button>
       </form>

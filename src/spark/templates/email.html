@@ -5,7 +5,7 @@
   <div><h1 class="text-2xl font-semibold tracking-tight">Email campaigns</h1>
     <p class="text-sm text-mute mt-1">Sending via <strong>{{ backend }}</strong>{% if backend=='console' %} — emails are logged, not delivered. Set <code>SPARK_EMAIL_BACKEND=smtp</code> or <code>resend</code>.{% endif %}</p></div>
   {% if user.can_edit() %}
-  <form method="post" action="/email" class="flex gap-2"><input type="text" name="name" placeholder="Campaign name" class="input w-48" required>
+  <form method="post" action="/email" class="flex gap-2">{{ csrf_field(request) }}<input type="text" name="name" placeholder="Campaign name" class="input w-48" required>
     <select name="list_id" class="input w-40"><option value="">List…</option>{% for l in lists %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}</select>
     <button class="btn">Create</button></form>
   {% endif %}
@@ -20,7 +20,7 @@
     <td class="num">{{ s.sent }}{% if s.failed %} <span class="text-brick text-xs">({{ s.failed }} failed)</span>{% endif %}</td>
     <td class="num">{{ s.opened }}{% if s.sent %} <span class="text-xs text-mute">{{ (s.opened/s.sent*100)|round }}%</span>{% endif %}</td>
     <td class="num">{{ s.clicked }}{% if s.sent %} <span class="text-xs text-mute">{{ (s.clicked/s.sent*100)|round }}%</span>{% endif %}</td>
-    <td class="text-right">{% if user.can_edit() %}<form method="post" action="/email/{{ c.id }}/delete" onsubmit="return confirm('Delete campaign?')"><button class="btn danger" data-size="sm" data-variant="outline">Delete</button></form>{% endif %}</td>
+    <td class="text-right">{% if user.can_edit() %}<form method="post" action="/email/{{ c.id }}/delete" onsubmit="return confirm('Delete campaign?')">{{ csrf_field(request) }}<button class="btn danger" data-size="sm" data-variant="outline">Delete</button></form>{% endif %}</td>
   </tr>{% endfor %}</tbody></table></div>
   {% else %}<div class="p-10 text-center text-sm text-mute">No email campaigns yet.</div>{% endif %}
 </div>

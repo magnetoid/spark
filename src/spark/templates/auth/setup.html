@@ -5,7 +5,7 @@
   <svg width="28" height="28" viewBox="0 0 24 24"><path fill="#F2A516" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Spark
 </div>
 <p class="text-sm text-mute mb-6">Create the owner account. You can add editors later under Brand &amp; team.</p>
-<form method="post" class="form space-y-4">
+<form method="post" class="form space-y-4">{{ csrf_field(request) }}
   <div class="field"><label>Your name</label><input type="text" class="input" name="name" required autofocus></div>
   <div class="field"><label>Email</label><input type="email" class="input" name="email" required></div>
   <div class="field"><label>Password</label><input type="password" class="input" name="password" minlength="8" required><p class="hint">At least 8 characters.</p></div>

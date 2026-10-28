@@ -4,7 +4,7 @@
 <div class="mb-8 flex items-center gap-2 text-2xl font-semibold tracking-tight">
   <svg width="28" height="28" viewBox="0 0 24 24"><path fill="#F2A516" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Spark
 </div>
-<form method="post" class="form space-y-4">
+<form method="post" class="form space-y-4">{{ csrf_field(request) }}
   {% if error %}<div class="rounded-md bg-brick-100 text-brick px-3 py-2 text-sm">{{ error }}</div>{% endif %}
   <div class="field"><label>Email</label><input type="email" class="input" name="email" value="{{ email or '' }}" required autofocus></div>
   <div class="field"><label>Password</label><input type="password" class="input" name="password" required></div>

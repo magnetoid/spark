@@ -31,11 +31,11 @@
     <td><span class="badge st-{{ p.status.value }}">{{ p.status.value.replace('_',' ') }}</span></td>
     <td class="text-right whitespace-nowrap">
       {% if user.can_edit() %}
-      {% if p.status.value=='pending_approval' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve" class="inline"><button class="btn" data-size="sm">Approve</button></form>{% endif %}
-      {% if p.status.value=='failed' %}<form method="post" action="/posts/{{ p.id }}/retry" class="inline"><button class="btn" data-size="sm" data-variant="outline">Retry</button></form>{% endif %}
-      {% if p.status.value in ('scheduled','pending_approval') %}<form method="post" action="/posts/{{ p.id }}/unschedule" class="inline"><button class="btn" data-size="sm" data-variant="outline">Unschedule</button></form>{% endif %}
-      <form method="post" action="/posts/{{ p.id }}/duplicate" class="inline"><button class="btn" data-size="sm" data-variant="outline">Duplicate</button></form>
-      <form method="post" action="/posts/{{ p.id }}/delete" class="inline" onsubmit="return confirm('Delete this post?')"><button class="btn danger" data-size="sm" data-variant="outline">Delete</button></form>
+      {% if p.status.value=='pending_approval' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve" class="inline">{{ csrf_field(request) }}<button class="btn" data-size="sm">Approve</button></form>{% endif %}
+      {% if p.status.value=='failed' %}<form method="post" action="/posts/{{ p.id }}/retry" class="inline">{{ csrf_field(request) }}<button class="btn" data-size="sm" data-variant="outline">Retry</button></form>{% endif %}
+      {% if p.status.value in ('scheduled','pending_approval') %}<form method="post" action="/posts/{{ p.id }}/unschedule" class="inline">{{ csrf_field(request) }}<button class="btn" data-size="sm" data-variant="outline">Unschedule</button></form>{% endif %}
+      <form method="post" action="/posts/{{ p.id }}/duplicate" class="inline">{{ csrf_field(request) }}<button class="btn" data-size="sm" data-variant="outline">Duplicate</button></form>
+      <form method="post" action="/posts/{{ p.id }}/delete" class="inline" onsubmit="return confirm('Delete this post?')">{{ csrf_field(request) }}<button class="btn danger" data-size="sm" data-variant="outline">Delete</button></form>
       {% endif %}
     </td>
   </tr>

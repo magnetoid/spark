@@ -13,13 +13,13 @@
     <td class="text-xs text-mute">{{ 'AI rewrite' if f.use_ai else 'Title + link' }}{% if f.auto_queue %} · auto-queue{% endif %} · {{ f.account_ids|length }} account(s)</td>
     <td class="text-xs text-mute num">{{ f.last_checked_at|localtime(brand.timezone) or 'pending' }}</td>
     <td class="text-right whitespace-nowrap">{% if user.can_edit() %}
-      <form method="post" action="/feeds/{{ f.id }}/toggle" class="inline"><button class="btn" data-size="sm" data-variant="outline">{{ 'Pause' if f.is_active else 'Resume' }}</button></form>
-      <form method="post" action="/feeds/{{ f.id }}/delete" class="inline"><button class="btn danger" data-size="sm" data-variant="outline">Delete</button></form>{% endif %}</td>
+      <form method="post" action="/feeds/{{ f.id }}/toggle" class="inline">{{ csrf_field(request) }}<button class="btn" data-size="sm" data-variant="outline">{{ 'Pause' if f.is_active else 'Resume' }}</button></form>
+      <form method="post" action="/feeds/{{ f.id }}/delete" class="inline">{{ csrf_field(request) }}<button class="btn danger" data-size="sm" data-variant="outline">Delete</button></form>{% endif %}</td>
   </tr>{% endfor %}</tbody></table></div>
   {% else %}<div class="p-10 text-center text-sm text-mute">No feeds yet.</div>{% endif %}
 </div>
 {% if user.can_edit() %}
-<form method="post" action="/feeds" class="form card p-5 space-y-3 self-start">
+<form method="post" action="/feeds" class="form card p-5 space-y-3 self-start">{{ csrf_field(request) }}
   <h2 class="font-semibold">Add a feed</h2>
   <div class="field"><label>Feed URL</label><input type="url" class="input" name="url" placeholder="https://blog.example.com/rss.xml" required></div>
   <div class="field"><label>Name</label><input type="text" class="input" name="name"></div>

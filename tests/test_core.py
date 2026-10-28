@@ -323,3 +323,24 @@ async def test_bio_links_are_tracked(client, db, brand):
                                     "link_code": link.code, "is_published": "on"})
     r = await client.get("/bio")
     assert r.status_code == 200 and link.code in r.text and "1 link clicks" in r.text
+
+
+async def test_csrf_required(client, db, brand):
+    saved = client.headers.pop("X-CSRF-Token")
+    r = await client.post("/links", data={"destination": "https://example.com"})
+    assert r.status_code == 403
+    client.headers["X-CSRF-Token"] = saved
+    r = await client.post("/links", data={"destination": "https://example.com"})
+    assert r.status_code == 303
+    r = await client.get("/api/palette")
+    assert r.status_code == 200 and any(i["label"] == "Queue" for i in r.json())
+
+
+async def test_csrf_form_field_without_header(client, db, brand):
+    token = client.headers.pop("X-CSRF-Token")
+    r = await client.post("/links", data={"destination": "https://example.com/f", "csrf": token})
+    assert r.status_code == 303
+    files = {"files": ("pic.png", b"\x89PNG\r\n\x1a\n" + b"0" * 32, "image/png")}
+    r = await client.post("/media", data={"csrf": token}, files=files)
+    assert r.status_code == 303
+    client.headers["X-CSRF-Token"] = token

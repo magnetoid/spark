@@ -1,9 +1,11 @@
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, Response
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +38,52 @@ templates.env.filters["compact"] = _compact
 templates.env.globals["platforms"] = registry
 # Cache-buster for /static assets: changes on every process start (deploys, dev reloads)
 templates.env.globals["static_v"] = int(datetime.now(UTC).timestamp())
+
+
+# ---- CSRF -------------------------------------------------------------------
+CSRF_KEY = "csrf"
+
+
+def csrf_token(request: Request) -> str:
+    tok = request.session.get(CSRF_KEY)
+    if not tok:
+        from spark.security import token as _token
+
+        tok = request.session[CSRF_KEY] = _token(24)
+    return tok
+
+
+def csrf_field(request: Request) -> Markup:
+    return Markup(f'<input type="hidden" name="{CSRF_KEY}" value="{csrf_token(request)}">')
+
+
+templates.env.globals["csrf_token"] = csrf_token
+templates.env.globals["csrf_field"] = csrf_field
+
+
+# ---- HTMX helpers -----------------------------------------------------------
+def is_hx(request: Request) -> bool:
+    return request.headers.get("HX-Request") == "true"
+
+
+def hx_trigger_headers(trigger: dict | None) -> dict:
+    return {"HX-Trigger": json.dumps(trigger)} if trigger else {}
+
+
+def toast(message: str, kind: str = "success") -> dict:
+    """An HX-Trigger payload the page turns into a toast (see static/app.js)."""
+    return {"toast": {"message": message, "kind": kind}}
+
+
+def hx_render(request: Request, name: str, ctx: dict, *, trigger: dict | None = None, status_code: int = 200):
+    """Render a partial for an HTMX request, optionally firing client events."""
+    return templates.TemplateResponse(request, name, ctx, status_code=status_code,
+                                      headers=hx_trigger_headers(trigger))
+
+
+def hx_none(trigger: dict | None = None, status_code: int = 204) -> Response:
+    """No content to swap; just fire events (toast, post-saved, ...)."""
+    return Response(status_code=status_code, headers={"HX-Reswap": "none", **hx_trigger_headers(trigger)})
 
 
 class LoginRequired(Exception):

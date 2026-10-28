@@ -13,13 +13,13 @@
       <td class="whitespace-nowrap"><div class="font-medium">{{ l.title or l.code }}</div><button type="button" class="text-xs text-cobalt" onclick="navigator.clipboard.writeText('{{ short_url(l) }}'); this.textContent='Copied'">{{ short_url(l) }}</button></td>
       <td class="max-w-xs truncate text-mute text-xs" title="{{ l.destination }}">{{ l.destination }}</td>
       <td class="num">{{ l.clicks }}</td>
-      <td class="text-right">{% if user.can_edit() %}<form method="post" action="/links/{{ l.id }}/delete" onsubmit="return confirm('Delete this link? It will stop redirecting.')"><button class="btn danger" data-size="sm" data-variant="outline">Delete</button></form>{% endif %}</td>
+      <td class="text-right">{% if user.can_edit() %}<form method="post" action="/links/{{ l.id }}/delete" onsubmit="return confirm('Delete this link? It will stop redirecting.')">{{ csrf_field(request) }}<button class="btn danger" data-size="sm" data-variant="outline">Delete</button></form>{% endif %}</td>
     </tr>{% endfor %}</tbody>
   </table></div>
   {% else %}<div class="p-10 text-center text-sm text-mute">No links yet.</div>{% endif %}
 </div>
 {% if user.can_edit() %}
-<form method="post" action="/links" class="form card p-5 space-y-3 self-start">
+<form method="post" action="/links" class="form card p-5 space-y-3 self-start">{{ csrf_field(request) }}
   <h2 class="font-semibold">New short link</h2>
   <div class="field"><label>Destination</label><input type="text" class="input" name="destination" placeholder="https://example.com/pricing" required></div>
   <div class="field"><label>Title</label><input type="text" class="input" name="title" placeholder="Optional label"></div>

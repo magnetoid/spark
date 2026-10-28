@@ -1,4 +1,5 @@
 import os
+import re
 import tempfile
 from pathlib import Path
 
@@ -60,6 +61,12 @@ async def brand(db):
 async def client(brand):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver",
                            follow_redirects=False) as c:
+        # CSRF: the token is minted on first render; send it as a header like htmx does
+        page = await c.get("/login")
+        token = re.search(r'name="csrf" content="([^"]+)"', page.text).group(1)
+        c.headers["X-CSRF-Token"] = token
         r = await c.post("/login", data={"email": "owner@example.com", "password": "password123"})
         assert r.status_code == 303, r.text
+        page = await c.get("/")  # session was rotated on login: refresh the token
+        c.headers["X-CSRF-Token"] = re.search(r'name="csrf" content="([^"]+)"', page.text).group(1)
         yield c

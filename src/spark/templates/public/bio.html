@@ -32,7 +32,7 @@
   {% if page.capture_email %}
     {% if done %}<div class="ok"><strong>Thanks, you're on the list.</strong></div>
     {% else %}
-    <form method="post" action="/b/{{ brand.slug }}/subscribe">
+    <form method="post" action="/b/{{ brand.slug }}/subscribe">{{ csrf_field(request) }}
       <label for="e">Get updates from {{ brand.name }}</label>
       <input id="n" type="text" name="name" placeholder="Your name (optional)">
       <input id="e" type="email" name="email" placeholder="you@example.com" required>

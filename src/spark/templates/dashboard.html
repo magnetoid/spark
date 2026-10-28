@@ -86,9 +86,9 @@
           <td class="text-end num text-sm text-mute whitespace-nowrap">{{ p.scheduled_at|localtime(brand.timezone) }}</td>
           <td class="text-end whitespace-nowrap">
             {% if user.can_edit() %}
-            {% if key=='approvals' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve" class="inline"><button class="btn" data-size="xs">Approve</button></form>{% endif %}
-            {% if key=='failed' %}<form method="post" action="/posts/{{ p.id }}/retry" class="inline"><button class="btn" data-size="xs">Retry</button></form>{% endif %}
-            {% if key=='recent' %}<form method="post" action="/posts/{{ p.id }}/duplicate" class="inline"><button class="btn" data-variant="outline" data-size="xs">Reuse</button></form>{% endif %}
+            {% if key=='approvals' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve" class="inline">{{ csrf_field(request) }}<button class="btn" data-size="xs">Approve</button></form>{% endif %}
+            {% if key=='failed' %}<form method="post" action="/posts/{{ p.id }}/retry" class="inline">{{ csrf_field(request) }}<button class="btn" data-size="xs">Retry</button></form>{% endif %}
+            {% if key=='recent' %}<form method="post" action="/posts/{{ p.id }}/duplicate" class="inline">{{ csrf_field(request) }}<button class="btn" data-variant="outline" data-size="xs">Reuse</button></form>{% endif %}
             <a href="/posts/{{ p.id }}/edit" class="btn" data-variant="ghost" data-size="xs">Edit</a>
             {% endif %}
           </td>

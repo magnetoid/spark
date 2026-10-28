@@ -6,7 +6,7 @@
   <h1 class="text-2xl font-semibold tracking-tight">Analytics</h1>
   <div class="flex items-center gap-2 text-sm">
     {% for d in (7, 30, 90) %}<a href="/analytics?days={{ d }}" class="px-3 py-1 rounded-md {{ 'bg-ink text-white' if days==d else 'hover:bg-card' }}">{{ d }} days</a>{% endfor %}
-    {% if user.can_edit() %}<form method="post" action="/analytics/refresh" class="ml-2"><button class="btn" data-variant="outline" data-size="sm">Refresh metrics</button></form>{% endif %}
+    {% if user.can_edit() %}<form method="post" action="/analytics/refresh" class="ml-2">{{ csrf_field(request) }}<button class="btn" data-variant="outline" data-size="sm">Refresh metrics</button></form>{% endif %}
   </div>
 </div>
 

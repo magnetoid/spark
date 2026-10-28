@@ -15,7 +15,7 @@
           <div class="text-xs text-mute mt-1">{% if c.starts_on %}{{ c.starts_on|localtime(brand.timezone, '%b %d') }}{% endif %}{% if c.ends_on %} – {{ c.ends_on|localtime(brand.timezone, '%b %d, %Y') }}{% endif %}{% if c.utm_campaign %} · utm_campaign={{ c.utm_campaign }}{% endif %}</div>
         </div>
       </div>
-      {% if user.can_edit() %}<form method="post" action="/campaigns/{{ c.id }}/delete" onsubmit="return confirm('Delete campaign? Posts are kept.')"><button class="btn danger" data-size="sm" data-variant="outline">Delete</button></form>{% endif %}
+      {% if user.can_edit() %}<form method="post" action="/campaigns/{{ c.id }}/delete" onsubmit="return confirm('Delete campaign? Posts are kept.')">{{ csrf_field(request) }}<button class="btn danger" data-size="sm" data-variant="outline">Delete</button></form>{% endif %}
     </div>
     {% set k = counts[c.id] %}
     <div class="mt-4 flex flex-wrap gap-4 text-sm num">
@@ -33,7 +33,7 @@
   {% endfor %}
 </div>
 {% if user.can_edit() %}
-<form method="post" action="/campaigns" class="form card p-5 space-y-4 self-start" x-data="{ai:false}">
+<form method="post" action="/campaigns" class="form card p-5 space-y-4 self-start" x-data="{ai:false}">{{ csrf_field(request) }}
   <h2 class="font-semibold">New campaign</h2>
   <div class="field"><label>Name</label><input type="text" class="input" name="name" required></div>
   <div class="field"><label>Goal</label><textarea class="textarea" name="goal" rows="3" placeholder="e.g. Get 200 signups for the June webinar on pricing strategy"></textarea></div>

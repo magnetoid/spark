@@ -2,18 +2,36 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from spark.config import get_settings
 from spark.db import create_all
-from spark.web import accounts, auth, brands, ideas, inbox, marketing, posts, public, queue
+from spark.web import accounts, api, auth, brands, ideas, inbox, marketing, posts, public, queue
 from spark.web.deps import LoginRequired, templates
 
 log = logging.getLogger("spark")
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+CSRF_EXEMPT_PREFIXES = ("/e/u/",)
+
+
+async def csrf_guard(request: Request) -> None:
+    if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
+        return
+    if request.url.path.startswith(CSRF_EXEMPT_PREFIXES):
+        return
+    from spark.web.deps import CSRF_KEY
+
+    expected = request.session.get(CSRF_KEY)
+    sent = request.headers.get("X-CSRF-Token")
+    if not sent and request.headers.get("content-type", "").startswith(
+        ("application/x-www-form-urlencoded", "multipart/form-data")
+    ):
+        sent = (await request.form()).get(CSRF_KEY)
+    if not expected or sent != expected:
+        raise HTTPException(403, "Invalid or missing CSRF token — reload the page and try again")
 
 
 @asynccontextmanager
@@ -28,7 +46,12 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     s = get_settings()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    app = FastAPI(title="Spark", docs_url=None, redoc_url=None, lifespan=lifespan)
+    # CSRF on every state-changing request as an app-level dependency (not middleware, so the
+    # form body stays available to the route): token from the X-CSRF-Token header (htmx/fetch
+    # add it from <meta name="csrf">) or the `csrf` form field. One-click email unsubscribe is
+    # exempt: mail clients POST it without a session.
+    app = FastAPI(title="Spark", docs_url=None, redoc_url=None, lifespan=lifespan,
+                  dependencies=[Depends(csrf_guard)])
     app.add_middleware(
         SessionMiddleware,
         secret_key=s.secret_key,
@@ -40,7 +63,7 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.mount("/media", StaticFiles(directory=s.media_dir), name="media")
     for r in (public.router, auth.router, brands.router, accounts.router, posts.router, queue.router,
-              ideas.router, inbox.router, marketing.router):
+              ideas.router, inbox.router, api.router, marketing.router):
         app.include_router(r)
 
     @app.exception_handler(LoginRequired)

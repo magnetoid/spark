@@ -32,9 +32,9 @@
         </td>
         <td class="text-right whitespace-nowrap">
           {% if user.can_edit() %}
-          <form method="post" action="/accounts/{{ a.id }}/toggle" class="inline"><button class="btn" data-size="sm" data-variant="outline">{{ 'Resume' if not a.is_active else 'Pause' }}</button></form>
+          <form method="post" action="/accounts/{{ a.id }}/toggle" class="inline">{{ csrf_field(request) }}<button class="btn" data-size="sm" data-variant="outline">{{ 'Resume' if not a.is_active else 'Pause' }}</button></form>
           {% if a.provider=='zernio' %}<a href="/accounts/zernio/connect/{{ a.platform }}" class="btn" data-size="sm" data-variant="outline">Reconnect</a>{% endif %}
-          <form method="post" action="/accounts/{{ a.id }}/delete" class="inline" onsubmit="return confirm('Remove {{ a.handle }} from Spark?')"><button class="btn danger" data-size="sm" data-variant="outline">Remove</button></form>
+          <form method="post" action="/accounts/{{ a.id }}/delete" class="inline" onsubmit="return confirm('Remove {{ a.handle }} from Spark?')">{{ csrf_field(request) }}<button class="btn danger" data-size="sm" data-variant="outline">Remove</button></form>
           {% endif %}
         </td>
       </tr>
@@ -52,7 +52,7 @@
       <h2 class="font-semibold">Connect through Zernio</h2>
       <p class="text-sm text-mute">One API key, Zernio hosts the platform apps. <a class="text-cobalt" href="https://docs.zernio.com" target="_blank" rel="noopener">docs.zernio.com</a></p>
     </div>
-    {% if zernio_ready %}<form method="post" action="/accounts/zernio/import"><button class="btn" data-variant="outline" data-size="sm">Import from Zernio</button></form>{% endif %}
+    {% if zernio_ready %}<form method="post" action="/accounts/zernio/import">{{ csrf_field(request) }}<button class="btn" data-variant="outline" data-size="sm">Import from Zernio</button></form>{% endif %}
   </div>
   {% if zernio_ready %}
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -83,7 +83,7 @@
         {% endif %}
       </div>
       {% if ad.connect_mode != 'oauth' %}
-      <form method="post" action="/accounts/connect/{{ name }}" class="form mt-3 space-y-2" x-show="open==='{{ name }}'" x-cloak>
+      <form method="post" action="/accounts/connect/{{ name }}" class="form mt-3 space-y-2" x-show="open==='{{ name }}'" x-cloak>{{ csrf_field(request) }}
         {% for field, label in ad.credential_fields %}
         <div class="field"><label>{{ label }}</label><input type="{{ 'password' if 'token' in field or 'password' in field else 'text' }}" name="{{ field }}" {% if 'optional' not in label|lower %}required{% endif %}></div>
         {% endfor %}

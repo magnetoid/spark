@@ -2,7 +2,7 @@
 {% block title %}{{ c.name }} · Spark{% endblock %}
 {% block content %}
 <div x-data='{html: {{ c.body_html|tojson }}, subject: {{ c.subject|tojson }}, preheader: {{ (c.preheader or "")|tojson }}, brief:"", busy:false, err:""}' class="grid lg:grid-cols-5 gap-6">
-<form method="post" class="form lg:col-span-3 space-y-4">
+<form method="post" class="form lg:col-span-3 space-y-4">{{ csrf_field(request) }}
   <div class="flex items-center justify-between"><h1 class="text-2xl font-semibold tracking-tight">{{ c.name }}</h1><span class="badge st-{{ {'draft':'draft','scheduled':'scheduled','sending':'publishing','sent':'published'}[c.status] }}">{{ c.status }}</span></div>
   {% set locked = c.status in ('sending','sent') %}
   <div class="grid sm:grid-cols-2 gap-4">

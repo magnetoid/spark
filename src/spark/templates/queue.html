@@ -57,10 +57,10 @@
             </div>
             {% if user.can_edit() %}
             <div class="flex items-center gap-1 shrink-0">
-              {% if not loop.first or not (day == days[0][0]) %}<form method="post" action="/posts/{{ p.id }}/prioritize"><button class="btn" data-variant="ghost" data-size="sm" title="Move to the next slot">Move to top</button></form>{% endif %}
-              <form method="post" action="/posts/{{ p.id }}/share-now" onsubmit="return confirm('Publish this post now?')"><button class="btn" data-variant="ghost" data-size="sm">Share now</button></form>
-              {% if it.target.status.value=='pending_approval' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve"><button class="btn" data-size="sm">Approve</button></form>{% endif %}
-              <form method="post" action="/posts/{{ p.id }}/unschedule"><button class="btn danger" data-variant="ghost" data-size="sm" aria-label="Remove from queue">×</button></form>
+              {% if not loop.first or not (day == days[0][0]) %}<form method="post" action="/posts/{{ p.id }}/prioritize">{{ csrf_field(request) }}<button class="btn" data-variant="ghost" data-size="sm" title="Move to the next slot">Move to top</button></form>{% endif %}
+              <form method="post" action="/posts/{{ p.id }}/share-now" onsubmit="return confirm('Publish this post now?')">{{ csrf_field(request) }}<button class="btn" data-variant="ghost" data-size="sm">Share now</button></form>
+              {% if it.target.status.value=='pending_approval' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve">{{ csrf_field(request) }}<button class="btn" data-size="sm">Approve</button></form>{% endif %}
+              <form method="post" action="/posts/{{ p.id }}/unschedule">{{ csrf_field(request) }}<button class="btn danger" data-variant="ghost" data-size="sm" aria-label="Remove from queue">×</button></form>
             </div>
             {% endif %}
             {% else %}
@@ -90,9 +90,9 @@
             </div>
             {% if user.can_edit() %}
             <div class="flex items-center gap-1 shrink-0">
-              {% if tab=='drafts' %}<form method="post" action="/posts/{{ p.id }}/prioritize"><button class="btn" data-size="sm">Share next</button></form>{% endif %}
-              {% if tab=='approvals' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve"><button class="btn" data-size="sm">Approve</button></form>{% endif %}
-              {% if tab=='sent' %}<form method="post" action="/posts/{{ p.id }}/duplicate"><button class="btn" data-variant="outline" data-size="sm">Reuse</button></form>{% endif %}
+              {% if tab=='drafts' %}<form method="post" action="/posts/{{ p.id }}/prioritize">{{ csrf_field(request) }}<button class="btn" data-size="sm">Share next</button></form>{% endif %}
+              {% if tab=='approvals' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve">{{ csrf_field(request) }}<button class="btn" data-size="sm">Approve</button></form>{% endif %}
+              {% if tab=='sent' %}<form method="post" action="/posts/{{ p.id }}/duplicate">{{ csrf_field(request) }}<button class="btn" data-variant="outline" data-size="sm">Reuse</button></form>{% endif %}
               <a href="/posts/{{ p.id }}/edit" class="btn" data-variant="ghost" data-size="sm">Edit</a>
             </div>
             {% endif %}

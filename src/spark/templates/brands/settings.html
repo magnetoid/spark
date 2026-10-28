@@ -4,7 +4,7 @@
 <h1 class="text-2xl font-semibold tracking-tight mb-6">Brand &amp; team</h1>
 <div class="grid lg:grid-cols-3 gap-8">
 <div class="lg:col-span-2 space-y-8">
-  <form method="post" action="/settings" class="form card p-6 space-y-5">
+  <form method="post" action="/settings" class="form card p-6 space-y-5">{{ csrf_field(request) }}
     <h2 class="font-semibold">{{ b.name }}</h2>
     <div class="grid sm:grid-cols-2 gap-4">
       <div class="field"><label>Name</label><input type="text" class="input" name="name" value="{{ b.name }}" required></div>
@@ -40,18 +40,18 @@
           {% for g in hashtag_groups %}
           <li class="py-2 flex items-start gap-2" x-data="{edit:false}">
             <div class="flex-1 min-w-0" x-show="!edit"><div class="font-medium">{{ g.name }}</div><div class="text-xs text-mute break-words">{{ g.text }}</div></div>
-            <form method="post" action="/settings/hashtags" class="form flex-1 space-y-1" x-show="edit" x-cloak>
+            <form method="post" action="/settings/hashtags" class="form flex-1 space-y-1" x-show="edit" x-cloak>{{ csrf_field(request) }}
               <input type="hidden" name="group_id" value="{{ g.id }}"><input type="text" class="input" name="name" value="{{ g.name }}" required>
               <input type="text" class="input" name="tags" value="{{ g.tags|join(' ') }}" required>
               <div class="flex gap-1"><button class="btn" data-size="xs">Save</button><button type="button" class="btn" data-variant="ghost" data-size="xs" @click="edit=false">Cancel</button></div>
             </form>
             {% if user.can_edit() %}<div class="flex gap-1 shrink-0" x-show="!edit"><button type="button" class="btn" data-variant="ghost" data-size="xs" @click="edit=true">Edit</button>
-            <form method="post" action="/settings/hashtags/{{ g.id }}/delete"><button class="btn danger" data-variant="ghost" data-size="xs">Delete</button></form></div>{% endif %}
+            <form method="post" action="/settings/hashtags/{{ g.id }}/delete">{{ csrf_field(request) }}<button class="btn danger" data-variant="ghost" data-size="xs">Delete</button></form></div>{% endif %}
           </li>
           {% else %}<li class="py-3 text-xs text-mute">None yet. Groups keep your recurring hashtags one click away.</li>{% endfor %}
         </ul>
         {% if user.can_edit() %}
-        <form method="post" action="/settings/hashtags" class="form space-y-2">
+        <form method="post" action="/settings/hashtags" class="form space-y-2">{{ csrf_field(request) }}
           <input type="text" class="input" name="name" placeholder="Group name, e.g. Product launch" required>
           <input type="text" class="input" name="tags" placeholder="#launch #saas #marketing" required>
           <button class="btn" data-size="sm" data-variant="outline">Add group</button>
@@ -66,9 +66,9 @@
             <div class="flex items-start gap-2" x-show="!edit">
               <div class="flex-1 min-w-0"><div class="font-medium">{{ t.name }}{% if t.category %} <span class="badge" data-variant="secondary">{{ t.category }}</span>{% endif %}</div><div class="text-xs text-mute whitespace-pre-wrap line-clamp-3">{{ t.body }}</div></div>
               {% if user.can_edit() %}<div class="flex gap-1 shrink-0"><button type="button" class="btn" data-variant="ghost" data-size="xs" @click="edit=true">Edit</button>
-              <form method="post" action="/settings/templates/{{ t.id }}/delete"><button class="btn danger" data-variant="ghost" data-size="xs">Delete</button></form></div>{% endif %}
+              <form method="post" action="/settings/templates/{{ t.id }}/delete">{{ csrf_field(request) }}<button class="btn danger" data-variant="ghost" data-size="xs">Delete</button></form></div>{% endif %}
             </div>
-            <form method="post" action="/settings/templates" class="form space-y-1" x-show="edit" x-cloak>
+            <form method="post" action="/settings/templates" class="form space-y-1" x-show="edit" x-cloak>{{ csrf_field(request) }}
               <input type="hidden" name="template_id" value="{{ t.id }}"><input type="text" class="input" name="name" value="{{ t.name }}" required>
               <input type="text" class="input" name="category" value="{{ t.category or '' }}" placeholder="category">
               <textarea class="textarea" name="body" rows="4" required>{{ t.body }}</textarea>
@@ -78,7 +78,7 @@
           {% else %}<li class="py-3 text-xs text-mute">None yet. Try a tip, a story, a question, a how-to.</li>{% endfor %}
         </ul>
         {% if user.can_edit() %}
-        <form method="post" action="/settings/templates" class="form space-y-2">
+        <form method="post" action="/settings/templates" class="form space-y-2">{{ csrf_field(request) }}
           <div class="grid grid-cols-2 gap-2"><input type="text" class="input" name="name" placeholder="Template name" required><input type="text" class="input" name="category" placeholder="tip · story · question · how-to"></div>
           <textarea class="textarea" name="body" rows="4" placeholder="Hook line.&#10;&#10;One point per line, {{ '{{placeholders}}' }} where you fill in specifics.&#10;&#10;Question to end." required></textarea>
           <button class="btn" data-size="sm" data-variant="outline">Add template</button>
@@ -95,13 +95,13 @@
       {% for d in range(7) %}
       <div><div class="text-xs text-mute mb-1">{{ weekdays[d] }}</div>
         {% for s in slots if s.weekday==d %}
-        <form method="post" action="/settings/slots/{{ s.id }}/delete" class="flex items-center justify-between rounded bg-paper px-2 py-1 mb-1 num"><span>{{ s.time }}</span>{% if user.can_edit() %}<button class="text-mute hover:text-brick" aria-label="Remove">×</button>{% endif %}</form>
+        <form method="post" action="/settings/slots/{{ s.id }}/delete" class="flex items-center justify-between rounded bg-paper px-2 py-1 mb-1 num">{{ csrf_field(request) }}<span>{{ s.time }}</span>{% if user.can_edit() %}<button class="text-mute hover:text-brick" aria-label="Remove">×</button>{% endif %}</form>
         {% endfor %}
       </div>
       {% endfor %}
     </div>
     {% if user.can_edit() %}
-    <form method="post" action="/settings/slots" class="form flex flex-wrap items-end gap-3">
+    <form method="post" action="/settings/slots" class="form flex flex-wrap items-end gap-3">{{ csrf_field(request) }}
       <div class="field"><label>Time</label><input type="time" class="input" name="time" required></div>
       <div class="field"><label>Days</label><div class="flex gap-2 text-sm">{% for d in range(7) %}<label class="font-normal flex items-center gap-1"><input type="checkbox" class="input" name="weekdays" value="{{ d }}" {% if d < 5 %}checked{% endif %}>{{ weekdays[d] }}</label>{% endfor %}</div></div>
       <button class="btn" data-variant="outline">Add slot</button>
@@ -116,7 +116,7 @@
     <ul class="divide-y divide-line text-sm mb-4">
       {% for m in users %}
       <li class="py-2">
-        <form method="post" action="/team/{{ m.id }}" class="flex items-center gap-2">
+        <form method="post" action="/team/{{ m.id }}" class="flex items-center gap-2">{{ csrf_field(request) }}
           <div class="flex-1 min-w-0"><div class="font-medium truncate">{{ m.name }}{% if m.id==user.id %} (you){% endif %}</div><div class="text-xs text-mute truncate">{{ m.email }}</div></div>
           {% if user.can_approve() and m.id != user.id %}
           <select name="role" class="input w-24 py-1">{% for r in roles %}<option value="{{ r.value }}" {% if r==m.role %}selected{% endif %}>{{ r.value }}</option>{% endfor %}</select>
@@ -128,7 +128,7 @@
       {% endfor %}
     </ul>
     {% if user.can_approve() %}
-    <form method="post" action="/team" class="form space-y-2">
+    <form method="post" action="/team" class="form space-y-2">{{ csrf_field(request) }}
       <div class="font-medium text-sm">Add a teammate</div>
       <input type="text" class="input" name="name" placeholder="Name" required>
       <input type="email" class="input" name="email" placeholder="Email" required>
@@ -142,7 +142,7 @@
   <section class="card p-6">
     <h2 class="font-semibold mb-1">Danger zone</h2>
     <p class="text-sm text-mute mb-3">Deletes the brand with its posts, accounts, contacts and links.</p>
-    <form method="post" action="/settings/brand/delete" onsubmit="return confirm('Delete {{ b.name }} and everything in it? This cannot be undone.')"><button class="btn danger" data-variant="outline" data-size="sm">Delete brand</button></form>
+    <form method="post" action="/settings/brand/delete" onsubmit="return confirm('Delete {{ b.name }} and everything in it? This cannot be undone.')">{{ csrf_field(request) }}<button class="btn danger" data-variant="outline" data-size="sm">Delete brand</button></form>
   </section>
   {% endif %}
 </div>

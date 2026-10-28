@@ -31,9 +31,13 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/2.0.4/htmx.min.js"></script>
 <link rel="stylesheet" href="/static/app.css?v={{ static_v }}">
+<meta name="csrf" content="{{ csrf_token(request) }}">
+<script src="/static/app.js?v={{ static_v }}" defer></script>
+{% if user %}<script src="/static/shortcuts.js?v={{ static_v }}" defer></script>{% endif %}
 {% block head %}{% endblock %}
 </head>
 <body class="h-full font-sans antialiased">
+<div id="toaster" class="toaster" aria-live="polite"></div>
 {% set nav = [
   ('Publish', [('/', 'Overview'), ('/ideas', 'Ideas'), ('/compose', 'Compose'), ('/queue', 'Queue'), ('/calendar', 'Calendar'), ('/posts', 'All posts'), ('/campaigns', 'Campaigns'), ('/feeds', 'RSS feeds')]),
   ('Grow', [('/inbox', 'Inbox'), ('/analytics', 'Analytics'), ('/links', 'Links'), ('/bio', 'Bio page'), ('/contacts', 'Contacts'), ('/email', 'Email')]),
@@ -81,7 +85,7 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
         <ul class="mt-1">
           <li><a href="/settings#team"><span>Account &amp; team</span></a></li>
           <li><button type="button" onclick="window.basecoat.theme.toggle()"><span class="hidden dark:inline">Light mode</span><span class="dark:hidden">Dark mode</span></button></li>
-          <li><form method="post" action="/logout"><button type="submit"><span>Log out</span></button></form></li>
+          <li><form method="post" action="/logout">{{ csrf_field(request) }}<button type="submit"><span>Log out</span></button></form></li>
         </ul>
       </details>
     </footer>
@@ -99,6 +103,10 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
       <span class="current">{% block page_title %}{{ ns.page }}{% endblock %}</span>
     </nav>
     <div class="ml-auto flex items-center gap-1">
+      <button type="button" class="btn hidden sm:inline-flex text-mute" data-variant="outline" data-size="sm" onclick="window.openPalette && window.openPalette()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <span class="font-normal">Search or jump to…</span><kbd class="kbd ml-2">⌘K</kbd>
+      </button>
       <button type="button" class="btn" data-variant="ghost" data-size="icon-sm" onclick="window.basecoat.theme.toggle()" aria-label="Toggle dark mode">
         <svg class="hidden dark:block" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
         <svg class="block dark:hidden" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
@@ -117,6 +125,48 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
     {% block content %}{% endblock %}
   </div>
 </main>
+<!-- Command palette -->
+<dialog id="palette" class="dialog" aria-label="Command palette">
+  <div class="!max-w-lg !p-0" x-data="palette()" @keydown="key($event)">
+    <div class="flex items-center gap-2 border-b border-line px-3">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-mute"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" class="w-full bg-transparent py-3 text-sm outline-none" placeholder="Type a page, channel or post…" x-model="q" @input="active=0" autocomplete="off">
+      <kbd class="kbd">esc</kbd>
+    </div>
+    <ul class="max-h-80 overflow-auto p-1 text-sm">
+      <template x-for="(it, i) in results" :key="i">
+        <li>
+          <button type="button" class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left" :class="i===active ? 'bg-muted' : 'hover:bg-muted'" @mouseenter="active=i" @click="run(i)">
+            <span class="w-24 shrink-0 text-xs text-mute" x-text="it.group"></span>
+            <span class="flex-1 truncate" x-text="it.label"></span>
+            <kbd class="kbd" x-show="it.hint" x-text="it.hint"></kbd>
+          </button>
+        </li>
+      </template>
+      <li x-show="!results.length" class="px-2 py-6 text-center text-mute">Nothing matches.</li>
+    </ul>
+  </div>
+</dialog>
+<dialog id="shortcuts-help" class="dialog" aria-labelledby="shortcuts-title">
+  <div class="!max-w-sm">
+    <header><h2 id="shortcuts-title">Keyboard shortcuts</h2></header>
+    <section>
+      <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+        {% for k, v in [('c','New post'),('⌘K or /','Search / jump'),('g o','Overview'),('g q','Queue'),('g c','Calendar'),('g i','Ideas'),('g p','All posts'),('g n','Inbox'),('g a','Analytics'),('g s','Brand & team'),('?','This help')] %}
+        <dt><kbd class="kbd">{{ k }}</kbd></dt><dd class="text-mute">{{ v }}</dd>
+        {% endfor %}
+      </dl>
+    </section>
+    <footer><button type="button" class="btn" data-variant="outline" onclick="this.closest('dialog').close()">Close</button></footer>
+  </div>
+</dialog>
+<!-- Publish modal host (filled by openComposer) -->
+<dialog id="publish-modal" class="dialog publish-modal" aria-label="New post">
+  <div class="!max-w-5xl !w-[calc(100vw-2rem)]">
+    <button type="button" class="btn absolute right-3 top-3" data-variant="ghost" data-size="icon-sm" aria-label="Close" onclick="this.closest('dialog').close()">×</button>
+    <section data-modal-body class="!p-0"></section>
+  </div>
+</dialog>
 {% else %}
 <main class="min-h-full flex items-center justify-center px-4">
   <div class="w-full max-w-sm">
