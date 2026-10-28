@@ -69,7 +69,9 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
         <h3 id="nav-{{ loop.index }}">{{ group }}</h3>
         <ul>
           {% for href, label in items %}
-          <li><a href="{{ href }}" {% if path==href or (href!='/' and path.startswith(href)) %}data-active="true" aria-current="page"{% endif %}><span>{{ label }}</span></a></li>
+          <li><a href="{{ href }}" {% if path==href or (href!='/' and path.startswith(href)) %}data-active="true" aria-current="page"{% endif %}><span>{{ label }}</span>
+            {% if href=='/queue' and badges and badges.get('pending_approval') %}<span class="badge ml-auto" data-variant="secondary" title="Awaiting approval">{{ badges['pending_approval'] }}</span>
+            {% elif href=='/posts' and badges and badges.get('failed') %}<span class="badge ml-auto st-failed" title="Failed posts">{{ badges['failed'] }}</span>{% endif %}</a></li>
           {% endfor %}
         </ul>
       </div>

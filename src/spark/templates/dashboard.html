@@ -63,49 +63,12 @@
     <section><div class="h-[250px] w-full"><canvas id="overview-chart"></canvas></div></section>
   </section>
 
-  <section class="card" x-data="{tab: '{{ 'approvals' if pending else 'upcoming' }}'}">
-    <header>
-      <div class="tabs"><nav role="tablist" aria-orientation="horizontal">
-        {% for key, label, items in [('upcoming', 'Upcoming', upcoming), ('approvals', 'Needs approval', pending), ('failed', 'Failed', failed), ('recent', 'Recently published', recent)] %}
-        <button type="button" role="tab" :aria-selected="tab==='{{ key }}'" @click="tab='{{ key }}'">{{ label }}{% if items %} <span class="badge ml-1" data-variant="secondary">{{ items|length }}</span>{% endif %}</button>
-        {% endfor %}
-      </nav></div>
-      <div class="card-action"><a href="/queue" class="btn" data-variant="outline" data-size="sm">Open queue</a></div>
-    </header>
-    {% for key, items, empty in [('upcoming', upcoming, 'Nothing scheduled. Write a post or plan a campaign.'), ('approvals', pending, 'Nothing waiting for approval.'), ('failed', failed, 'No failed posts.'), ('recent', recent, 'Nothing published yet.')] %}
-    <section x-show="tab==='{{ key }}'" x-cloak class="!p-0">
-      {% if items %}
-      <div class="table-container"><table class="table">
-        <thead><tr><th>Post</th><th>Channels</th><th>Status</th><th class="text-end">{{ 'Published' if key=='recent' else 'When' }}</th><th></th></tr></thead>
-        <tbody>
-        {% for p in items %}
-        <tr>
-          <td class="max-w-md"><a href="/posts/{{ p.id }}/edit" class="font-medium line-clamp-2 hover:underline">{{ p.content or '(no text)' }}</a>{% if p.campaign %}<div class="text-xs" style="color:{{ p.campaign.color }}">{{ p.campaign.name }}</div>{% endif %}</td>
-          <td class="text-sm text-mute whitespace-nowrap">{% for t in p.targets %}{{ t.account.handle }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
-          <td><span class="badge st-{{ p.status.value }}">{{ p.status.value.replace('_',' ') }}</span>{% if key=='failed' %}{% for t in p.targets if t.error %}<div class="text-xs text-brick max-w-xs truncate" title="{{ t.error }}">{{ t.error }}</div>{% endfor %}{% endif %}</td>
-          <td class="text-end num text-sm text-mute whitespace-nowrap">{{ p.scheduled_at|localtime(brand.timezone) }}</td>
-          <td class="text-end whitespace-nowrap">
-            {% if user.can_edit() %}
-            {% if key=='approvals' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve" class="inline">{{ csrf_field(request) }}<button class="btn" data-size="xs">Approve</button></form>{% endif %}
-            {% if key=='failed' %}<form method="post" action="/posts/{{ p.id }}/retry" class="inline">{{ csrf_field(request) }}<button class="btn" data-size="xs">Retry</button></form>{% endif %}
-            {% if key=='recent' %}<button type="button" class="btn" data-variant="outline" data-size="xs" onclick="openComposer({from_post:{{ p.id }}})">Reuse</button>{% endif %}
-            <a href="/posts/{{ p.id }}/edit" class="btn" data-variant="ghost" data-size="xs">Edit</a>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-        </tbody>
-      </table></div>
-      {% else %}
-      <div class="m-4 rounded-lg border border-dashed border-line py-10 text-center text-sm text-mute">{{ empty }} {% if key=='upcoming' %}<a class="underline" href="/compose" onclick="if(window.openComposer){openComposer({});return false}">New post</a>{% endif %}</div>
-      {% endif %}
-    </section>
-    {% endfor %}
-  </section>
+  {% include "partials/dashboard_table.html" %}
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
+window.onPostSaved = () => { const t = document.getElementById('dashboard-table'); if (t) refreshRegion('#dashboard-table', '/dashboard/table?days={{ days }}'); };
 (() => {
   const S = {{ data.series|tojson }};
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();

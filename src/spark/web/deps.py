@@ -149,9 +149,21 @@ async def render(
     **ctx,
 ):
     brands = (await db.execute(select(Brand).order_by(Brand.name))).scalars().all() if user else []
+    badges: dict = {}
+    if user and brand:
+        from sqlalchemy import func
+
+        from spark.models import Post, PostStatus
+
+        rows = await db.execute(
+            select(Post.status, func.count(Post.id)).where(
+                Post.brand_id == brand.id, Post.status.in_([PostStatus.failed, PostStatus.pending_approval]))
+            .group_by(Post.status))
+        for status, n in rows:
+            badges[status.value] = n
     return templates.TemplateResponse(
         request,
         name,
-        {"user": user, "brand": brand, "brands": brands, "path": request.url.path, **ctx},
+        {"user": user, "brand": brand, "brands": brands, "path": request.url.path, "badges": badges, **ctx},
         status_code=status_code,
     )

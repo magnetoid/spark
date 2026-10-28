@@ -1,0 +1,44 @@
+{# Kanban columns, swapped in place by htmx #}
+<div id="ideas-board" class="grid md:grid-cols-2 xl:grid-cols-4 gap-4" x-data="board()" data-refresh-url="/ideas/board{% if tag %}?tag={{ tag }}{% endif %}">
+  {% for key, label, items in columns %}
+  <section class="rounded-lg bg-muted/60 p-2 min-h-[16rem]" data-col="{{ key }}"
+           @dragover.prevent="$el.classList.add('ring-2','ring-amber')" @dragleave="$el.classList.remove('ring-2','ring-amber')"
+           @drop.prevent="drop($event, '{{ key }}'); $el.classList.remove('ring-2','ring-amber')">
+    <header class="flex items-center justify-between px-2 py-1.5">
+      <h2 class="text-sm font-semibold">{{ label }}</h2>
+      <span class="badge" data-variant="secondary">{{ items|length }}</span>
+    </header>
+    <div class="space-y-2">
+      {% for i in items %}
+      <article class="card" data-size="sm" draggable="{{ 'true' if user.can_edit() else 'false' }}" @dragstart="drag($event, {{ i.id }})" x-data="{edit:false}">
+        <section class="space-y-2">
+          <div x-show="!edit">
+            <h3 class="text-sm font-medium leading-snug">{{ i.title }}</h3>
+            {% if i.body %}<p class="text-xs text-mute mt-1 whitespace-pre-wrap line-clamp-5">{{ i.body }}</p>{% endif %}
+            {% if i.source_url %}<a href="{{ i.source_url }}" target="_blank" rel="noopener" class="block text-xs text-cobalt truncate mt-1">{{ i.source_url }}</a>{% endif %}
+            {% if i.tags %}<div class="flex flex-wrap gap-1 mt-2">{% for t in i.tags %}<a href="/ideas?tag={{ t }}" class="badge" data-variant="outline" style="border-color:{{ tag_color(t) }};color:{{ tag_color(t) }}">#{{ t }}</a>{% endfor %}</div>{% endif %}
+            {% if i.post_id %}<a href="/posts/{{ i.post_id }}/edit" class="badge st-scheduled mt-2">post #{{ i.post_id }}</a>{% endif %}
+          </div>
+          {% if user.can_edit() %}
+          <form method="post" action="/ideas/{{ i.id }}" class="form space-y-2" x-show="edit" x-cloak>{{ csrf_field(request) }}
+            <input type="text" class="input" name="title" value="{{ i.title }}" required>
+            <textarea class="textarea" name="body" rows="5" placeholder="Notes or the draft text">{{ i.body or '' }}</textarea>
+            <input type="text" class="input" name="tags" value="{{ i.tags|join(', ') }}" placeholder="tags, comma separated">
+            <div class="flex gap-2"><button class="btn" data-size="sm">Save</button><button type="button" class="btn" data-variant="ghost" data-size="sm" @click="edit=false">Cancel</button></div>
+          </form>
+          <div class="flex flex-wrap items-center gap-1 pt-1" x-show="!edit">
+            {% if key != 'done' %}{% if i.post_id %}<a href="/posts/{{ i.post_id }}/edit" class="btn" data-size="xs" onclick="if(window.openComposer){openComposer({post_id:{{ i.post_id }}});return false}">Open post</a>{% else %}<form method="post" action="/ideas/{{ i.id }}/to-post">{{ csrf_field(request) }}<button class="btn" data-size="xs" onclick="if(window.openComposer){openComposer({idea_id:{{ i.id }}});return false}">Turn into post</button></form>{% endif %}{% endif %}
+            {% if ai_enabled and key in ('idea','drafting') %}<form method="post" action="/ideas/{{ i.id }}/ai">{{ csrf_field(request) }}<button class="btn" data-variant="outline" data-size="xs">Write with AI</button></form>{% endif %}
+            <button type="button" class="btn" data-variant="ghost" data-size="xs" @click="edit=true">Edit</button>
+            <form method="post" action="/ideas/{{ i.id }}/delete" class="ml-auto" onsubmit="return confirm('Delete this idea?')">{{ csrf_field(request) }}<button class="btn danger" data-variant="ghost" data-size="icon-xs" aria-label="Delete">×</button></form>
+          </div>
+          {% endif %}
+        </section>
+      </article>
+      {% else %}
+      <p class="px-2 py-6 text-center text-xs text-mute">{{ 'Drop ideas here' if key != 'idea' else 'Nothing yet — add an idea' }}</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>

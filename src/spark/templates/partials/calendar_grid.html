@@ -1,0 +1,26 @@
+{# Month/week grid, swapped in place after drag/drop or a composer save #}
+<div id="calendar-grid" class="card overflow-hidden" x-data="cal()" data-refresh-url="{{ grid_url }}">
+  <div class="grid grid-cols-7 text-xs text-mute border-b border-line">
+    {% for d in days[:7] %}<div class="px-2 py-1.5">{{ d.strftime('%a') }}{% if view=='week' %} <span class="num {{ 'badge st-pending_approval' if d==today }}">{{ d.day }}</span>{% endif %}</div>{% endfor %}
+  </div>
+  <div class="grid grid-cols-7">
+    {% for d in days %}
+    <div class="cal-day {{ 'week' if view=='week' }} {{ 'other' if view=='month' and d.month != first.month }} {{ 'today' if d == today }}" data-day="{{ d.isoformat() }}"
+         @dragover.prevent="$el.classList.add('drop')" @dragleave="$el.classList.remove('drop')" @drop.prevent="drop($event, '{{ d.isoformat() }}'); $el.classList.remove('drop')">
+      <div class="flex items-center justify-between">
+        {% if view=='month' %}<span class="d text-xs num w-5 h-5 grid place-items-center">{{ d.day }}</span>{% else %}<span></span>{% endif %}
+        {% if user.can_edit() and d >= today %}<a href="/compose?at={{ d.isoformat() }}T10:00{% if account %}&account={{ account }}{% endif %}" onclick="if(window.openComposer){openComposer({at:'{{ d.isoformat() }}T10:00'{% if account %}, account:{{ account }}{% endif %}});return false}" class="text-mute hover:text-ink text-xs" title="New post on this day">+</a>{% endif %}
+      </div>
+      {% for p in by_day.get(d, []) %}
+      <a href="/posts/{{ p.id }}/edit" class="chip {{ 'chip-lg' if view=='week' }}" draggable="{{ 'true' if p.status.value in ('scheduled','pending_approval','draft') else 'false' }}" @dragstart="drag($event, {{ p.id }})"
+         style="border-color: {{ p.campaign.color if p.campaign else {'scheduled':'#2E5BE8','pending_approval':'#F2A516','published':'#1E8A5A','failed':'#C73A33','publishing':'#2E5BE8','draft':'#9CA3AF'}[p.status.value] }}" title="{{ p.content }}">
+        <span class="num text-mute">{{ p.scheduled_at|localtime(brand.timezone, '%H:%M') }}</span>
+        {% if view=='week' %}<span class="block whitespace-normal line-clamp-3">{{ p.content or '(no text)' }}</span>
+          <span class="block text-mute truncate">{% for t in p.targets %}{{ t.account.handle }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+        {% else %}{{ p.content or '(no text)' }}{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>

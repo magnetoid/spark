@@ -1,0 +1,82 @@
+{# One channel's queue: day cards with slots, or the Drafts / Approvals / Sent list. Swapped in place by htmx. #}
+<section id="queue-column" class="lg:col-span-3 space-y-4" x-data="queueDnd()"
+         data-refresh-url="/queue/column?account={{ current.id }}&tab={{ tab }}">
+  <div class="tabs" id="queue-tabs">
+    <nav role="tablist" aria-orientation="horizontal" data-variant="line" class="w-full">
+      {% for key, label in [('queue','Queue'),('drafts','Drafts'),('approvals','Approvals'),('sent','Sent')] %}
+      <a role="tab" href="/queue?account={{ current.id }}&tab={{ key }}" hx-get="/queue/column?account={{ current.id }}&tab={{ key }}" hx-target="#queue-column" hx-swap="outerHTML" hx-push-url="/queue?account={{ current.id }}&tab={{ key }}"
+         aria-selected="{{ 'true' if tab==key else 'false' }}" class="btn" data-variant="ghost" data-size="sm">{{ label }}{% if counts.get(key) %} <span class="badge ml-1" data-variant="secondary">{{ counts[key] }}</span>{% endif %}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  {% if tab == 'queue' %}
+    {% for day, items in days %}
+    <div class="card" data-size="sm">
+      <header><h2 class="text-sm">{{ 'Today' if day==today else day.strftime('%A, %b %d') }}</h2></header>
+      <ul class="divide-y divide-line">
+        {% for it in items %}
+        {% set when_iso = it.when.isoformat() %}
+        <li class="flex items-start gap-4 px-4 py-3 slot" data-when="{{ when_iso }}"
+            @dragover.prevent="$el.classList.add('bg-muted')" @dragleave="$el.classList.remove('bg-muted')"
+            @drop.prevent="$el.classList.remove('bg-muted'); dropOn('{{ when_iso }}', $event)">
+          <div class="w-14 shrink-0 text-sm num {{ 'text-mute' if not it.target }}">{{ it.when|localtime(brand.timezone, '%H:%M') }}</div>
+          {% if it.target %}
+          {% set p = it.post %}
+          <div class="min-w-0 flex-1 cursor-grab" draggable="{{ 'true' if user.can_edit() and it.target.status.value != 'publishing' else 'false' }}" @dragstart="drag($event, {{ p.id }})">
+            <a href="/posts/{{ p.id }}/edit" onclick="if(window.openComposer){openComposer({post_id:{{ p.id }}});return false}" class="text-sm line-clamp-2 hover:underline">{{ it.target.text or '(no text)' }}</a>
+            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-mute">
+              <span class="badge st-{{ it.target.status.value }}">{{ it.target.status.value.replace('_',' ') }}</span>
+              {% if p.media_ids %}<span>{{ p.media_ids|length }} media</span>{% endif %}
+              {% if p.campaign %}<span style="color:{{ p.campaign.color }}">{{ p.campaign.name }}</span>{% endif %}
+              {% if p.targets|length > 1 %}<span>+{{ p.targets|length - 1 }} other channel{{ 's' if p.targets|length > 2 }}</span>{% endif %}
+            </div>
+          </div>
+          {% if user.can_edit() %}
+          <div class="flex items-center gap-1 shrink-0">
+            {% if not (loop.first and day == days[0][0]) %}<button class="btn" data-variant="ghost" data-size="sm" title="Move to the next slot" hx-post="/posts/{{ p.id }}/prioritize" hx-swap="none">Move to top</button>{% endif %}
+            <button class="btn" data-variant="ghost" data-size="sm" hx-post="/posts/{{ p.id }}/share-now" hx-confirm="Publish this post now?" hx-swap="none">Share now</button>
+            {% if it.target.status.value=='pending_approval' and user.can_approve() %}<button class="btn" data-size="sm" hx-post="/posts/{{ p.id }}/approve" hx-swap="none">Approve</button>{% endif %}
+            <button class="btn danger" data-variant="ghost" data-size="sm" aria-label="Remove from queue" hx-post="/posts/{{ p.id }}/unschedule" hx-swap="none">×</button>
+          </div>
+          {% endif %}
+          {% else %}
+          <a href="/compose?account={{ current.id }}&at={{ it.when|localtime(brand.timezone, '%Y-%m-%dT%H:%M') }}" onclick="if(window.openComposer){openComposer({account:{{ current.id }}, at:'{{ it.when|localtime(brand.timezone, '%Y-%m-%dT%H:%M') }}'});return false}" class="flex-1 text-sm text-mute hover:text-ink border border-dashed border-line rounded-md px-3 py-1.5">Empty slot — add a post <span class="hidden sm:inline text-xs">· or drop one here</span></a>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% else %}
+    <div class="card"><section class="py-10 text-center text-sm text-mute">No posting times set. <a class="underline" href="/settings#queue">Add slots</a> in Brand &amp; team.</section></div>
+    {% endfor %}
+
+  {% else %}
+    <div class="card">
+      {% if posts %}
+      <ul class="divide-y divide-line">
+        {% for t in posts %}{% set p = t.post %}
+        <li class="flex items-start gap-4 px-4 py-3">
+          <div class="min-w-0 flex-1">
+            <a href="/posts/{{ p.id }}/edit" onclick="if(window.openComposer){openComposer({post_id:{{ p.id }}});return false}" class="text-sm line-clamp-2 hover:underline">{{ t.text or '(no text)' }}</a>
+            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-mute">
+              {% if tab=='sent' %}<span class="num">{{ t.published_at|localtime(brand.timezone) }}</span>{% if t.remote_url %}<a href="{{ t.remote_url }}" target="_blank" rel="noopener" class="underline">View on {{ platform_label(current.platform) }}</a>{% endif %}
+              {% else %}<span class="num">updated {{ t.updated_at|localtime(brand.timezone) }}</span>{% endif %}
+              {% if p.campaign %}<span style="color:{{ p.campaign.color }}">{{ p.campaign.name }}</span>{% endif %}
+            </div>
+          </div>
+          {% if user.can_edit() %}
+          <div class="flex items-center gap-1 shrink-0">
+            {% if tab=='drafts' %}<button class="btn" data-size="sm" hx-post="/posts/{{ p.id }}/prioritize" hx-swap="none">Share next</button>{% endif %}
+            {% if tab=='approvals' and user.can_approve() %}<button class="btn" data-size="sm" hx-post="/posts/{{ p.id }}/approve" hx-swap="none">Approve</button>{% endif %}
+            {% if tab=='sent' %}<button type="button" class="btn" data-variant="outline" data-size="sm" onclick="openComposer({from_post:{{ p.id }}})">Reuse</button>{% endif %}
+            <a href="/posts/{{ p.id }}/edit" class="btn" data-variant="ghost" data-size="sm" onclick="if(window.openComposer){openComposer({post_id:{{ p.id }}});return false}">Edit</a>
+          </div>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<section class="py-10 text-center text-sm text-mute">Nothing here for {{ current.handle }}.</section>{% endif %}
+    </div>
+  {% endif %}
+</section>

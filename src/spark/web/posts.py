@@ -445,6 +445,8 @@ async def post_approve(post_id: int, request: Request, db: AsyncSession = Depend
     post = await _get_post(db, brand, post_id)
     scheduler.approve(post)
     await db.commit()
+    if is_hx(request):
+        return hx_none({**toast("Approved and scheduled"), "posts-changed": {"id": post.id}})
     flash(request, "Approved and scheduled")
     return RedirectResponse(request.headers.get("referer") or "/posts", 303)
 
@@ -455,6 +457,8 @@ async def post_unschedule(post_id: int, request: Request, db: AsyncSession = Dep
     post = await _get_post(db, brand, post_id)
     scheduler.unschedule(post)
     await db.commit()
+    if is_hx(request):
+        return hx_none({**toast("Moved back to drafts"), "posts-changed": {"id": post.id}})
     flash(request, "Moved back to drafts")
     return RedirectResponse(request.headers.get("referer") or "/posts", 303)
 
@@ -472,6 +476,8 @@ async def post_retry(post_id: int, request: Request, db: AsyncSession = Depends(
     for t in post.targets:
         if t.status == PostStatus.scheduled:
             await enqueue("publish_now", t.id)
+    if is_hx(request):
+        return hx_none({**toast("Retrying failed targets"), "posts-changed": {"id": post.id}})
     flash(request, "Retrying failed targets")
     return RedirectResponse(request.headers.get("referer") or "/posts", 303)
 
@@ -495,6 +501,8 @@ async def post_delete(post_id: int, request: Request, db: AsyncSession = Depends
     post = await _get_post(db, brand, post_id)
     await db.delete(post)
     await db.commit()
+    if is_hx(request):
+        return hx_none({**toast("Post deleted"), "posts-changed": {"id": post_id}})
     flash(request, "Post deleted")
     return RedirectResponse("/posts", 303)
 
@@ -502,6 +510,7 @@ async def post_delete(post_id: int, request: Request, db: AsyncSession = Depends
 # ---- calendar -------------------------------------------------------------------
 
 @router.get("/calendar")
+@router.get("/calendar/grid")
 async def calendar(request: Request, month: str | None = None, week: str | None = None,
                    view: str = "month", account: int | None = None, campaign: int | None = None,
                    db: AsyncSession = Depends(get_db), user: User = Depends(current_user),
@@ -541,11 +550,15 @@ async def calendar(request: Request, month: str | None = None, week: str | None 
     days = [grid_start + timedelta(days=i) for i in range(7 * weeks)]
     filters = f"&account={account}" if account else ""
     filters += f"&campaign={campaign}" if campaign else ""
-    return await render(request, "calendar.html", db, user, brand, days=days, by_day=by_day,
-                        first=first, today=today, view=view, title=title,
-                        prev_link=prev_link + filters, next_link=next_link + filters,
-                        accounts=await _accounts(db, brand), campaigns=await _campaigns(db, brand),
-                        account=account, campaign=campaign)
+    ctx = dict(days=days, by_day=by_day, first=first, today=today, view=view, title=title,
+               prev_link=prev_link + filters, next_link=next_link + filters,
+               accounts=await _accounts(db, brand), campaigns=await _campaigns(db, brand),
+               account=account, campaign=campaign,
+               grid_url=f"/calendar/grid?view={view}&month={first:%Y-%m}&week={first.isoformat()}{filters}")
+    if request.url.path.endswith("/grid"):
+        return templates.TemplateResponse(request, "partials/calendar_grid.html",
+                                          {"user": user, "brand": brand, **ctx})
+    return await render(request, "calendar.html", db, user, brand, **ctx)
 
 
 @router.post("/calendar/move")
@@ -568,6 +581,8 @@ async def calendar_move(request: Request, post_id: int = Form(...), day: str = F
         if t.status != PostStatus.published:
             t.scheduled_at = when
     await db.commit()
+    if is_hx(request):
+        return hx_none({**toast(f"Moved to {when.astimezone(zone):%a %b %d, %H:%M}"), "posts-changed": {"id": post.id}})
     return JSONResponse({"ok": True})
 
 

@@ -30,7 +30,7 @@ from spark.security import token
 from spark.services import analytics, scheduler
 from spark.services.ai import AIUnavailable, ContentAI
 from spark.services.links import add_utm, create_short_link, short_url
-from spark.web.deps import current_user, editor, flash, render, require_brand
+from spark.web.deps import current_user, editor, flash, render, require_brand, templates
 from spark.web.posts import enqueue
 
 router = APIRouter()
@@ -39,6 +39,7 @@ router = APIRouter()
 # ---- dashboard / analytics ----------------------------------------------------
 
 @router.get("/")
+@router.get("/dashboard/table")
 async def dashboard(request: Request, days: int = 30, db: AsyncSession = Depends(get_db),
                     user: User = Depends(current_user), brand: Brand | None = Depends(require_brand)):
     """Overview after shadcn's dashboard block: section cards, chart, tabbed table."""
@@ -58,9 +59,12 @@ async def dashboard(request: Request, days: int = 30, db: AsyncSession = Depends
     recent = (await db.execute(q(PostStatus.published, order=Post.scheduled_at, desc=True))).scalars().all()
     accounts = (await db.execute(
         select(SocialAccount).where(SocialAccount.brand_id == brand.id))).scalars().all()
-    return await render(request, "dashboard.html", db, user, brand, data=data, trend=trend, days=days,
-                        upcoming=upcoming, pending=pending, failed=failed, recent=recent, accounts=accounts,
-                        ai_enabled=bool(get_settings().anthropic_api_key))
+    ctx = dict(data=data, trend=trend, days=days, upcoming=upcoming, pending=pending, failed=failed,
+               recent=recent, accounts=accounts, ai_enabled=bool(get_settings().anthropic_api_key))
+    if request.url.path.endswith("/table"):
+        return templates.TemplateResponse(request, "partials/dashboard_table.html",
+                                          {"user": user, "brand": brand, **ctx})
+    return await render(request, "dashboard.html", db, user, brand, **ctx)
 
 
 @router.get("/analytics")

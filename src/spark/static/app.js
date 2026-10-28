@@ -52,6 +52,28 @@
     window.toast(msg, 'error');
   });
 
+  // Action routes answer htmx with HX-Trigger {"posts-changed": {...}}; pages that can refresh a
+  // region register window.onPostSaved (same hook the composer uses).
+  document.body.addEventListener('posts-changed', (e) => {
+    if (typeof window.onPostSaved === 'function') window.onPostSaved(e.detail || {});
+    else location.reload();
+  });
+  // Region refresh helper used by pages: refreshRegion('#queue-column', '/queue/column?...')
+  window.refreshRegion = (selector, url) => {
+    const el = document.querySelector(selector);
+    if (!el) return;
+    return htmx.ajax('GET', url, { target: el, swap: 'outerHTML' });
+  };
+
+  // Sidebar: when the viewport shrinks below the breakpoint, don't leave it open as an overlay
+  let wasDesktop = innerWidth >= 768;
+  addEventListener('resize', () => {
+    const desktop = innerWidth >= 768;
+    const sb = document.getElementById('sidebar');
+    if (wasDesktop && !desktop && sb && sb.close) sb.close();
+    wasDesktop = desktop;
+  });
+
   // Composer modal: loaded on demand into #publish-modal (Phase B wires the pages to it)
   window.openComposer = async (params = {}) => {
     const dlg = document.getElementById('publish-modal');

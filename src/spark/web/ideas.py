@@ -10,7 +10,7 @@ from spark.config import get_settings
 from spark.db import get_db
 from spark.models import Brand, Idea, Post, SocialAccount, User
 from spark.services.ai import AIUnavailable, ContentAI
-from spark.web.deps import current_user, editor, flash, render, require_brand
+from spark.web.deps import current_user, editor, flash, render, require_brand, templates
 
 router = APIRouter()
 COLUMNS = (("idea", "Ideas"), ("drafting", "Drafting"), ("ready", "Ready"), ("done", "Done"))
@@ -38,9 +38,7 @@ async def _idea(db: AsyncSession, brand: Brand, idea_id: int) -> Idea:
     return idea
 
 
-@router.get("/ideas")
-async def board(request: Request, tag: str | None = None, db: AsyncSession = Depends(get_db),
-                user: User = Depends(current_user), brand: Brand = Depends(require_brand)):
+async def _board_context(db: AsyncSession, brand: Brand, tag: str | None) -> dict:
     ideas = (await db.execute(
         select(Idea).where(Idea.brand_id == brand.id).order_by(Idea.position, Idea.id.desc())
     )).scalars().all()
@@ -48,9 +46,22 @@ async def board(request: Request, tag: str | None = None, db: AsyncSession = Dep
     if tag:
         ideas = [i for i in ideas if tag in (i.tags or [])]
     columns = [(key, label, [i for i in ideas if i.status == key]) for key, label in COLUMNS]
-    return await render(request, "ideas.html", db, user, brand, columns=columns, all_tags=all_tags,
-                        tag=tag, tag_color=tag_color, ai_enabled=bool(get_settings().anthropic_api_key),
-                        total=len(ideas))
+    return {"columns": columns, "all_tags": all_tags, "tag": tag, "tag_color": tag_color,
+            "ai_enabled": bool(get_settings().anthropic_api_key), "total": len(ideas)}
+
+
+@router.get("/ideas/board")
+async def board_partial(request: Request, tag: str | None = None, db: AsyncSession = Depends(get_db),
+                        user: User = Depends(current_user), brand: Brand = Depends(require_brand)):
+    ctx = await _board_context(db, brand, tag)
+    return templates.TemplateResponse(request, "partials/ideas_board.html", {"user": user, "brand": brand, **ctx})
+
+
+@router.get("/ideas")
+async def board(request: Request, tag: str | None = None, db: AsyncSession = Depends(get_db),
+                user: User = Depends(current_user), brand: Brand = Depends(require_brand)):
+    ctx = await _board_context(db, brand, tag)
+    return await render(request, "ideas.html", db, user, brand, **ctx)
 
 
 @router.post("/ideas")
