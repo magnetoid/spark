@@ -110,6 +110,25 @@ class LinkClick(Base):
     user_agent: Mapped[str | None] = mapped_column(String(500))
 
 
+class Idea(TimestampMixin, Base):
+    """Content scratchpad entry (Buffer's "Create"): moves idea → drafting → ready → done."""
+
+    __tablename__ = "ideas"
+    STATUSES = ("idea", "drafting", "ready", "done")
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    brand_id: Mapped[int] = mapped_column(ForeignKey("brands.id", ondelete="CASCADE"), index=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str | None] = mapped_column(Text)
+    tags: Mapped[list] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(String(16), default="idea", index=True)
+    media_ids: Mapped[list] = mapped_column(JSON, default=list)
+    source_url: Mapped[str | None] = mapped_column(String(2000))
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    post_id: Mapped[int | None] = mapped_column(ForeignKey("posts.id", ondelete="SET NULL"))
+
+
 class BioPage(TimestampMixin, Base):
     __tablename__ = "bio_pages"
 

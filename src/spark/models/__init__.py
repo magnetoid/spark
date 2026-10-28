@@ -5,6 +5,7 @@ from spark.models.marketing import (
     ContactList,
     EmailCampaign,
     EmailSend,
+    Idea,
     LinkClick,
     ShortLink,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "ContactList",
     "EmailCampaign",
     "EmailSend",
+    "Idea",
     "LinkClick",
     "Media",
     "Metric",

@@ -197,3 +197,23 @@ async def test_prioritize_bumps_slot_posts(db, brand):
     items = await scheduler.channel_queue(db, brand, acc)
     queued = [i["post"].content for i in items if i["post"]]
     assert queued[:2] == ["B", "A"]
+
+
+async def test_ideas_board_and_to_post(client, db, brand):
+    from spark.models import Idea
+
+    r = await client.post("/ideas", data={"title": "Launch thread", "body": "Three lessons from launch week",
+                                          "tags": "Launch, #tips, launch"})
+    assert r.status_code == 303
+    idea = await db.scalar(select(Idea))
+    assert idea.tags == ["launch", "tips"] and idea.status == "idea"
+    r = await client.post(f"/ideas/{idea.id}/move", data={"status": "drafting"},
+                          headers={"Accept": "application/json"})
+    assert r.status_code == 200
+    r = await client.post(f"/ideas/{idea.id}/to-post")
+    assert r.status_code == 303 and r.headers["location"].endswith("/edit")
+    await db.refresh(idea)
+    post = await db.get(Post, idea.post_id)
+    assert post.content == "Three lessons from launch week" and idea.status == "ready"
+    r = await client.get("/ideas")
+    assert r.status_code == 200 and "Launch thread" in r.text
