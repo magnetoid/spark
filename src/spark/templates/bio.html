@@ -8,18 +8,18 @@
   <div class="lg:col-span-2 space-y-5">
     <div class="card p-5 space-y-4">
       <div class="grid sm:grid-cols-2 gap-4">
-        <div><label>Title</label><input type="text" name="title" value="{{ page.title }}"></div>
-        <div><label>Theme</label><select name="theme">{% for t in ['light','dark','amber'] %}<option {% if page.theme==t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Title</label><input type="text" class="input" name="title" value="{{ page.title }}"></div>
+        <div class="field"><label>Theme</label><select class="select" name="theme">{% for t in ['light','dark','amber'] %}<option {% if page.theme==t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
       </div>
-      <div><label>Bio</label><textarea name="bio" rows="3">{{ page.bio or '' }}</textarea></div>
-      <div><label>Avatar</label><select name="avatar_media_id"><option value="">None</option>{% for m in images %}<option value="{{ m.id }}" {% if page.avatar_media_id==m.id %}selected{% endif %}>{{ m.filename }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Bio</label><textarea class="textarea" name="bio" rows="3">{{ page.bio or '' }}</textarea></div>
+      <div class="field"><label>Avatar</label><select class="select" name="avatar_media_id"><option value="">None</option>{% for m in images %}<option value="{{ m.id }}" {% if page.avatar_media_id==m.id %}selected{% endif %}>{{ m.filename }}</option>{% endfor %}</select></div>
     </div>
     <div class="card p-5">
-      <div class="flex items-center justify-between mb-3"><label class="!mb-0">Links</label><button type="button" class="btn btn-sm btn-ghost" @click="links.push({label:'',url:''})">Add link</button></div>
+      <div class="flex items-center justify-between mb-3"><label class="!mb-0">Links</label><button type="button" class="btn" data-size="sm" data-variant="outline" @click="links.push({label:'',url:''})">Add link</button></div>
       <template x-for="(l, i) in links" :key="i">
         <div class="flex gap-2 mb-2">
           <input type="text" name="link_label" x-model="l.label" placeholder="Label" class="w-1/3">
-          <input type="url" name="link_url" x-model="l.url" placeholder="https://">
+          <input type="url" class="input" name="link_url" x-model="l.url" placeholder="https://">
           <button type="button" class="text-mute hover:text-brick px-2" @click="links.splice(i,1)" aria-label="Remove">×</button>
         </div>
       </template>
@@ -28,11 +28,11 @@
   </div>
   <div class="space-y-5 self-start">
     <div class="card p-5 space-y-3">
-      <label class="flex items-center gap-2 font-normal text-sm"><input type="checkbox" name="is_published" {% if page.is_published %}checked{% endif %}>Page is public</label>
-      <label class="flex items-center gap-2 font-normal text-sm"><input type="checkbox" name="capture_email" {% if page.capture_email %}checked{% endif %}>Show email signup form</label>
-      <div><label>Add signups to list</label><select name="capture_list_id"><option value="">No list</option>{% for l in lists %}<option value="{{ l.id }}" {% if page.capture_list_id==l.id %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select></div>
+      <label class="flex items-center gap-2 font-normal text-sm"><input type="checkbox" class="input" name="is_published" {% if page.is_published %}checked{% endif %}>Page is public</label>
+      <label class="flex items-center gap-2 font-normal text-sm"><input type="checkbox" class="input" name="capture_email" {% if page.capture_email %}checked{% endif %}>Show email signup form</label>
+      <div class="field"><label>Add signups to list</label><select class="select" name="capture_list_id"><option value="">No list</option>{% for l in lists %}<option value="{{ l.id }}" {% if page.capture_list_id==l.id %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select></div>
     </div>
-    {% if user.can_edit() %}<button class="btn btn-amber w-full justify-center">Save bio page</button>{% endif %}
+    {% if user.can_edit() %}<button class="btn w-full justify-center">Save bio page</button>{% endif %}
   </div>
 </form>
 {% endblock %}

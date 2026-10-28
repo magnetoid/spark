@@ -7,27 +7,27 @@
   <form method="post" action="/settings" class="form card p-6 space-y-5">
     <h2 class="font-semibold">{{ b.name }}</h2>
     <div class="grid sm:grid-cols-2 gap-4">
-      <div><label>Name</label><input type="text" name="name" value="{{ b.name }}" required></div>
-      <div><label>Website</label><input type="url" name="website" value="{{ b.website or '' }}"></div>
-      <div><label>Timezone</label><select name="timezone">{% for tz in timezones %}<option {% if tz==b.timezone %}selected{% endif %}>{{ tz }}</option>{% endfor %}</select></div>
-      <div><label>Colour</label><input type="color" name="color" value="{{ b.color }}" class="h-10 w-20 p-1"></div>
+      <div class="field"><label>Name</label><input type="text" class="input" name="name" value="{{ b.name }}" required></div>
+      <div class="field"><label>Website</label><input type="url" class="input" name="website" value="{{ b.website or '' }}"></div>
+      <div class="field"><label>Timezone</label><select class="select" name="timezone">{% for tz in timezones %}<option {% if tz==b.timezone %}selected{% endif %}>{{ tz }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Colour</label><input type="color" name="color" value="{{ b.color }}" class="h-10 w-20 p-1"></div>
     </div>
     <fieldset class="space-y-4 pt-2">
       <legend class="font-semibold">Brand voice</legend>
       <p class="text-sm text-mute -mt-2">Every AI generation reads this. Be concrete: it's the difference between generic copy and yours.</p>
-      <div><label>Tone</label><textarea name="voice_tone" rows="2" placeholder="e.g. Direct, warm, a little dry. Short sentences. We explain, we don't hype.">{{ b.voice_tone or '' }}</textarea></div>
-      <div><label>Audience</label><textarea name="voice_audience" rows="2" placeholder="Who reads this and what they care about">{{ b.voice_audience or '' }}</textarea></div>
-      <div><label>Rules — do and don't</label><textarea name="voice_rules" rows="3" placeholder="Never use emoji. Don't mention competitors by name. Always link to the docs, not the homepage.">{{ b.voice_rules or '' }}</textarea></div>
-      <div><label>Example posts in your voice</label><textarea name="voice_examples" rows="4" placeholder="Paste 2–3 posts you were happy with">{{ b.voice_examples or '' }}</textarea></div>
-      <div><label>Preferred hashtags</label><input type="text" name="default_hashtags" value="{{ b.default_hashtags or '' }}" placeholder="#spark #marketing"></div>
+      <div class="field"><label>Tone</label><textarea class="textarea" name="voice_tone" rows="2" placeholder="e.g. Direct, warm, a little dry. Short sentences. We explain, we don't hype.">{{ b.voice_tone or '' }}</textarea></div>
+      <div class="field"><label>Audience</label><textarea class="textarea" name="voice_audience" rows="2" placeholder="Who reads this and what they care about">{{ b.voice_audience or '' }}</textarea></div>
+      <div class="field"><label>Rules — do and don't</label><textarea class="textarea" name="voice_rules" rows="3" placeholder="Never use emoji. Don't mention competitors by name. Always link to the docs, not the homepage.">{{ b.voice_rules or '' }}</textarea></div>
+      <div class="field"><label>Example posts in your voice</label><textarea class="textarea" name="voice_examples" rows="4" placeholder="Paste 2–3 posts you were happy with">{{ b.voice_examples or '' }}</textarea></div>
+      <div class="field"><label>Preferred hashtags</label><input type="text" class="input" name="default_hashtags" value="{{ b.default_hashtags or '' }}" placeholder="#spark #marketing"></div>
     </fieldset>
     <fieldset class="space-y-3 pt-2">
       <legend class="font-semibold">Workflow</legend>
       <label class="flex items-start gap-2 text-sm font-normal"><input type="checkbox" name="require_approval" value="true" {% if b.require_approval %}checked{% endif %} class="mt-0.5"><span>Owners approve posts before they go out<span class="block text-xs text-mute">Editors' posts wait in “pending approval”.</span></span></label>
       <label class="flex items-start gap-2 text-sm font-normal"><input type="checkbox" name="auto_shorten_links" value="true" {% if b.auto_shorten_links %}checked{% endif %} class="mt-0.5"><span>Track links automatically<span class="block text-xs text-mute">URLs in posts become short links with UTM tags.</span></span></label>
-      <div class="max-w-xs"><label>Default utm_campaign</label><input type="text" name="utm_campaign" value="{{ b.utm_defaults.get('campaign','') }}"></div>
+      <div class="max-w-xs"><label>Default utm_campaign</label><input type="text" class="input" name="utm_campaign" value="{{ b.utm_defaults.get('campaign','') }}"></div>
     </fieldset>
-    <button class="btn btn-amber">Save settings</button>
+    <button class="btn">Save settings</button>
   </form>
 
   <section class="card p-6" id="queue">
@@ -44,9 +44,9 @@
     </div>
     {% if user.can_edit() %}
     <form method="post" action="/settings/slots" class="form flex flex-wrap items-end gap-3">
-      <div><label>Time</label><input type="time" name="time" required></div>
-      <div><label>Days</label><div class="flex gap-2 text-sm">{% for d in range(7) %}<label class="font-normal flex items-center gap-1"><input type="checkbox" name="weekdays" value="{{ d }}" {% if d < 5 %}checked{% endif %}>{{ weekdays[d] }}</label>{% endfor %}</div></div>
-      <button class="btn btn-ghost">Add slot</button>
+      <div class="field"><label>Time</label><input type="time" class="input" name="time" required></div>
+      <div class="field"><label>Days</label><div class="flex gap-2 text-sm">{% for d in range(7) %}<label class="font-normal flex items-center gap-1"><input type="checkbox" class="input" name="weekdays" value="{{ d }}" {% if d < 5 %}checked{% endif %}>{{ weekdays[d] }}</label>{% endfor %}</div></div>
+      <button class="btn" data-variant="outline">Add slot</button>
     </form>
     {% endif %}
   </section>
@@ -61,9 +61,9 @@
         <form method="post" action="/team/{{ m.id }}" class="flex items-center gap-2">
           <div class="flex-1 min-w-0"><div class="font-medium truncate">{{ m.name }}{% if m.id==user.id %} (you){% endif %}</div><div class="text-xs text-mute truncate">{{ m.email }}</div></div>
           {% if user.can_approve() and m.id != user.id %}
-          <select name="role" class="field w-24 py-1">{% for r in roles %}<option value="{{ r.value }}" {% if r==m.role %}selected{% endif %}>{{ r.value }}</option>{% endfor %}</select>
-          <label class="text-xs flex items-center gap-1"><input type="checkbox" name="active" value="true" {% if m.is_active %}checked{% endif %}>active</label>
-          <button class="btn btn-sm btn-ghost">Save</button>
+          <select name="role" class="input w-24 py-1">{% for r in roles %}<option value="{{ r.value }}" {% if r==m.role %}selected{% endif %}>{{ r.value }}</option>{% endfor %}</select>
+          <label class="text-xs flex items-center gap-1"><input type="checkbox" class="input" name="active" value="true" {% if m.is_active %}checked{% endif %}>active</label>
+          <button class="btn" data-size="sm" data-variant="outline">Save</button>
           {% else %}<span class="text-xs text-mute">{{ m.role.value }}</span>{% endif %}
         </form>
       </li>
@@ -72,11 +72,11 @@
     {% if user.can_approve() %}
     <form method="post" action="/team" class="form space-y-2">
       <div class="font-medium text-sm">Add a teammate</div>
-      <input type="text" name="name" placeholder="Name" required>
-      <input type="email" name="email" placeholder="Email" required>
-      <input type="password" name="password" placeholder="Temporary password (8+)" minlength="8" required>
-      <select name="role"><option value="editor">Editor — writes and schedules</option><option value="viewer">Viewer — read only</option><option value="owner">Owner — approves, manages team</option></select>
-      <button class="btn btn-primary btn-sm">Add</button>
+      <input type="text" class="input" name="name" placeholder="Name" required>
+      <input type="email" class="input" name="email" placeholder="Email" required>
+      <input type="password" class="input" name="password" placeholder="Temporary password (8+)" minlength="8" required>
+      <select class="select" name="role"><option value="editor">Editor — writes and schedules</option><option value="viewer">Viewer — read only</option><option value="owner">Owner — approves, manages team</option></select>
+      <button class="btn" data-size="sm">Add</button>
     </form>
     {% endif %}
   </section>
@@ -84,7 +84,7 @@
   <section class="card p-6">
     <h2 class="font-semibold mb-1">Danger zone</h2>
     <p class="text-sm text-mute mb-3">Deletes the brand with its posts, accounts, contacts and links.</p>
-    <form method="post" action="/settings/brand/delete" onsubmit="return confirm('Delete {{ b.name }} and everything in it? This cannot be undone.')"><button class="btn btn-danger btn-sm">Delete brand</button></form>
+    <form method="post" action="/settings/brand/delete" onsubmit="return confirm('Delete {{ b.name }} and everything in it? This cannot be undone.')"><button class="btn danger" data-variant="outline" data-size="sm">Delete brand</button></form>
   </section>
   {% endif %}
 </div>

@@ -3,9 +3,9 @@
 {% block content %}
 <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
   <div class="flex items-center gap-3">
-    <a href="/calendar?month={{ prev_m }}" class="btn btn-ghost btn-sm" aria-label="Previous month">‹</a>
+    <a href="/calendar?month={{ prev_m }}" class="btn" data-variant="outline" data-size="sm" aria-label="Previous month">‹</a>
     <h1 class="text-2xl font-semibold tracking-tight w-48 text-center">{{ first.strftime('%B %Y') }}</h1>
-    <a href="/calendar?month={{ next_m }}" class="btn btn-ghost btn-sm" aria-label="Next month">›</a>
+    <a href="/calendar?month={{ next_m }}" class="btn" data-variant="outline" data-size="sm" aria-label="Next month">›</a>
     <a href="/calendar" class="text-sm text-cobalt ml-2">Today</a>
   </div>
   <div class="text-xs text-mute">Drag a post to another day to reschedule. Times are {{ brand.timezone }}.</div>

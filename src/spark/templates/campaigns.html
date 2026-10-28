@@ -15,7 +15,7 @@
           <div class="text-xs text-mute mt-1">{% if c.starts_on %}{{ c.starts_on|localtime(brand.timezone, '%b %d') }}{% endif %}{% if c.ends_on %} – {{ c.ends_on|localtime(brand.timezone, '%b %d, %Y') }}{% endif %}{% if c.utm_campaign %} · utm_campaign={{ c.utm_campaign }}{% endif %}</div>
         </div>
       </div>
-      {% if user.can_edit() %}<form method="post" action="/campaigns/{{ c.id }}/delete" onsubmit="return confirm('Delete campaign? Posts are kept.')"><button class="btn btn-sm btn-danger">Delete</button></form>{% endif %}
+      {% if user.can_edit() %}<form method="post" action="/campaigns/{{ c.id }}/delete" onsubmit="return confirm('Delete campaign? Posts are kept.')"><button class="btn danger" data-size="sm" data-variant="outline">Delete</button></form>{% endif %}
     </div>
     {% set k = counts[c.id] %}
     <div class="mt-4 flex flex-wrap gap-4 text-sm num">
@@ -35,26 +35,26 @@
 {% if user.can_edit() %}
 <form method="post" action="/campaigns" class="form card p-5 space-y-4 self-start" x-data="{ai:false}">
   <h2 class="font-semibold">New campaign</h2>
-  <div><label>Name</label><input type="text" name="name" required></div>
-  <div><label>Goal</label><textarea name="goal" rows="3" placeholder="e.g. Get 200 signups for the June webinar on pricing strategy"></textarea></div>
+  <div class="field"><label>Name</label><input type="text" class="input" name="name" required></div>
+  <div class="field"><label>Goal</label><textarea class="textarea" name="goal" rows="3" placeholder="e.g. Get 200 signups for the June webinar on pricing strategy"></textarea></div>
   <div class="grid grid-cols-2 gap-3">
-    <div><label>Starts</label><input type="date" name="starts_on"></div>
-    <div><label>Ends</label><input type="date" name="ends_on"></div>
+    <div class="field"><label>Starts</label><input type="date" class="input" name="starts_on"></div>
+    <div class="field"><label>Ends</label><input type="date" class="input" name="ends_on"></div>
   </div>
   <div class="grid grid-cols-2 gap-3">
-    <div><label>utm_campaign</label><input type="text" name="utm_campaign" placeholder="june-webinar"></div>
-    <div><label>Colour</label><input type="color" name="color" value="#6366f1" class="h-10 w-full p-1"></div>
+    <div class="field"><label>utm_campaign</label><input type="text" class="input" name="utm_campaign" placeholder="june-webinar"></div>
+    <div class="field"><label>Colour</label><input type="color" name="color" value="#6366f1" class="h-10 w-full p-1"></div>
   </div>
   {% if ai_enabled %}
   <label class="flex items-start gap-2 text-sm font-normal"><input type="checkbox" name="ai_plan" value="1" x-model="ai" class="mt-0.5"><span>Draft the posts with AI<span class="block text-xs text-mute">Creates dated draft posts across the range; you review before anything is scheduled.</span></span></label>
   <div x-show="ai" x-cloak class="space-y-3">
-    <div><label>Accounts</label>
-      {% for a in accounts %}<label class="flex items-center gap-2 text-sm font-normal"><input type="checkbox" name="account_ids" value="{{ a.id }}" checked>{{ a.handle }} <span class="text-mute">· {{ a.platform }}</span></label>{% endfor %}
+    <div class="field"><label>Accounts</label>
+      {% for a in accounts %}<label class="flex items-center gap-2 text-sm font-normal"><input type="checkbox" class="input" name="account_ids" value="{{ a.id }}" checked>{{ a.handle }} <span class="text-mute">· {{ a.platform }}</span></label>{% endfor %}
     </div>
-    <div class="max-w-[8rem]"><label>Posts per week</label><input type="number" name="per_week" value="3" min="1" max="14"></div>
+    <div class="max-w-[8rem]"><label>Posts per week</label><input type="number" class="input" name="per_week" value="3" min="1" max="14"></div>
   </div>
   {% endif %}
-  <button class="btn btn-amber">Create campaign</button>
+  <button class="btn">Create campaign</button>
 </form>
 {% endif %}
 </div>

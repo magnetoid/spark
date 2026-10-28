@@ -3,28 +3,28 @@
 {% block content %}
 <div x-data='{html: {{ c.body_html|tojson }}, subject: {{ c.subject|tojson }}, preheader: {{ (c.preheader or "")|tojson }}, brief:"", busy:false, err:""}' class="grid lg:grid-cols-5 gap-6">
 <form method="post" class="form lg:col-span-3 space-y-4">
-  <div class="flex items-center justify-between"><h1 class="text-2xl font-semibold tracking-tight">{{ c.name }}</h1><span class="pill st-{{ {'draft':'draft','scheduled':'scheduled','sending':'publishing','sent':'published'}[c.status] }}">{{ c.status }}</span></div>
+  <div class="flex items-center justify-between"><h1 class="text-2xl font-semibold tracking-tight">{{ c.name }}</h1><span class="badge st-{{ {'draft':'draft','scheduled':'scheduled','sending':'publishing','sent':'published'}[c.status] }}">{{ c.status }}</span></div>
   {% set locked = c.status in ('sending','sent') %}
   <div class="grid sm:grid-cols-2 gap-4">
-    <div><label>Campaign name</label><input type="text" name="name" value="{{ c.name }}" {{ 'readonly' if locked }}></div>
-    <div><label>Send to</label><select name="list_id" {{ 'disabled' if locked }}><option value="">Pick a list</option>{% for l in lists %}<option value="{{ l.id }}" {% if c.list_id==l.id %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select><p class="hint num">{{ recipients }} subscribed recipient{{ 's' if recipients != 1 }}</p></div>
+    <div class="field"><label>Campaign name</label><input type="text" class="input" name="name" value="{{ c.name }}" {{ 'readonly' if locked }}></div>
+    <div class="field"><label>Send to</label><select class="select" name="list_id" {{ 'disabled' if locked }}><option value="">Pick a list</option>{% for l in lists %}<option value="{{ l.id }}" {% if c.list_id==l.id %}selected{% endif %}>{{ l.name }}</option>{% endfor %}</select><p class="hint num">{{ recipients }} subscribed recipient{{ 's' if recipients != 1 }}</p></div>
   </div>
-  <div><label>Subject</label><input type="text" name="subject" x-model="subject" {{ 'readonly' if locked }}></div>
-  <div><label>Preview text</label><input type="text" name="preheader" x-model="preheader" {{ 'readonly' if locked }}><p class="hint">Shown after the subject in most inboxes.</p></div>
-  <div><label>Body (HTML)</label><textarea name="body_html" rows="16" x-model="html" class="font-mono text-xs" {{ 'readonly' if locked }}></textarea>
+  <div class="field"><label>Subject</label><input type="text" class="input" name="subject" x-model="subject" {{ 'readonly' if locked }}></div>
+  <div class="field"><label>Preview text</label><input type="text" class="input" name="preheader" x-model="preheader" {{ 'readonly' if locked }}><p class="hint">Shown after the subject in most inboxes.</p></div>
+  <div class="field"><label>Body (HTML)</label><textarea name="body_html" rows="16" x-model="html" class="textarea font-mono text-xs" {{ 'readonly' if locked }}></textarea>
     <p class="hint">Placeholders: <code>{{ '{{first_name}}' }}</code>, <code>{{ '{{last_name}}' }}</code>, <code>{{ '{{brand}}' }}</code>. Links are click-tracked and an unsubscribe footer is added automatically.</p></div>
   {% if not locked and user.can_edit() %}
   <div class="card p-4 space-y-3" x-data="{mode:'save'}">
     <div class="flex flex-wrap gap-3 text-sm">
-      <label class="flex items-center gap-1.5"><input type="radio" name="action" value="save" x-model="mode" checked> Save</label>
-      <label class="flex items-center gap-1.5"><input type="radio" name="action" value="schedule" x-model="mode"> Schedule</label>
-      <label class="flex items-center gap-1.5"><input type="radio" name="action" value="send" x-model="mode"> Send now</label>
-      {% if c.status=='scheduled' %}<label class="flex items-center gap-1.5"><input type="radio" name="action" value="unschedule" x-model="mode"> Unschedule</label>{% endif %}
+      <label class="flex items-center gap-1.5"><input type="radio" class="input" name="action" value="save" x-model="mode" checked> Save</label>
+      <label class="flex items-center gap-1.5"><input type="radio" class="input" name="action" value="schedule" x-model="mode"> Schedule</label>
+      <label class="flex items-center gap-1.5"><input type="radio" class="input" name="action" value="send" x-model="mode"> Send now</label>
+      {% if c.status=='scheduled' %}<label class="flex items-center gap-1.5"><input type="radio" class="input" name="action" value="unschedule" x-model="mode"> Unschedule</label>{% endif %}
     </div>
-    <div x-show="mode==='schedule'" x-cloak class="max-w-xs"><label>When ({{ brand.timezone }})</label><input type="datetime-local" name="scheduled_at" value="{{ c.scheduled_at|localtime(brand.timezone, '%Y-%m-%dT%H:%M') if c.scheduled_at else '' }}"></div>
+    <div x-show="mode==='schedule'" x-cloak class="max-w-xs"><label>When ({{ brand.timezone }})</label><input type="datetime-local" class="input" name="scheduled_at" value="{{ c.scheduled_at|localtime(brand.timezone, '%Y-%m-%dT%H:%M') if c.scheduled_at else '' }}"></div>
     <div class="flex items-center gap-3">
-      <button class="btn btn-amber" x-text="mode==='send' ? 'Send to {{ recipients }} now' : mode==='schedule' ? 'Schedule' : mode==='unschedule' ? 'Unschedule' : 'Save'" @click="if(mode==='send' && !confirm('Send this email to {{ recipients }} people now?')) $event.preventDefault()"></button>
-      <button class="btn btn-ghost" formaction="/email/{{ c.id }}/test" formnovalidate>Send me a test</button>
+      <button class="btn" x-text="mode==='send' ? 'Send to {{ recipients }} now' : mode==='schedule' ? 'Schedule' : mode==='unschedule' ? 'Unschedule' : 'Save'" @click="if(mode==='send' && !confirm('Send this email to {{ recipients }} people now?')) $event.preventDefault()"></button>
+      <button class="btn" data-variant="outline" formaction="/email/{{ c.id }}/test" formnovalidate>Send me a test</button>
     </div>
   </div>
   {% endif %}
@@ -33,8 +33,8 @@
   {% if ai_enabled and not locked %}
   <div class="card p-4 space-y-2">
     <h2 class="font-semibold text-sm">Draft with AI</h2>
-    <textarea rows="3" class="text-sm" x-model="brief" placeholder="What is this email about, who gets it, what should they do?"></textarea>
-    <button type="button" class="btn btn-sm btn-primary" :disabled="busy || !brief" @click="busy=true; err=''; fetch('/email/{{ c.id }}/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({brief})}).then(async r=>{const d=await r.json(); if(!r.ok) throw new Error(d.detail); subject=d.subject; preheader=d.preheader; html=d.body_html;}).catch(e=>err=e.message).finally(()=>busy=false)">Write draft</button>
+    <textarea rows="3" class="textarea text-sm" x-model="brief" placeholder="What is this email about, who gets it, what should they do?"></textarea>
+    <button type="button" class="btn" data-size="sm" :disabled="busy || !brief" @click="busy=true; err=''; fetch('/email/{{ c.id }}/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({brief})}).then(async r=>{const d=await r.json(); if(!r.ok) throw new Error(d.detail); subject=d.subject; preheader=d.preheader; html=d.body_html;}).catch(e=>err=e.message).finally(()=>busy=false)">Write draft</button>
     <span class="text-xs text-mute" x-show="busy">Writing…</span><span class="text-xs text-brick" x-text="err"></span>
   </div>
   {% endif %}

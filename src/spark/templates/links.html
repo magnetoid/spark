@@ -6,31 +6,31 @@
 <div class="grid lg:grid-cols-3 gap-8">
 <div class="lg:col-span-2 card">
   {% if links %}
-  <table class="tbl">
+  <div class="table-container"><table class="table">
     <thead><tr><th>Short link</th><th>Destination</th><th class="num">Clicks</th><th></th></tr></thead>
     <tbody>{% for l in links %}
     <tr>
       <td class="whitespace-nowrap"><div class="font-medium">{{ l.title or l.code }}</div><button type="button" class="text-xs text-cobalt" onclick="navigator.clipboard.writeText('{{ short_url(l) }}'); this.textContent='Copied'">{{ short_url(l) }}</button></td>
       <td class="max-w-xs truncate text-mute text-xs" title="{{ l.destination }}">{{ l.destination }}</td>
       <td class="num">{{ l.clicks }}</td>
-      <td class="text-right">{% if user.can_edit() %}<form method="post" action="/links/{{ l.id }}/delete" onsubmit="return confirm('Delete this link? It will stop redirecting.')"><button class="btn btn-sm btn-danger">Delete</button></form>{% endif %}</td>
+      <td class="text-right">{% if user.can_edit() %}<form method="post" action="/links/{{ l.id }}/delete" onsubmit="return confirm('Delete this link? It will stop redirecting.')"><button class="btn danger" data-size="sm" data-variant="outline">Delete</button></form>{% endif %}</td>
     </tr>{% endfor %}</tbody>
-  </table>
+  </table></div>
   {% else %}<div class="p-10 text-center text-sm text-mute">No links yet.</div>{% endif %}
 </div>
 {% if user.can_edit() %}
 <form method="post" action="/links" class="form card p-5 space-y-3 self-start">
   <h2 class="font-semibold">New short link</h2>
-  <div><label>Destination</label><input type="text" name="destination" placeholder="https://example.com/pricing" required></div>
-  <div><label>Title</label><input type="text" name="title" placeholder="Optional label"></div>
+  <div class="field"><label>Destination</label><input type="text" class="input" name="destination" placeholder="https://example.com/pricing" required></div>
+  <div class="field"><label>Title</label><input type="text" class="input" name="title" placeholder="Optional label"></div>
   <div class="grid grid-cols-2 gap-3">
-    <div><label>utm_source</label><input type="text" name="utm_source" placeholder="linkedin"></div>
-    <div><label>utm_medium</label><input type="text" name="utm_medium" value="social"></div>
-    <div><label>utm_campaign</label><input type="text" name="utm_campaign" value="{{ brand.utm_defaults.get('campaign','') }}"></div>
-    <div><label>utm_content</label><input type="text" name="utm_content"></div>
+    <div class="field"><label>utm_source</label><input type="text" class="input" name="utm_source" placeholder="linkedin"></div>
+    <div class="field"><label>utm_medium</label><input type="text" class="input" name="utm_medium" value="social"></div>
+    <div class="field"><label>utm_campaign</label><input type="text" class="input" name="utm_campaign" value="{{ brand.utm_defaults.get('campaign','') }}"></div>
+    <div class="field"><label>utm_content</label><input type="text" class="input" name="utm_content"></div>
   </div>
-  <div><label>Campaign</label><select name="campaign_id"><option value="">None</option>{% for c in campaigns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
-  <button class="btn btn-amber">Create link</button>
+  <div class="field"><label>Campaign</label><select class="select" name="campaign_id"><option value="">None</option>{% for c in campaigns %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div>
+  <button class="btn">Create link</button>
 </form>
 {% endif %}
 </div>

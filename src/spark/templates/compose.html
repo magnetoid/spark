@@ -6,11 +6,11 @@
 <form method="post" class="lg:col-span-3 form space-y-5" @submit="syncHidden()">
   <div class="flex items-center justify-between">
     <h1 class="text-2xl font-semibold tracking-tight">{{ 'Edit post' if post else 'Compose' }}</h1>
-    {% if post %}<span class="pill st-{{ post.status.value }}">{{ post.status.value.replace('_',' ') }}</span>{% endif %}
+    {% if post %}<span class="badge st-{{ post.status.value }}">{{ post.status.value.replace('_',' ') }}</span>{% endif %}
   </div>
 
   <div>
-    <textarea name="content" x-model="content" rows="7" class="text-base" placeholder="What do you want to say? Platform versions can differ — edit them on the right." @input="validate()"></textarea>
+    <textarea name="content" x-model="content" rows="7" class="textarea text-base min-h-40" placeholder="What do you want to say? Platform versions can differ — edit them on the right." @input="validate()"></textarea>
     <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-mute">
       <span class="num"><span x-text="content.length"></span> characters</span>
       <template x-if="ai">
@@ -25,9 +25,9 @@
   </div>
 
   <div class="grid sm:grid-cols-2 gap-4">
-    <div><label>Link</label><input type="url" name="link" x-model="link" placeholder="https://" @change="validate()"><p class="hint">{{ 'Shortened and UTM-tagged automatically.' if brand.auto_shorten_links else 'Attached as link/article where the platform supports it.' }}</p></div>
-    <div><label>Campaign</label>
-      <select name="campaign_id"><option value="">None</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if post and post.campaign_id==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select>
+    <div class="field"><label>Link</label><input type="url" class="input" name="link" x-model="link" placeholder="https://" @change="validate()"><p class="hint">{{ 'Shortened and UTM-tagged automatically.' if brand.auto_shorten_links else 'Attached as link/article where the platform supports it.' }}</p></div>
+    <div class="field"><label>Campaign</label>
+      <select class="select" name="campaign_id"><option value="">None</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if post and post.campaign_id==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select>
     </div>
   </div>
 
@@ -38,7 +38,7 @@
         <div class="relative w-20 h-20 rounded-md overflow-hidden border border-line bg-paper">
           <template x-if="!m.video"><img :src="m.url" class="w-full h-full object-cover" alt=""></template>
           <template x-if="m.video"><div class="w-full h-full grid place-items-center text-xs text-mute">video</div></template>
-          <button type="button" class="absolute top-0.5 right-0.5 bg-white/90 rounded px-1 text-xs" @click="removeMedia(m.id)" aria-label="Remove">×</button>
+          <button type="button" class="absolute top-0.5 right-0.5 bg-card/90 rounded px-1 text-xs" @click="removeMedia(m.id)" aria-label="Remove">×</button>
         </div>
       </template>
       <button type="button" class="w-20 h-20 rounded-md border border-dashed border-line text-sm text-mute hover:border-amber" @click="picker=true; $nextTick(()=>htmx.ajax('GET','/media',{target:'#picker-body'}))">+ Add</button>
@@ -46,7 +46,7 @@
     <input type="hidden" name="media_ids" :value="mediaIds.join(',')">
   </div>
 
-  <div><label>Internal notes</label><input type="text" name="notes" value="{{ post.notes if post and post.notes else '' }}" placeholder="Only your team sees this"></div>
+  <div class="field"><label>Internal notes</label><input type="text" class="input" name="notes" value="{{ post.notes if post and post.notes else '' }}" placeholder="Only your team sees this"></div>
 
   <template x-for="id in selected" :key="'h'+id"><input type="hidden" name="account_ids" :value="id"></template>
   <template x-for="id in selected" :key="'o'+id"><input type="hidden" :name="'override_'+id" :value="overrides[id] || ''"></template>
@@ -54,16 +54,16 @@
   <div class="card p-4 space-y-3" x-data="{mode:'queue'}">
     <div class="flex flex-wrap gap-2 text-sm">
       {% for key, label in [('queue','Next free slot'),('schedule','Pick a time'),('now','Publish now'),('draft','Save draft')] %}
-      <label class="flex items-center gap-1.5"><input type="radio" name="action" value="{{ key }}" x-model="mode" {% if key=='queue' %}checked{% endif %}> {{ label }}</label>
+      <label class="flex items-center gap-1.5"><input type="radio" class="input" name="action" value="{{ key }}" x-model="mode" {% if key=='queue' %}checked{% endif %}> {{ label }}</label>
       {% endfor %}
     </div>
     <div x-show="mode==='schedule'" x-cloak class="max-w-xs">
       <label>When ({{ brand.timezone }})</label>
-      <input type="datetime-local" name="scheduled_at" value="{{ prefill_at or (post.scheduled_at|localtime(brand.timezone, '%Y-%m-%dT%H:%M') if post and post.scheduled_at else '') }}">
+      <input type="datetime-local" class="input" name="scheduled_at" value="{{ prefill_at or (post.scheduled_at|localtime(brand.timezone, '%Y-%m-%dT%H:%M') if post and post.scheduled_at else '') }}">
     </div>
     {% if brand.require_approval and not user.can_approve() %}<p class="text-xs text-mute">This brand requires approval: an owner will review before it goes out.</p>{% endif %}
     <div class="flex items-center gap-3 pt-1">
-      <button class="btn btn-amber" :disabled="hasProblems && mode!=='draft'" x-text="mode==='draft' ? 'Save draft' : mode==='now' ? 'Publish now' : 'Schedule'"></button>
+      <button class="btn" :disabled="hasProblems && mode!=='draft'" x-text="mode==='draft' ? 'Save draft' : mode==='now' ? 'Publish now' : 'Schedule'"></button>
       <span class="text-xs text-brick" x-show="hasProblems && mode!=='draft'" x-cloak>Fix the issues on the right first.</span>
       {% if post %}<a href="/posts" class="text-sm text-mute hover:text-ink ml-auto">Cancel</a>{% endif %}
     </div>
@@ -93,7 +93,7 @@
           <button type="button" class="text-xs text-cobalt" @click="editing = editing===id ? null : id" x-text="(overrides[id] ? 'Custom text' : 'Same as main text') + (editing===id ? ' — close' : ' — edit')"></button>
           <template x-if="ai"><button type="button" class="text-xs text-cobalt ml-3" @click="aiAdapt(id)" :disabled="busy">Adapt with AI</button></template>
           <div x-show="editing===id" x-cloak class="mt-2 space-y-1">
-            <textarea rows="4" class="text-sm" :value="overrides[id] || ''" @input="overrides[id]=$event.target.value; validate()" placeholder="Leave empty to use the main text"></textarea>
+            <textarea rows="4" class="textarea text-sm" :value="overrides[id] || ''" @input="overrides[id]=$event.target.value; validate()" placeholder="Leave empty to use the main text"></textarea>
             <button type="button" class="text-xs text-mute underline" @click="overrides[id]=''; validate()">Reset to main text</button>
           </div>
           <ul class="mt-1 text-xs text-brick space-y-0.5"><template x-for="p in (problems[id]||[])"><li x-text="p"></li></template></ul>
@@ -109,10 +109,10 @@
   {% if ai_enabled %}
   <div class="card p-4 space-y-3" x-data="{brief:'', url:''}">
     <h2 class="font-semibold text-sm">Write with AI</h2>
-    <textarea rows="3" class="text-sm" x-model="brief" placeholder="Brief: what's the post about, what should people do?"></textarea>
+    <textarea rows="3" class="textarea text-sm" x-model="brief" placeholder="Brief: what's the post about, what should people do?"></textarea>
     <input type="url" class="text-sm" x-model="url" placeholder="Optional: URL to summarize">
     <div class="flex items-center gap-2">
-      <button type="button" class="btn btn-sm btn-primary" :disabled="busy || (!brief && !url)" @click="aiGenerate(brief, url)">Generate for selected platforms</button>
+      <button type="button" class="btn" data-size="sm" :disabled="busy || (!brief && !url)" @click="aiGenerate(brief, url)">Generate for selected platforms</button>
       <span class="text-xs text-mute" x-show="busy">Thinking…</span>
     </div>
     <p class="text-xs text-mute">Uses {{ brand.name }}'s voice from Brand &amp; team. Fills the main text and a custom version per platform.</p>
@@ -123,16 +123,16 @@
 
 <!-- media picker -->
 <div x-show="picker" x-cloak class="fixed inset-0 z-40 bg-ink/40 flex items-center justify-center p-4" @click.self="picker=false" @keydown.escape.window="picker=false">
-  <div class="bg-white rounded-lg w-full max-w-2xl max-h-[85vh] flex flex-col">
+  <div class="bg-card rounded-lg w-full max-w-2xl max-h-[85vh] flex flex-col">
     <div class="px-5 py-3 border-b border-line flex items-center justify-between">
       <h3 class="font-semibold">Media library</h3>
       <form hx-post="/media" hx-encoding="multipart/form-data" hx-target="#picker-body" hx-swap="afterbegin" class="flex items-center gap-2">
         <input type="file" name="files" multiple accept="image/*,video/mp4,video/quicktime" class="text-sm" required>
-        <button class="btn btn-sm btn-primary">Upload</button>
+        <button class="btn" data-size="sm">Upload</button>
       </form>
     </div>
     <div id="picker-body" class="p-5 overflow-auto grid grid-cols-3 sm:grid-cols-5 gap-3"></div>
-    <div class="px-5 py-3 border-t border-line text-right"><button type="button" class="btn btn-ghost" @click="picker=false">Done</button></div>
+    <div class="px-5 py-3 border-t border-line text-right"><button type="button" class="btn" data-variant="outline" @click="picker=false">Done</button></div>
   </div>
 </div>
 </div>

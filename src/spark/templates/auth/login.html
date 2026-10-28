@@ -6,8 +6,8 @@
 </div>
 <form method="post" class="form space-y-4">
   {% if error %}<div class="rounded-md bg-brick-100 text-brick px-3 py-2 text-sm">{{ error }}</div>{% endif %}
-  <div><label>Email</label><input type="email" name="email" value="{{ email or '' }}" required autofocus></div>
-  <div><label>Password</label><input type="password" name="password" required></div>
-  <button class="btn btn-primary w-full justify-center">Sign in</button>
+  <div class="field"><label>Email</label><input type="email" class="input" name="email" value="{{ email or '' }}" required autofocus></div>
+  <div class="field"><label>Password</label><input type="password" class="input" name="password" required></div>
+  <button class="btn w-full justify-center">Sign in</button>
 </form>
 {% endblock %}

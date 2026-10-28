@@ -5,14 +5,14 @@
 <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
   <h1 class="text-2xl font-semibold tracking-tight">Analytics</h1>
   <div class="flex items-center gap-2 text-sm">
-    {% for d in (7, 30, 90) %}<a href="/analytics?days={{ d }}" class="px-3 py-1 rounded-md {{ 'bg-ink text-white' if days==d else 'hover:bg-white' }}">{{ d }} days</a>{% endfor %}
-    {% if user.can_edit() %}<form method="post" action="/analytics/refresh" class="ml-2"><button class="btn btn-ghost btn-sm">Refresh metrics</button></form>{% endif %}
+    {% for d in (7, 30, 90) %}<a href="/analytics?days={{ d }}" class="px-3 py-1 rounded-md {{ 'bg-ink text-white' if days==d else 'hover:bg-card' }}">{{ d }} days</a>{% endfor %}
+    {% if user.can_edit() %}<form method="post" action="/analytics/refresh" class="ml-2"><button class="btn" data-variant="outline" data-size="sm">Refresh metrics</button></form>{% endif %}
   </div>
 </div>
 
-<div class="grid grid-cols-2 lg:grid-cols-5 gap-px bg-line border border-line rounded-lg overflow-hidden mb-6">
+<div class="stat-grid grid-cols-2 lg:grid-cols-5 mb-6">
   {% for label, value in [('Impressions', data.totals.impressions|compact), ('Engagements', data.engagements|compact), ('Engagement rate', (data.engagement_rate|round(1)|string) + '%'), ('Link clicks', data.link_clicks|compact), ('Published', data.published)] %}
-  <div class="bg-white p-4"><div class="text-sm text-mute">{{ label }}</div><div class="text-2xl font-semibold num mt-1">{{ value }}</div></div>
+  <div><div class="text-sm text-mute">{{ label }}</div><div class="text-2xl font-semibold num mt-1">{{ value }}</div></div>
   {% endfor %}
 </div>
 
@@ -25,7 +25,7 @@
   <div class="card lg:col-span-2">
     <div class="px-5 py-3 border-b border-line font-semibold text-sm">Top posts</div>
     {% if data.top %}
-    <table class="tbl">
+    <div class="table-container"><table class="table">
       <thead><tr><th>Post</th><th>Account</th><th class="num">Views</th><th class="num">Likes</th><th class="num">Comments</th><th class="num">Shares</th><th class="num">Clicks</th></tr></thead>
       <tbody>{% for r in data.top %}
       <tr>
@@ -33,7 +33,7 @@
         <td class="text-mute whitespace-nowrap">{{ r.account.handle }}</td>
         <td class="num">{{ r.metric.impressions|compact }}</td><td class="num">{{ r.metric.likes|compact }}</td><td class="num">{{ r.metric.comments|compact }}</td><td class="num">{{ r.metric.shares|compact }}</td><td class="num">{{ r.metric.clicks|compact }}</td>
       </tr>{% endfor %}</tbody>
-    </table>
+    </table></div>
     {% else %}<div class="px-5 py-8 text-sm text-mute">No metrics yet. They're pulled every 6 hours for posts published in the last 30 days.</div>{% endif %}
   </div>
   <div class="space-y-6">

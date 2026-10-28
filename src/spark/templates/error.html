@@ -1,4 +1,4 @@
 {% extends "base.html" %}
 {% block title %}{{ code }} · Spark{% endblock %}
-{% block content %}<h1 class="text-2xl font-semibold">{{ code }}</h1><p class="text-mute mt-2">{{ message }}</p><a href="/" class="btn btn-ghost mt-6">Back to overview</a>{% endblock %}
-{% block auth %}<h1 class="text-2xl font-semibold">{{ code }}</h1><p class="text-mute mt-2">{{ message }}</p><a href="/login" class="btn btn-ghost mt-6">Sign in</a>{% endblock %}
+{% block content %}<h1 class="text-2xl font-semibold">{{ code }}</h1><p class="text-mute mt-2">{{ message }}</p><a href="/" class="btn mt-6" data-variant="outline">Back to overview</a>{% endblock %}
+{% block auth %}<h1 class="text-2xl font-semibold">{{ code }}</h1><p class="text-mute mt-2">{{ message }}</p><a href="/login" class="btn mt-6" data-variant="outline">Sign in</a>{% endblock %}

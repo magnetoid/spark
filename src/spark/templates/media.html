@@ -6,7 +6,7 @@
   {% if user.can_edit() %}
   <form method="post" action="/media" enctype="multipart/form-data" class="flex items-center gap-2">
     <input type="file" name="files" multiple accept="image/*,video/mp4,video/quicktime" class="text-sm" required>
-    <button class="btn btn-primary">Upload</button>
+    <button class="btn">Upload</button>
   </form>
   {% endif %}
 </div>
@@ -18,7 +18,7 @@
       <div class="truncate font-medium" title="{{ m.filename }}">{{ m.filename }}</div>
       <div class="text-mute">{{ (m.size/1024)|round|int }} KB · {{ m.content_type }}</div>
       {% if user.can_edit() %}
-      <form method="post" action="/media/{{ m.id }}" class="form mt-2 flex gap-1"><input type="text" name="alt_text" value="{{ m.alt_text or '' }}" placeholder="Alt text" class="!py-1"><button class="btn btn-sm btn-ghost">Save</button></form>
+      <form method="post" action="/media/{{ m.id }}" class="form mt-2 flex gap-1"><input type="text" name="alt_text" value="{{ m.alt_text or '' }}" placeholder="Alt text" class="!py-1"><button class="btn" data-size="sm" data-variant="outline">Save</button></form>
       <form method="post" action="/media/{{ m.id }}/delete" class="mt-1" onsubmit="return confirm('Delete {{ m.filename }}?')"><button class="text-brick hover:underline">Delete</button></form>
       {% endif %}
     </div>

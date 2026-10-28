@@ -7,13 +7,13 @@
 </div>
 
 {% if force_dry_run %}
-<div class="mb-6 rounded-md bg-amber-100 text-amber-600 px-4 py-3 text-sm">Dry-run mode is on (<code>SPARK_FORCE_DRY_RUN</code>). Every platform connects with a fake account and posts are recorded locally instead of published.</div>
+<div class="alert mb-6">Dry-run mode is on (<code>SPARK_FORCE_DRY_RUN</code>). Every platform connects with a fake account and posts are recorded locally instead of published.</div>
 {% endif %}
 
 <section class="card mb-8">
   <div class="px-5 py-3 border-b border-line font-semibold">Connected</div>
   {% if accounts %}
-  <table class="tbl">
+  <div class="table-container"><table class="table">
     <thead><tr><th>Account</th><th>Platform</th><th>Via</th><th class="num">Followers</th><th>Status</th><th></th></tr></thead>
     <tbody>
     {% for a in accounts %}
@@ -26,22 +26,22 @@
         <td class="text-mute">{{ 'Zernio' if a.provider=='zernio' else 'Direct' }}</td>
         <td class="num">{{ a.followers|compact if a.followers is not none else '—' }}</td>
         <td>
-          {% if not a.is_active %}<span class="pill st-draft">paused</span>
-          {% elif a.last_error %}<span class="pill st-failed" title="{{ a.last_error }}">needs attention</span>
-          {% else %}<span class="pill st-published">active</span>{% endif %}
+          {% if not a.is_active %}<span class="badge st-draft">paused</span>
+          {% elif a.last_error %}<span class="badge st-failed" title="{{ a.last_error }}">needs attention</span>
+          {% else %}<span class="badge st-published">active</span>{% endif %}
         </td>
         <td class="text-right whitespace-nowrap">
           {% if user.can_edit() %}
-          <form method="post" action="/accounts/{{ a.id }}/toggle" class="inline"><button class="btn btn-sm btn-ghost">{{ 'Resume' if not a.is_active else 'Pause' }}</button></form>
-          {% if a.provider=='zernio' %}<a href="/accounts/zernio/connect/{{ a.platform }}" class="btn btn-sm btn-ghost">Reconnect</a>{% endif %}
-          <form method="post" action="/accounts/{{ a.id }}/delete" class="inline" onsubmit="return confirm('Remove {{ a.handle }} from Spark?')"><button class="btn btn-sm btn-danger">Remove</button></form>
+          <form method="post" action="/accounts/{{ a.id }}/toggle" class="inline"><button class="btn" data-size="sm" data-variant="outline">{{ 'Resume' if not a.is_active else 'Pause' }}</button></form>
+          {% if a.provider=='zernio' %}<a href="/accounts/zernio/connect/{{ a.platform }}" class="btn" data-size="sm" data-variant="outline">Reconnect</a>{% endif %}
+          <form method="post" action="/accounts/{{ a.id }}/delete" class="inline" onsubmit="return confirm('Remove {{ a.handle }} from Spark?')"><button class="btn danger" data-size="sm" data-variant="outline">Remove</button></form>
           {% endif %}
         </td>
       </tr>
       {% if a.last_error %}<tr><td colspan="6" class="text-xs text-brick pt-0">{{ a.last_error }}</td></tr>{% endif %}
     {% endfor %}
     </tbody>
-  </table>
+  </table></div>
   {% else %}<div class="px-5 py-8 text-sm text-mute text-center">No accounts yet. Connect one below.</div>{% endif %}
 </section>
 
@@ -52,7 +52,7 @@
       <h2 class="font-semibold">Connect through Zernio</h2>
       <p class="text-sm text-mute">One API key, Zernio hosts the platform apps. <a class="text-cobalt" href="https://docs.zernio.com" target="_blank" rel="noopener">docs.zernio.com</a></p>
     </div>
-    {% if zernio_ready %}<form method="post" action="/accounts/zernio/import"><button class="btn btn-ghost btn-sm">Import from Zernio</button></form>{% endif %}
+    {% if zernio_ready %}<form method="post" action="/accounts/zernio/import"><button class="btn" data-variant="outline" data-size="sm">Import from Zernio</button></form>{% endif %}
   </div>
   {% if zernio_ready %}
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -76,18 +76,18 @@
       <div class="flex items-center justify-between">
         <div class="font-medium">{{ ad.label }}</div>
         {% if ad.connect_mode == 'oauth' %}
-          {% if ad.is_configured() %}<a href="/accounts/connect/{{ name }}" class="btn btn-sm btn-primary">Connect</a>
+          {% if ad.is_configured() %}<a href="/accounts/connect/{{ name }}" class="btn" data-size="sm">Connect</a>
           {% else %}<span class="text-xs text-mute" title="Set the {{ name }} client id/secret in .env">not configured</span>{% endif %}
         {% else %}
-          <button class="btn btn-sm btn-primary" @click="open = open==='{{ name }}' ? null : '{{ name }}'">Connect</button>
+          <button class="btn" data-size="sm" @click="open = open==='{{ name }}' ? null : '{{ name }}'">Connect</button>
         {% endif %}
       </div>
       {% if ad.connect_mode != 'oauth' %}
       <form method="post" action="/accounts/connect/{{ name }}" class="form mt-3 space-y-2" x-show="open==='{{ name }}'" x-cloak>
         {% for field, label in ad.credential_fields %}
-        <div><label>{{ label }}</label><input type="{{ 'password' if 'token' in field or 'password' in field else 'text' }}" name="{{ field }}" {% if 'optional' not in label|lower %}required{% endif %}></div>
+        <div class="field"><label>{{ label }}</label><input type="{{ 'password' if 'token' in field or 'password' in field else 'text' }}" name="{{ field }}" {% if 'optional' not in label|lower %}required{% endif %}></div>
         {% endfor %}
-        <button class="btn btn-sm btn-amber">Save and connect</button>
+        <button class="btn" data-size="sm">Save and connect</button>
       </form>
       {% endif %}
       {% if ad.docs_url %}<a class="text-xs text-mute hover:text-cobalt block mt-2" href="{{ ad.docs_url }}" target="_blank" rel="noopener">Developer portal</a>{% endif %}
