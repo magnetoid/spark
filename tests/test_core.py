@@ -237,3 +237,25 @@ async def test_zernio_thread_items(monkeypatch):
     items = body["platforms"][0]["platformSpecificData"]["threadItems"]
     assert [i["content"] for i in items] == ["root (1/3)", "two (2/3)", "three (3/3)"]
     assert "mediaItems" not in body
+
+
+@respx.mock
+async def test_zernio_list_accounts_all_profiles(monkeypatch):
+    from spark.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "zernio_api_key", "sk_test")
+    route = respx.get("https://zernio.com/api/v1/accounts").mock(return_value=httpx.Response(200, json={
+        "accounts": [
+            {"_id": "a1", "platform": "linkedin", "username": "Imba Marketing", "isActive": True,
+             "profileId": {"_id": "p-default", "name": "Default"}},
+            {"_id": "a2", "platform": "twitter", "username": "@imba", "isActive": True,
+             "profileId": {"_id": "p-default", "name": "Default"}},
+            {"_id": "a3", "platform": "whatsapp", "username": "+381", "isActive": True},
+        ],
+        "pagination": {"nextCursor": None},
+    }))
+    pairs = await ZernioAdapter(httpx.AsyncClient()).list_accounts(None)
+    assert "profileId" not in dict(route.calls.last.request.url.params)
+    assert [(p, a.external_id) for p, a in pairs] == [("linkedin", "a1"), ("x", "a2")]
+    assert pairs[0][1].extra["zernio_profile_name"] == "Default"
+    assert pairs[1][1].handle == "imba"

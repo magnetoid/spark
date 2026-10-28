@@ -104,7 +104,7 @@ async def zernio_callback(request: Request, db: AsyncSession = Depends(get_db),
             found = await adapter.get_account(account_id)
             pairs = [(pending["platform"], found)] if found else []
         else:
-            pairs = await adapter.list_accounts(brand.zernio_profile_id)
+            pairs = await adapter.list_accounts(None)
     except PlatformError as e:
         flash(request, f"Zernio: {e}", "error")
         return RedirectResponse("/accounts", 303)
@@ -119,11 +119,11 @@ async def zernio_callback(request: Request, db: AsyncSession = Depends(get_db),
 @router.post("/accounts/zernio/import")
 async def zernio_import(request: Request, db: AsyncSession = Depends(get_db),
                         user: User = Depends(editor), brand: Brand = Depends(require_brand)):
-    """Pull every account already in the brand's Zernio profile."""
+    """Pull every account connected in Zernio — from all profiles, since accounts
+    connected in Zernio's own UI live in the Default profile."""
     adapter = ZernioAdapter()
     try:
-        profile_id = await adapter.ensure_profile(brand)
-        pairs = await adapter.list_accounts(profile_id)
+        pairs = await adapter.list_accounts(None)
     except PlatformError as e:
         flash(request, f"Zernio: {e}", "error")
         return RedirectResponse("/accounts", 303)
@@ -131,7 +131,11 @@ async def zernio_import(request: Request, db: AsyncSession = Depends(get_db),
     for platform, acc in pairs:
         n += await _save(db, brand, platform, [acc], provider="zernio")
     await db.commit()
-    flash(request, f"Imported {n} account(s) from Zernio")
+    if n:
+        names = ", ".join(f"{acc.handle} ({platform})" for platform, acc in pairs[:6])
+        flash(request, f"Imported {n} account(s) from Zernio: {names}")
+    else:
+        flash(request, "Zernio has no connected accounts yet — connect one below or in Zernio", "error")
     return RedirectResponse("/accounts", 303)
 
 

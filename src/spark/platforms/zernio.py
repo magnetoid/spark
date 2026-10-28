@@ -164,20 +164,33 @@ class ZernioAdapter(PlatformAdapter):
             },
         )
 
-    async def list_accounts(self, profile_id: str) -> list[tuple[str, ConnectedAccount]]:
-        """All accounts in a Zernio profile as (spark_platform, account) pairs."""
+    async def list_accounts(self, profile_id: str | None = None) -> list[tuple[str, ConnectedAccount]]:
+        """Accounts as (spark_platform, account) pairs — one Zernio profile, or every
+        profile when `profile_id` is None (accounts connected in Zernio's own UI sit in
+        the Default profile, not in the per-brand one Spark creates)."""
         out = []
-        params: dict = {"profileId": profile_id, "limit": 200, "excludeHidden": "true"}
+        base: dict = {"limit": 200, "excludeHidden": "true", "includeOverLimit": "true"}
+        if profile_id:
+            base["profileId"] = profile_id
+        params = dict(base)
         while True:
             data = (await self._req("GET", "/accounts", params=params)).json()
             for a in data.get("accounts", []):
                 platform = from_zernio(a.get("platform", ""))
-                if platform in ZERNIO_PLATFORMS:
-                    out.append((platform, self._to_connected(a)))
+                if platform not in ZERNIO_PLATFORMS:
+                    continue
+                acc = self._to_connected(a)
+                prof = a.get("profileId")
+                if isinstance(prof, dict):
+                    acc.extra["zernio_profile_id"] = prof.get("_id")
+                    acc.extra["zernio_profile_name"] = prof.get("name")
+                elif prof:
+                    acc.extra["zernio_profile_id"] = prof
+                out.append((platform, acc))
             cursor = (data.get("pagination") or {}).get("nextCursor")
             if not cursor:
                 return out
-            params = {"profileId": profile_id, "limit": 200, "cursor": cursor}
+            params = {**base, "cursor": cursor}
 
     async def get_account(self, account_id: str) -> ConnectedAccount | None:
         data = (await self._req("GET", "/accounts", params={"search": account_id})).json()
