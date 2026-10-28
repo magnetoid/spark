@@ -88,7 +88,7 @@
             {% if user.can_edit() %}
             {% if key=='approvals' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve" class="inline">{{ csrf_field(request) }}<button class="btn" data-size="xs">Approve</button></form>{% endif %}
             {% if key=='failed' %}<form method="post" action="/posts/{{ p.id }}/retry" class="inline">{{ csrf_field(request) }}<button class="btn" data-size="xs">Retry</button></form>{% endif %}
-            {% if key=='recent' %}<form method="post" action="/posts/{{ p.id }}/duplicate" class="inline">{{ csrf_field(request) }}<button class="btn" data-variant="outline" data-size="xs">Reuse</button></form>{% endif %}
+            {% if key=='recent' %}<button type="button" class="btn" data-variant="outline" data-size="xs" onclick="openComposer({from_post:{{ p.id }}})">Reuse</button>{% endif %}
             <a href="/posts/{{ p.id }}/edit" class="btn" data-variant="ghost" data-size="xs">Edit</a>
             {% endif %}
           </td>
@@ -97,7 +97,7 @@
         </tbody>
       </table></div>
       {% else %}
-      <div class="m-4 rounded-lg border border-dashed border-line py-10 text-center text-sm text-mute">{{ empty }} {% if key=='upcoming' %}<a class="underline" href="/compose">New post</a>{% endif %}</div>
+      <div class="m-4 rounded-lg border border-dashed border-line py-10 text-center text-sm text-mute">{{ empty }} {% if key=='upcoming' %}<a class="underline" href="/compose" onclick="if(window.openComposer){openComposer({});return false}">New post</a>{% endif %}</div>
       {% endif %}
     </section>
     {% endfor %}

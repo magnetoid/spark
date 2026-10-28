@@ -1,0 +1,256 @@
+{# The publish panel. Rendered full-page by compose.html and inside #publish-modal by /compose/modal. #}
+<div x-data='composer({{ composer_state|tojson }})' class="composer grid lg:grid-cols-5 gap-6 {{ 'p-4 sm:p-6' if modal }}"
+     @dragover.prevent="dragging=true" @dragleave.self="dragging=false" @drop.prevent="dragging=false; uploadFiles($event.dataTransfer.files)" @paste.window="pasteFiles($event)">
+
+<form method="post" action="{{ action_url }}" class="lg:col-span-3 form space-y-5" {% if modal %}hx-post="{{ action_url }}" hx-swap="none" hx-indicator="#composer-busy"{% endif %}>{{ csrf_field(request) }}
+  <input type="hidden" name="post_id" :value="postId || ''">
+  <input type="hidden" name="source" value="{{ source }}">
+  {% if idea_id %}<input type="hidden" name="idea_id" value="{{ idea_id }}">{% endif %}
+  <div class="flex items-center justify-between gap-3">
+    <h1 class="{{ 'text-lg' if modal else 'text-2xl' }} font-semibold tracking-tight">{{ 'Edit post' if post else 'New post' }}</h1>
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-mute" x-show="savedAt" x-cloak>Draft saved <span x-text="savedAt"></span></span>
+      {% if post %}<span class="badge st-{{ post.status.value }}">{{ post.status.value.replace('_',' ') }}</span>{% endif %}
+      {% if not modal %}<a href="/compose/modal?modal=0" class="hidden"></a>{% endif %}
+    </div>
+  </div>
+
+  {% if autosave %}
+  <div class="alert" x-data="{show:true}" x-show="show">
+    <h2>Resume unfinished post?</h2>
+    <section>“{{ (autosave.content or '(no text)')[:90] }}{{ '…' if (autosave.content or '')|length > 90 }}” — saved {{ autosave.updated_at|localtime(brand.timezone) }}.</section>
+    <footer class="flex gap-2">
+      <button type="button" class="btn" data-size="sm" onclick="{% if modal %}openComposer({post_id: {{ autosave.id }}}){% else %}location.href='/posts/{{ autosave.id }}/edit'{% endif %}">Resume</button>
+      <button type="button" class="btn" data-variant="outline" data-size="sm" hx-post="/posts/{{ autosave.id }}/delete" hx-swap="none" @click="show=false">Discard</button>
+    </footer>
+  </div>
+  {% endif %}
+
+  <div>
+    <div class="flex flex-wrap items-center gap-2 mb-2 text-sm" x-show="templates.length || hashtagGroups.length" x-cloak>
+      <template x-if="templates.length">
+        <select class="select w-52" @change="useTemplate($event.target.value); $event.target.value=''">
+          <option value="">Use a template…</option>
+          <template x-for="t in templates" :key="t.id"><option :value="t.id" x-text="t.name + (t.category ? ' · ' + t.category : '')"></option></template>
+        </select>
+      </template>
+      <template x-if="hashtagGroups.length">
+        <select class="select w-52" @change="insertHashtags($event.target.value); $event.target.value=''">
+          <option value="">Insert hashtags…</option>
+          <template x-for="g in hashtagGroups" :key="g.id"><option :value="g.id" x-text="g.name + ' (' + g.tags.length + ')'"></option></template>
+        </select>
+      </template>
+      <a href="/settings#library" class="text-xs text-mute hover:text-ink">Manage</a>
+    </div>
+    <div class="relative">
+      <textarea name="content" x-model="content" rows="7" class="textarea text-base min-h-40" placeholder="What do you want to say? Platform versions can differ — edit them on the right. Drop or paste images here." @input="validate()" autofocus></textarea>
+      <div x-show="dragging" x-cloak class="pointer-events-none absolute inset-0 grid place-items-center rounded-md border-2 border-dashed border-primary bg-card/80 text-sm font-medium">Drop to attach</div>
+    </div>
+    <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-mute">
+      <span class="num"><span x-text="content.length"></span> characters</span>
+      <template x-if="ai">
+        <span class="flex flex-wrap gap-2">
+          <button type="button" class="hover:text-ink underline" @click="aiRewrite('Make it tighter and more concrete')" :disabled="busy">Tighten</button>
+          <button type="button" class="hover:text-ink underline" @click="aiRewrite('Make it more conversational')" :disabled="busy">Conversational</button>
+          <button type="button" class="hover:text-ink underline" @click="aiRewrite('Add a clear call to action at the end')" :disabled="busy">Add CTA</button>
+          <button type="button" class="hover:text-ink underline" @click="aiHashtags()" :disabled="busy">Suggest hashtags</button>
+        </span>
+      </template>
+    </div>
+  </div>
+
+  <div class="grid sm:grid-cols-2 gap-4">
+    <div class="field"><label>Link</label><input type="url" class="input" name="link" x-model="link" placeholder="https://" @change="validate()"><p class="hint">{{ 'Shortened and UTM-tagged automatically.' if brand.auto_shorten_links else 'Attached as link/article where the platform supports it.' }}</p></div>
+    <div class="field"><label>Campaign</label>
+      <select class="select" name="campaign_id"><option value="">None</option>{% for c in campaigns %}<option value="{{ c.id }}" {% if post and post.campaign_id==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select>
+    </div>
+  </div>
+
+  <div>
+    <label>Media</label>
+    <div class="flex flex-wrap gap-2">
+      <template x-for="(m, i) in media" :key="m.id">
+        <div class="relative w-20 h-20 rounded-md overflow-hidden border border-line bg-paper cursor-grab" draggable="true"
+             @dragstart.stop="dragMedia=i" @dragover.prevent.stop @drop.prevent.stop="reorderMedia(i)" :title="m.name">
+          <template x-if="!m.video"><img :src="m.url" class="w-full h-full object-cover pointer-events-none" alt=""></template>
+          <template x-if="m.video"><div class="w-full h-full grid place-items-center text-xs text-mute">video</div></template>
+          <button type="button" class="absolute top-0.5 right-0.5 bg-card/90 rounded px-1 text-xs" @click="removeMedia(m.id)" aria-label="Remove">×</button>
+        </div>
+      </template>
+      <template x-for="u in uploads" :key="u.key">
+        <div class="relative w-20 h-20 rounded-md border border-line bg-muted grid place-items-end overflow-hidden">
+          <div class="absolute inset-x-0 bottom-0 h-1 bg-line"><div class="h-full bg-primary" :style="'width:'+u.pct+'%'"></div></div>
+          <span class="absolute inset-0 grid place-items-center text-xs text-mute num" x-text="u.pct + '%'"></span>
+        </div>
+      </template>
+      <label class="w-20 h-20 rounded-md border border-dashed border-line text-sm text-mute hover:border-primary grid place-items-center cursor-pointer" title="Upload or pick from the library">
+        <input type="file" class="sr-only" multiple accept="image/*,video/mp4,video/quicktime" @change="uploadFiles($event.target.files); $event.target.value=''">
+        <span>+ Add</span>
+      </label>
+      <button type="button" class="text-xs text-mute underline self-end" @click="picker=true; $nextTick(()=>htmx.ajax('GET','/media',{target:'#picker-body'}))">Library</button>
+    </div>
+    <input type="hidden" name="media_ids" :value="mediaIds.join(',')">
+  </div>
+
+  <div class="field"><label>Internal notes</label><input type="text" class="input" name="notes" value="{{ post.notes if post and post.notes else '' }}" placeholder="Only your team sees this"></div>
+
+  <template x-for="id in selected" :key="'h'+id"><input type="hidden" name="account_ids" :value="id"></template>
+  <template x-for="id in selected" :key="'o'+id"><input type="hidden" :name="'override_'+id" :value="overrides[id] || ''"></template>
+  <template x-for="id in selected" :key="'f'+id"><input type="hidden" :name="'first_comment_'+id" :value="firstComments[id] || ''"></template>
+  <template x-for="id in selected" :key="'t'+id"><input type="hidden" :name="'thread_'+id" :value="JSON.stringify(threads[id] || [])"></template>
+
+  <div class="card p-4 space-y-3 {{ 'composer-actions' if modal }}" x-data="{mode:'{{ default_mode }}'}">
+    <div class="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+      {% for key, label in [('queue','Next free slot'),('next','Share next'),('schedule','Pick a time'),('now','Publish now'),('draft','Save draft')] %}
+      <label class="flex items-center gap-1.5"><input type="radio" class="input" name="action" value="{{ key }}" x-model="mode"> {{ label }}</label>
+      {% endfor %}
+    </div>
+    <div x-show="mode==='schedule'" x-cloak class="max-w-xs">
+      <label>When ({{ brand.timezone }})</label>
+      <input type="datetime-local" class="input" name="scheduled_at" value="{{ prefill_at or (post.scheduled_at|localtime(brand.timezone, '%Y-%m-%dT%H:%M') if post and post.scheduled_at else '') }}">
+    </div>
+    {% if brand.require_approval and not user.can_approve() %}<p class="text-xs text-mute">This brand requires approval: an owner will review before it goes out.</p>{% endif %}
+    <div class="flex items-center gap-3 pt-1">
+      <button class="btn" :disabled="hasProblems && mode!=='draft'" x-text="mode==='draft' ? 'Save draft' : mode==='now' ? 'Publish now' : mode==='next' ? 'Share next' : mode==='queue' ? 'Add to queue' : 'Schedule'"></button>
+      <span id="composer-busy" class="htmx-indicator text-xs text-mute">Saving…</span>
+      <span class="text-xs text-brick" x-show="hasProblems && mode!=='draft'" x-cloak>Fix the issues on the right first.</span>
+      {% if modal %}<button type="button" class="btn ml-auto" data-variant="ghost" data-size="sm" onclick="this.closest('dialog').close()">Cancel</button>
+      {% elif post %}<a href="/posts" class="text-sm text-mute hover:text-ink ml-auto">Cancel</a>{% endif %}
+    </div>
+  </div>
+</form>
+
+<aside class="lg:col-span-2 space-y-4">
+  <div class="card">
+    <div class="px-4 py-3 border-b border-line flex items-center justify-between">
+      <h2 class="font-semibold text-sm">Post to</h2>
+      <span class="text-xs text-mute num" x-text="selected.length + ' selected'"></span>
+    </div>
+    {% if accounts %}
+    <ul class="divide-y divide-line">
+      {% for a in accounts %}
+      <li class="px-4 py-3" x-data="{id:{{ a.id }}}">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" :checked="selected.includes(id)" @change="toggle(id)" class="input">
+          <span class="flex-1 min-w-0">
+            <span class="text-sm font-medium">{{ a.handle }}</span>
+            <span class="text-xs text-mute">· {{ limits[a.id].label }}</span>
+          </span>
+          <span class="text-xs num" :class="over(id) ? 'text-brick' : 'text-mute'" x-text="textFor(id).length + '/' + limits[id].max"></span>
+        </label>
+        <div class="gauge mt-2" :class="{over: over(id), warn: !over(id) && textFor(id).length > limits[id].max*0.9}"><span :style="'width:'+Math.min(100, textFor(id).length/limits[id].max*100)+'%'"></span></div>
+        <div x-show="selected.includes(id)" x-cloak class="mt-2">
+          <button type="button" class="text-xs text-cobalt" @click="editing = editing===id ? null : id" x-text="(overrides[id] ? 'Custom text' : 'Same as main text') + (editing===id ? ' — close' : ' — edit')"></button>
+          <template x-if="ai"><button type="button" class="text-xs text-cobalt ml-3" @click="aiAdapt(id)" :disabled="busy">Adapt with AI</button></template>
+          <div x-show="editing===id" x-cloak class="mt-2 space-y-1">
+            <textarea rows="4" class="textarea text-sm" :value="overrides[id] || ''" @input="overrides[id]=$event.target.value; validate()" placeholder="Leave empty to use the main text"></textarea>
+            <button type="button" class="text-xs text-mute underline" @click="overrides[id]=''; validate()">Reset to main text</button>
+          </div>
+          <template x-if="limits[id].threadable && over(id) && !hasThread(id)">
+            <button type="button" class="btn mt-2" data-variant="outline" data-size="xs" @click="splitThread(id)">Split into thread</button>
+          </template>
+          <template x-if="hasThread(id)">
+            <div class="mt-2 space-y-2">
+              <div class="flex items-center justify-between text-xs"><span class="font-medium" x-text="'Thread · ' + (threads[id].length + 1) + ' items'"></span><button type="button" class="text-mute underline" @click="clearThread(id)">Remove thread</button></div>
+              <template x-for="(item, i) in threads[id]" :key="id + '-' + i">
+                <div class="flex gap-2 items-start">
+                  <span class="text-xs text-mute num pt-2 w-5" x-text="(i + 2) + '.'"></span>
+                  <div class="flex-1">
+                    <textarea rows="2" class="textarea text-sm" :value="item" @input="setThreadItem(id, i, $event.target.value)"></textarea>
+                    <div class="flex items-center justify-between text-xs mt-0.5"><span class="num" :class="item.length > limits[id].max ? 'text-brick' : 'text-mute'" x-text="item.length + '/' + limits[id].max"></span><button type="button" class="text-mute hover:text-brick" @click="removeThreadItem(id, i)">remove</button></div>
+                  </div>
+                </div>
+              </template>
+              <button type="button" class="text-xs text-cobalt" @click="addThreadItem(id)">+ Add item</button>
+            </div>
+          </template>
+          <template x-if="limits[id].first_comment">
+            <div class="mt-2" x-data="{open: !!firstComments[id]}">
+              <button type="button" class="text-xs text-cobalt" @click="open=!open" x-text="open ? 'First comment — close' : (firstComments[id] ? 'First comment set — edit' : '+ First comment')"></button>
+              <textarea x-show="open" x-cloak rows="2" class="textarea text-sm mt-1" :value="firstComments[id] || ''" @input="firstComments[id]=$event.target.value" placeholder="Posted as the first reply right after publishing — links, hashtags, context"></textarea>
+            </div>
+          </template>
+          <ul class="mt-1 text-xs text-brick space-y-0.5"><template x-for="p in (problems[id]||[])"><li x-text="p"></li></template></ul>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="p-4 text-sm text-mute">No active accounts. <a class="text-cobalt" href="/accounts">Connect one</a>.</div>
+    {% endif %}
+  </div>
+
+  <div class="card" x-show="selected.length" x-cloak>
+    <div class="px-4 py-3 border-b border-line flex items-center justify-between">
+      <h2 class="font-semibold text-sm">Preview</h2>
+      <span class="text-xs text-mute">How it will look, per channel</span>
+    </div>
+    <div class="p-4 space-y-4">
+      <template x-for="id in selected" :key="'p'+id">
+        <article class="rounded-lg border border-line p-3 text-sm">
+          <header class="flex items-center gap-2 mb-2">
+            <template x-if="limits[id].avatar"><img :src="limits[id].avatar" class="w-8 h-8 rounded-full object-cover" alt=""></template>
+            <template x-if="!limits[id].avatar"><span class="w-8 h-8 rounded-full grid place-items-center text-xs text-white" :style="'background:'+(brand.color||'#11302F')" x-text="(limits[id].handle||'?').slice(0,1).toUpperCase()"></span></template>
+            <div class="min-w-0 leading-tight">
+              <div class="font-medium truncate" x-text="limits[id].display_name"></div>
+              <div class="text-xs text-mute truncate"><span x-text="'@'+limits[id].handle"></span> · <span x-text="limits[id].label"></span></div>
+            </div>
+          </header>
+          <p class="whitespace-pre-wrap break-words" x-text="previewText(id) || '…'" :class="{'text-mute': !textFor(id)}"></p>
+          <template x-if="media.length">
+            <div class="mt-2 grid gap-1" :class="media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'">
+              <template x-for="m in media.slice(0,4)" :key="'pm'+id+m.id">
+                <div class="aspect-video rounded-md overflow-hidden bg-muted">
+                  <template x-if="!m.video"><img :src="m.url" class="w-full h-full object-cover" alt=""></template>
+                  <template x-if="m.video"><div class="w-full h-full grid place-items-center text-xs text-mute">▶ video</div></template>
+                </div>
+              </template>
+            </div>
+          </template>
+          <template x-if="link && !media.length">
+            <div class="mt-2 rounded-md border border-line px-3 py-2 text-xs text-mute truncate" x-text="link"></div>
+          </template>
+          <template x-for="(item, i) in (threads[id] || [])" :key="'pt'+id+i">
+            <p class="mt-2 pt-2 border-t border-line whitespace-pre-wrap break-words" x-text="item"></p>
+          </template>
+          <template x-if="firstComments[id]">
+            <div class="mt-3 ml-4 pl-3 border-l-2 border-line text-xs">
+              <div class="text-mute mb-0.5">First comment</div>
+              <p class="whitespace-pre-wrap break-words" x-text="firstComments[id]"></p>
+            </div>
+          </template>
+        </article>
+      </template>
+    </div>
+  </div>
+
+  {% if ai_enabled %}
+  <div class="card p-4 space-y-3" x-data="{brief:'', url:''}">
+    <h2 class="font-semibold text-sm">Write with AI</h2>
+    <textarea rows="3" class="textarea text-sm" x-model="brief" placeholder="Brief: what's the post about, what should people do?"></textarea>
+    <input type="url" class="input text-sm" x-model="url" placeholder="Optional: URL to summarize">
+    <div class="flex items-center gap-2">
+      <button type="button" class="btn" data-size="sm" :disabled="busy || (!brief && !url)" @click="aiGenerate(brief, url)">Generate for selected platforms</button>
+      <span class="text-xs text-mute" x-show="busy">Thinking…</span>
+    </div>
+    <p class="text-xs text-mute">Uses {{ brand.name }}'s voice from Brand &amp; team. Fills the main text and a custom version per platform.</p>
+  </div>
+  {% endif %}
+  <p class="text-xs text-brick" x-text="error" x-show="error" x-cloak></p>
+</aside>
+
+<!-- media picker -->
+<div x-show="picker" x-cloak class="fixed inset-0 z-[60] bg-ink/40 flex items-center justify-center p-4" @click.self="picker=false" @keydown.escape.window="picker=false">
+  <div class="bg-card rounded-lg w-full max-w-2xl max-h-[85vh] flex flex-col">
+    <div class="px-5 py-3 border-b border-line flex items-center justify-between">
+      <h3 class="font-semibold">Media library</h3>
+      <form hx-post="/media" hx-encoding="multipart/form-data" hx-target="#picker-body" hx-swap="afterbegin" class="flex items-center gap-2">{{ csrf_field(request) }}
+        <input type="file" name="files" multiple accept="image/*,video/mp4,video/quicktime" class="text-sm" required>
+        <button class="btn" data-size="sm">Upload</button>
+      </form>
+    </div>
+    <div id="picker-body" class="p-5 overflow-auto grid grid-cols-3 sm:grid-cols-5 gap-3"></div>
+    <div class="px-5 py-3 border-t border-line text-right"><button type="button" class="btn" data-variant="outline" @click="picker=false">Done</button></div>
+  </div>
+</div>
+</div>

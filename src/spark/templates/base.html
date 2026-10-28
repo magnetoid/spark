@@ -33,7 +33,8 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
 <link rel="stylesheet" href="/static/app.css?v={{ static_v }}">
 <meta name="csrf" content="{{ csrf_token(request) }}">
 <script src="/static/app.js?v={{ static_v }}" defer></script>
-{% if user %}<script src="/static/shortcuts.js?v={{ static_v }}" defer></script>{% endif %}
+{% if user %}<script src="/static/shortcuts.js?v={{ static_v }}" defer></script>
+<script src="/static/composer.js?v={{ static_v }}" defer></script>{% endif %}
 {% block head %}{% endblock %}
 </head>
 <body class="h-full font-sans antialiased">
@@ -111,7 +112,7 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
         <svg class="hidden dark:block" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
         <svg class="block dark:hidden" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
       </button>
-      {% if user.can_edit() %}<a href="/compose" class="btn" data-size="sm">New post</a>{% endif %}
+      {% if user.can_edit() %}<a href="/compose" class="btn" data-size="sm" onclick="if(window.openComposer){openComposer({});return false}">New post</a>{% endif %}
     </div>
   </header>
   <div class="flex-1 px-4 lg:px-6 py-4 md:py-6 max-w-7xl w-full mx-auto">

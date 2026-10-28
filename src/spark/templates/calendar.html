@@ -36,7 +36,7 @@
          @dragover.prevent="$el.classList.add('drop')" @dragleave="$el.classList.remove('drop')" @drop.prevent="drop($event, '{{ d.isoformat() }}'); $el.classList.remove('drop')">
       <div class="flex items-center justify-between">
         {% if view=='month' %}<span class="d text-xs num w-5 h-5 grid place-items-center">{{ d.day }}</span>{% else %}<span></span>{% endif %}
-        {% if user.can_edit() and d >= today %}<a href="/compose?at={{ d.isoformat() }}T10:00{% if account %}&account={{ account }}{% endif %}" class="text-mute hover:text-ink text-xs" title="New post on this day">+</a>{% endif %}
+        {% if user.can_edit() and d >= today %}<a href="/compose?at={{ d.isoformat() }}T10:00{% if account %}&account={{ account }}{% endif %}" onclick="if(window.openComposer){openComposer({at:'{{ d.isoformat() }}T10:00'{% if account %}, account:{{ account }}{% endif %}});return false}" class="text-mute hover:text-ink text-xs" title="New post on this day">+</a>{% endif %}
       </div>
       {% for p in by_day.get(d, []) %}
       <a href="/posts/{{ p.id }}/edit" class="chip {{ 'chip-lg' if view=='week' }}" draggable="{{ 'true' if p.status.value in ('scheduled','pending_approval','draft') else 'false' }}" @dragstart="drag($event, {{ p.id }})"

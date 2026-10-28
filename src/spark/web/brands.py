@@ -282,6 +282,10 @@ async def media_upload(request: Request, files: list[UploadFile] = File(...),
         db.add(m)
         uploaded.append(m)
     await db.commit()
+    if "application/json" in request.headers.get("accept", ""):
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse([{"id": m.id, "url": m.url, "video": m.is_video, "name": m.filename} for m in uploaded])
     if request.headers.get("HX-Request"):
         return await render(request, "partials/media_uploaded.html", db, user, brand, items=uploaded)
     return RedirectResponse("/media", 303)

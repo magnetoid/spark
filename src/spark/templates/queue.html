@@ -6,7 +6,7 @@
     <h1 class="text-2xl font-semibold tracking-tight">Queue</h1>
     <p class="text-sm text-mute mt-1">Each channel's upcoming posts in their slots. Empty slots are open; fill one or let “Next free slot” take it.</p>
   </div>
-  <a href="/compose{% if current %}?account={{ current.id }}{% endif %}" class="btn">New post</a>
+  <a href="/compose{% if current %}?account={{ current.id }}{% endif %}" class="btn" onclick="if(window.openComposer){openComposer({% if current %}{account:{{ current.id }}}{% else %}{}{% endif %});return false}">New post</a>
 </div>
 
 {% if not accounts %}
@@ -64,7 +64,7 @@
             </div>
             {% endif %}
             {% else %}
-            <a href="/compose?account={{ current.id }}&at={{ it.when|localtime(brand.timezone, '%Y-%m-%dT%H:%M') }}" class="flex-1 text-sm text-mute hover:text-cobalt border border-dashed border-line rounded-md px-3 py-1.5">Empty slot — add a post</a>
+            <a href="/compose?account={{ current.id }}&at={{ it.when|localtime(brand.timezone, '%Y-%m-%dT%H:%M') }}" onclick="if(window.openComposer){openComposer({account:{{ current.id }}, at:'{{ it.when|localtime(brand.timezone, '%Y-%m-%dT%H:%M') }}'});return false}" class="flex-1 text-sm text-mute hover:text-cobalt border border-dashed border-line rounded-md px-3 py-1.5">Empty slot — add a post</a>
             {% endif %}
           </li>
           {% endfor %}
@@ -92,7 +92,7 @@
             <div class="flex items-center gap-1 shrink-0">
               {% if tab=='drafts' %}<form method="post" action="/posts/{{ p.id }}/prioritize">{{ csrf_field(request) }}<button class="btn" data-size="sm">Share next</button></form>{% endif %}
               {% if tab=='approvals' and user.can_approve() %}<form method="post" action="/posts/{{ p.id }}/approve">{{ csrf_field(request) }}<button class="btn" data-size="sm">Approve</button></form>{% endif %}
-              {% if tab=='sent' %}<form method="post" action="/posts/{{ p.id }}/duplicate">{{ csrf_field(request) }}<button class="btn" data-variant="outline" data-size="sm">Reuse</button></form>{% endif %}
+              {% if tab=='sent' %}<button type="button" class="btn" data-variant="outline" data-size="sm" onclick="openComposer({from_post:{{ p.id }}})">Reuse</button>{% endif %}
               <a href="/posts/{{ p.id }}/edit" class="btn" data-variant="ghost" data-size="sm">Edit</a>
             </div>
             {% endif %}

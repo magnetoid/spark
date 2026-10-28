@@ -16,6 +16,7 @@ from spark.models import (
     Brand,
     Campaign,
     HashtagGroup,
+    Idea,
     Media,
     Post,
     PostStatus,
@@ -29,7 +30,18 @@ from spark.services import scheduler
 from spark.services.ai import AIUnavailable, ContentAI
 from spark.services.links import shorten_in_text
 from spark.services.publisher import as_utc, validate_post
-from spark.web.deps import current_user, editor, flash, owner, render, require_brand
+from spark.web.deps import (
+    current_user,
+    editor,
+    flash,
+    hx_none,
+    is_hx,
+    owner,
+    render,
+    require_brand,
+    templates,
+    toast,
+)
 
 router = APIRouter()
 log = logging.getLogger(__name__)
@@ -81,16 +93,16 @@ def parse_local(value: str, tz: str) -> datetime:
 
 # ---- composer ----------------------------------------------------------------
 
-@router.get("/compose")
-@router.get("/posts/{post_id}/edit")
-async def compose(request: Request, post_id: int | None = None, date_: str | None = None,
-                  db: AsyncSession = Depends(get_db), user: User = Depends(editor),
-                  brand: Brand = Depends(require_brand)):
-    post = await _get_post(db, brand, post_id) if post_id else None
+async def _composer_context(request: Request, db: AsyncSession, brand: Brand, user: User,
+                            post: Post | None, *, modal: bool = False, idea: Idea | None = None,
+                            from_post: Post | None = None) -> dict:
+    """Everything the composer partial needs (full page and modal share it)."""
     media = []
-    if post and post.media_ids:
-        rows = (await db.execute(select(Media).where(Media.id.in_(post.media_ids)))).scalars().all()
-        media = sorted(rows, key=lambda m: post.media_ids.index(m.id))
+    media_ids = list(post.media_ids) if post else (list(from_post.media_ids) if from_post else
+                                                    list(idea.media_ids or []) if idea else [])
+    if media_ids:
+        rows = (await db.execute(select(Media).where(Media.id.in_(media_ids), Media.brand_id == brand.id))).scalars().all()
+        media = sorted(rows, key=lambda m: media_ids.index(m.id))
     accounts = await _accounts(db, brand)
     limits = {}
     for a in accounts:
@@ -104,17 +116,32 @@ async def compose(request: Request, post_id: int | None = None, date_: str | Non
     prefill_at = request.query_params.get("at")
     ai_enabled = bool(get_settings().anthropic_api_key)
     preselect = request.query_params.get("account")
-    selected = [t.account_id for t in post.targets] if post else (
-        [int(preselect)] if preselect and preselect.isdigit() and int(preselect) in limits else [])
+    if post:
+        selected = [t.account_id for t in post.targets]
+    elif from_post:
+        selected = [t.account_id for t in from_post.targets if t.account_id in limits]
+    else:
+        selected = [int(preselect)] if preselect and preselect.isdigit() and int(preselect) in limits else []
+    seed = post or from_post
+    content = seed.content if seed else (idea.body or idea.title if idea else request.query_params.get("text", ""))
+    link = seed.link if seed else (idea.source_url if idea else "")
+    targets = seed.targets if seed else []
+    autosave = None
+    if not post and not from_post and not idea:
+        autosave = await db.scalar(
+            select(Post).where(Post.brand_id == brand.id, Post.author_id == user.id, Post.is_autosave.is_(True),
+                               Post.updated_at >= datetime.now(UTC) - timedelta(hours=24))
+            .order_by(Post.updated_at.desc()).limit(1))
     composer_state = {
-        "content": post.content if post else "",
-        "link": post.link if post else "",
-        "mediaIds": list(post.media_ids) if post else [],
+        "postId": post.id if post else None,
+        "content": content or "",
+        "link": link or "",
+        "mediaIds": [m.id for m in media],
         "media": [{"id": m.id, "url": m.url, "video": m.is_video, "name": m.filename} for m in media],
         "selected": selected,
-        "overrides": {str(t.account_id): t.content_override or "" for t in post.targets} if post else {},
-        "firstComments": {str(t.account_id): t.first_comment or "" for t in post.targets} if post else {},
-        "threads": {str(t.account_id): list(t.thread or []) for t in post.targets} if post else {},
+        "overrides": {str(t.account_id): t.content_override or "" for t in targets},
+        "firstComments": {str(t.account_id): t.first_comment or "" for t in targets},
+        "threads": {str(t.account_id): list(t.thread or []) for t in targets},
         "brand": {"name": brand.name, "color": brand.color},
         "templates": [{"id": t.id, "name": t.name, "body": t.body, "category": t.category}
                       for t in (await db.execute(select(PostTemplate).where(PostTemplate.brand_id == brand.id)
@@ -124,12 +151,79 @@ async def compose(request: Request, post_id: int | None = None, date_: str | Non
                                                      .order_by(HashtagGroup.name))).scalars()],
         "limits": {str(k): v for k, v in limits.items()},
         "ai": ai_enabled,
+        # autosave only for new/draft posts; never silently rewrite something already scheduled
+        "autosave": post is None or post.status == PostStatus.draft,
     }
-    return await render(
-        request, "compose.html", db, user, brand, post=post, media=media, accounts=accounts,
-        limits=limits, campaigns=await _campaigns(db, brand), prefill_at=prefill_at,
-        ai_enabled=ai_enabled, composer_state=composer_state,
-    )
+    return {
+        "post": post, "media": media, "accounts": accounts, "limits": limits,
+        "campaigns": await _campaigns(db, brand), "prefill_at": prefill_at, "ai_enabled": ai_enabled,
+        "composer_state": composer_state, "modal": modal, "autosave": autosave,
+        "idea_id": idea.id if idea else None, "source": "idea" if idea else "manual",
+        "default_mode": "schedule" if prefill_at else "queue",
+        "action_url": f"/posts/{post.id}/edit" if post else "/compose",
+    }
+
+
+@router.get("/compose")
+@router.get("/posts/{post_id}/edit")
+async def compose(request: Request, post_id: int | None = None, db: AsyncSession = Depends(get_db),
+                  user: User = Depends(editor), brand: Brand = Depends(require_brand)):
+    post = await _get_post(db, brand, post_id) if post_id else None
+    ctx = await _composer_context(request, db, brand, user, post)
+    return await render(request, "compose.html", db, user, brand, **ctx)
+
+
+@router.get("/compose/modal")
+async def compose_modal(request: Request, post_id: int | None = None, idea_id: int | None = None,
+                        from_post: int | None = None, db: AsyncSession = Depends(get_db),
+                        user: User = Depends(editor), brand: Brand = Depends(require_brand)):
+    """The composer as a partial for #publish-modal (opened from anywhere)."""
+    post = await _get_post(db, brand, post_id) if post_id else None
+    idea = await db.get(Idea, idea_id) if idea_id else None
+    if idea and idea.brand_id != brand.id:
+        idea = None
+    dup = await _get_post(db, brand, from_post) if from_post else None
+    ctx = await _composer_context(request, db, brand, user, post, modal=True, idea=idea, from_post=dup)
+    return templates.TemplateResponse(request, "partials/composer.html",
+                                      {"user": user, "brand": brand, "path": request.url.path, **ctx})
+
+
+@router.post("/compose/autosave")
+async def compose_autosave(request: Request, db: AsyncSession = Depends(get_db),
+                           user: User = Depends(editor), brand: Brand = Depends(require_brand)):
+    """Debounced from the composer: keep an unfinished post as a hidden draft."""
+    body = await request.json()
+    post = None
+    if body.get("post_id"):
+        post = await db.get(Post, int(body["post_id"]))
+        if not post or post.brand_id != brand.id:
+            post = None
+        elif post.status != PostStatus.draft:
+            return JSONResponse({"skipped": "not a draft"})
+    if post is None:
+        if not (body.get("content") or "").strip() and not body.get("media_ids"):
+            return JSONResponse({"skipped": "empty"})
+        post = Post(brand_id=brand.id, author_id=user.id, source=body.get("source") or "manual", is_autosave=True)
+        post.targets = []
+        db.add(post)
+    post.content = (body.get("content") or "").strip()
+    post.link = (body.get("link") or "").strip() or None
+    post.media_ids = [int(m) for m in body.get("media_ids") or [] if str(m).isdigit()]
+    valid = {a.id for a in await _accounts(db, brand)}
+    existing = {t.account_id: t for t in post.targets}
+    keep = []
+    for aid in body.get("account_ids") or []:
+        aid = int(aid)
+        if aid not in valid:
+            continue
+        t = existing.get(aid) or PostTarget(account_id=aid)
+        t.content_override = (body.get("overrides") or {}).get(str(aid)) or None
+        t.first_comment = (body.get("first_comments") or {}).get(str(aid)) or None
+        t.thread = [str(x) for x in (body.get("threads") or {}).get(str(aid)) or []][:25]
+        keep.append(t)
+    post.targets = keep
+    await db.commit()
+    return JSONResponse({"post_id": post.id, "saved_at": datetime.now(UTC).isoformat()})
 
 
 @router.post("/compose")
@@ -139,6 +233,8 @@ async def compose_save(request: Request, post_id: int | None = None,
                        brand: Brand = Depends(require_brand)):
     form = await request.form()
     action = form.get("action", "draft")
+    if not post_id and str(form.get("post_id", "")).isdigit():
+        post_id = int(form["post_id"])  # the autosave already created this post
     account_ids = [int(a) for a in form.getlist("account_ids")]
     media_ids = [int(m) for m in str(form.get("media_ids", "")).split(",") if m.strip().isdigit()]
     campaign_id = int(form["campaign_id"]) if str(form.get("campaign_id", "")).isdigit() else None
@@ -151,8 +247,11 @@ async def compose_save(request: Request, post_id: int | None = None,
         post.targets = []
         db.add(post)
     if post.status in (PostStatus.publishing,):
+        if is_hx(request):
+            return hx_none(toast("This post is publishing right now and can't be edited", "error"))
         flash(request, "This post is publishing right now and can't be edited", "error")
         return RedirectResponse("/posts", 303)
+    post.is_autosave = False
 
     campaign = await db.get(Campaign, campaign_id) if campaign_id else None
     if brand.auto_shorten_links and content:
@@ -186,13 +285,11 @@ async def compose_save(request: Request, post_id: int | None = None,
     await db.refresh(post, ["targets"])
 
     if action != "draft":
-        if not post.targets:
-            flash(request, "Pick at least one account to publish to", "error")
-            await db.commit()
-            return RedirectResponse(f"/posts/{post.id}/edit", 303)
-        problems = await validate_post(db, post)
+        problems = ["Pick at least one account to publish to"] if not post.targets else await validate_post(db, post)
         if problems:
             await db.commit()
+            if is_hx(request):
+                return hx_none(toast(" · ".join(problems), "error"))
             for p in problems:
                 flash(request, p, "error")
             return RedirectResponse(f"/posts/{post.id}/edit", 303)
@@ -217,16 +314,28 @@ async def compose_save(request: Request, post_id: int | None = None,
     else:
         raw = str(form.get("scheduled_at", ""))
         if not raw:
-            flash(request, "Pick a date and time", "error")
             await db.commit()
+            if is_hx(request):
+                return hx_none(toast("Pick a date and time", "error"))
+            flash(request, "Pick a date and time", "error")
             return RedirectResponse(f"/posts/{post.id}/edit", 303)
         when = parse_local(raw, brand.timezone)
         status = scheduler.schedule(post, when, user, brand)
         msg = "Scheduled" if status == PostStatus.scheduled else "Scheduled — awaiting approval"
+    if str(form.get("idea_id", "")).isdigit():
+        idea = await db.get(Idea, int(form["idea_id"]))
+        if idea and idea.brand_id == brand.id:
+            idea.post_id = post.id
+            if idea.status in ("idea", "drafting"):
+                idea.status = "ready"
     await db.commit()
     if action == "now" and post.status == PostStatus.scheduled:
         for t in post.targets:
             await enqueue("publish_now", t.id)
+    if is_hx(request):
+        return hx_none({**toast(msg), "post-saved": {
+            "id": post.id, "status": post.status.value, "action": action,
+            "account_ids": [t.account_id for t in post.targets]}})
     flash(request, msg)
     if action == "draft":
         return RedirectResponse(f"/posts/{post.id}/edit", 303)
@@ -321,7 +430,7 @@ async def _fetch_page_text(url: str) -> str | None:
 async def post_list(request: Request, status: str | None = None,
                     db: AsyncSession = Depends(get_db), user: User = Depends(current_user),
                     brand: Brand = Depends(require_brand)):
-    stmt = select(Post).where(Post.brand_id == brand.id)
+    stmt = select(Post).where(Post.brand_id == brand.id, Post.is_autosave.is_(False))
     if status:
         stmt = stmt.where(Post.status == status)
     stmt = stmt.order_by(Post.scheduled_at.desc().nulls_first(), Post.id.desc()).limit(200)

@@ -46,7 +46,7 @@
             <div class="flex gap-2"><button class="btn" data-size="sm">Save</button><button type="button" class="btn" data-variant="ghost" data-size="sm" @click="edit=false">Cancel</button></div>
           </form>
           <div class="flex flex-wrap items-center gap-1 pt-1" x-show="!edit">
-            {% if key != 'done' %}<form method="post" action="/ideas/{{ i.id }}/to-post">{{ csrf_field(request) }}<button class="btn" data-size="xs">{{ 'Open post' if i.post_id else 'Turn into post' }}</button></form>{% endif %}
+            {% if key != 'done' %}{% if i.post_id %}<a href="/posts/{{ i.post_id }}/edit" class="btn" data-size="xs" onclick="if(window.openComposer){openComposer({post_id:{{ i.post_id }}});return false}">Open post</a>{% else %}<form method="post" action="/ideas/{{ i.id }}/to-post">{{ csrf_field(request) }}<button class="btn" data-size="xs" onclick="if(window.openComposer){openComposer({idea_id:{{ i.id }}});return false}">Turn into post</button></form>{% endif %}{% endif %}
             {% if ai_enabled and key in ('idea','drafting') %}<form method="post" action="/ideas/{{ i.id }}/ai">{{ csrf_field(request) }}<button class="btn" data-variant="outline" data-size="xs">Write with AI</button></form>{% endif %}
             <button type="button" class="btn" data-variant="ghost" data-size="xs" @click="edit=true">Edit</button>
             <form method="post" action="/ideas/{{ i.id }}/delete" class="ml-auto" onsubmit="return confirm('Delete this idea?')">{{ csrf_field(request) }}<button class="btn danger" data-variant="ghost" data-size="icon-xs" aria-label="Delete">×</button></form>

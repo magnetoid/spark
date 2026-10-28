@@ -55,7 +55,9 @@ async def queue(request: Request, account: int | None = None, tab: str = "queue"
             stmt = (
                 select(PostTarget)
                 .options(selectinload(PostTarget.post).selectinload(Post.targets))
-                .where(PostTarget.account_id == current.id, PostTarget.status == status)
+                .join(Post, Post.id == PostTarget.post_id)
+                .where(PostTarget.account_id == current.id, PostTarget.status == status,
+                       Post.is_autosave.is_(False))
             )
             if tab == "sent":
                 stmt = stmt.order_by(PostTarget.published_at.desc()).limit(100)

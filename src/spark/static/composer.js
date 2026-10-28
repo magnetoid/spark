@@ -82,6 +82,63 @@ function composer(init) {
     busy: false,
     error: '',
     _t: null,
+    // autosave / uploads / drag state
+    postId: init.postId || null,
+    autosave: !!init.autosave,
+    savedAt: '',
+    _as: null,
+    uploads: [],
+    dragging: false,
+    dragMedia: null,
+    scheduleAutosave() {
+      if (!this.autosave) return;
+      clearTimeout(this._as);
+      this._as = setTimeout(() => this.doAutosave(), 2000);
+    },
+    async doAutosave() {
+      if (!this.autosave) return;
+      if (!this.content.trim() && !this.mediaIds.length) return;
+      try {
+        const r = await fetch('/compose/autosave', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ post_id: this.postId, content: this.content, link: this.link, media_ids: this.mediaIds,
+            account_ids: this.selected, overrides: this.overrides, first_comments: this.firstComments, threads: this.threads }) });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (d.post_id) { this.postId = d.post_id; this.savedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+      } catch (_) { /* offline: try again on the next change */ }
+    },
+    // Drop / paste / pick files -> upload with progress -> attach
+    pasteFiles(e) {
+      const files = [...(e.clipboardData?.files || [])].filter(f => /^(image|video)\//.test(f.type));
+      if (files.length) { e.preventDefault(); this.uploadFiles(files); }
+    },
+    uploadFiles(fileList) {
+      [...fileList].forEach(file => {
+        const u = { key: Math.random().toString(36).slice(2), pct: 0 };
+        this.uploads.push(u);
+        const fd = new FormData(); fd.append('files', file);
+        const csrf = (document.querySelector('meta[name="csrf"]') || {}).content || '';
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/media');
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-CSRF-Token', csrf);
+        xhr.upload.onprogress = (ev) => { if (ev.lengthComputable) u.pct = Math.round(ev.loaded / ev.total * 100); };
+        xhr.onload = () => {
+          this.uploads = this.uploads.filter(x => x !== u);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { JSON.parse(xhr.responseText).forEach(m => this.addMedia(m)); } catch (_) { this.error = 'Upload returned something unexpected'; }
+          } else { this.error = `Upload failed (${xhr.status})`; window.toast && window.toast(this.error, 'error'); }
+        };
+        xhr.onerror = () => { this.uploads = this.uploads.filter(x => x !== u); this.error = 'Upload failed'; };
+        xhr.send(fd);
+      });
+    },
+    reorderMedia(toIndex) {
+      const from = this.dragMedia; this.dragMedia = null;
+      if (from === null || from === toIndex) return;
+      const m = [...this.media]; const [item] = m.splice(from, 1); m.splice(toIndex, 0, item);
+      this.media = m; this.mediaIds = m.map(x => x.id); this.validate();
+    },
 
     textFor(id) { return this.overrides[id] || this.content; },
     over(id) { return this.limits[id] && this.textFor(id).length > this.limits[id].max; },
@@ -104,6 +161,7 @@ function composer(init) {
     },
     syncHidden() {},
     validate() {
+      this.scheduleAutosave();
       clearTimeout(this._t);
       this._t = setTimeout(async () => {
         const targets = {};

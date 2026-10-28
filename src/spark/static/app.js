@@ -61,8 +61,12 @@
     if (!dlg.open) dlg.showModal();
     await htmx.ajax('GET', '/compose/modal?' + new URLSearchParams(params), { target: body, swap: 'innerHTML' });
   };
-  document.body.addEventListener('post-saved', () => {
+  document.body.addEventListener('post-saved', (e) => {
     const dlg = document.getElementById('publish-modal');
-    if (dlg && dlg.open) dlg.close();
+    const wasModal = dlg && dlg.open;
+    if (wasModal) dlg.close();
+    // Pages that can refresh a region register window.onPostSaved; otherwise reload in place.
+    if (typeof window.onPostSaved === 'function') window.onPostSaved(e.detail || {});
+    else if (wasModal) setTimeout(() => location.reload(), 350);
   });
 })();

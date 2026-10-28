@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -344,3 +345,52 @@ async def test_csrf_form_field_without_header(client, db, brand):
     r = await client.post("/media", data={"csrf": token}, files=files)
     assert r.status_code == 303
     client.headers["X-CSRF-Token"] = token
+
+
+async def test_compose_modal_and_hx_save(client, db, brand):
+    acc = await db.scalar(select(SocialAccount))
+    r = await client.get(f"/compose/modal?account={acc.id}&at=2030-01-01T10:00")
+    assert r.status_code == 200 and "composer(" in r.text and 'hx-post="/compose"' in r.text
+    assert "<html" not in r.text  # a partial, not a page
+    r = await client.post("/compose", data={"content": "From the modal", "action": "draft",
+                                            "account_ids": [str(acc.id)]}, headers={"HX-Request": "true"})
+    assert r.status_code == 204 and r.headers.get("HX-Reswap") == "none"
+    trig = json.loads(r.headers["HX-Trigger"])
+    assert trig["toast"]["message"] == "Draft saved" and trig["post-saved"]["account_ids"] == [acc.id]
+
+
+async def test_autosave_hidden_until_saved(client, db, brand):
+    acc = await db.scalar(select(SocialAccount))
+    r = await client.post("/compose/autosave", json={"content": "half-written", "account_ids": [acc.id]})
+    pid = r.json()["post_id"]
+    r = await client.get("/posts")
+    assert "half-written" not in r.text
+    r = await client.get("/compose/modal")
+    assert "Resume unfinished post" in r.text
+    r = await client.post("/compose/autosave", json={"post_id": pid, "content": "half-written, more"})
+    assert r.json()["post_id"] == pid
+    r = await client.post("/compose", data={"post_id": str(pid), "content": "finished", "action": "draft",
+                                            "account_ids": [str(acc.id)]}, headers={"HX-Request": "true"})
+    assert r.status_code == 204
+    post = await db.get(Post, pid)
+    await db.refresh(post)
+    assert post.is_autosave is False and post.content == "finished"
+    r = await client.get("/posts")
+    assert "finished" in r.text
+
+
+async def test_compose_from_idea_and_reuse(client, db, brand):
+    from spark.models import Idea
+
+    acc = await db.scalar(select(SocialAccount))
+    await client.post("/ideas", data={"title": "Idea title", "body": "Idea body text", "source_url": "https://x.io"})
+    idea = await db.scalar(select(Idea))
+    r = await client.get(f"/compose/modal?idea_id={idea.id}")
+    assert "Idea body text" in r.text and 'name="idea_id"' in r.text
+    r = await client.post("/compose", data={"content": "Idea body text", "action": "draft", "idea_id": str(idea.id),
+                                            "account_ids": [str(acc.id)]}, headers={"HX-Request": "true"})
+    assert r.status_code == 204
+    await db.refresh(idea)
+    assert idea.post_id and idea.status == "ready"
+    r = await client.get(f"/compose/modal?from_post={idea.post_id}")
+    assert "Idea body text" in r.text and f'"selected": [{acc.id}]' in r.text

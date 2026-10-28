@@ -95,7 +95,9 @@ class Post(TimestampMixin, Base):
         Enum(PostStatus, native_enum=False), default=PostStatus.draft, index=True
     )
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
-    source: Mapped[str] = mapped_column(String(32), default="manual")  # manual | ai | rss
+    source: Mapped[str] = mapped_column(String(32), default="manual")  # manual | ai | rss | idea
+    # Written by the composer's autosave; hidden from lists until the user saves for real
+    is_autosave: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str | None] = mapped_column(Text)
 
     targets: Mapped[list["PostTarget"]] = relationship(
