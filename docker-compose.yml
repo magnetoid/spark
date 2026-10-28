@@ -1,45 +1,90 @@
+# Works with plain `docker compose up` and with Coolify.
+# Coolify fills the SERVICE_* variables (domain, generated passwords); locally
+# the defaults after ":-" apply. Everything else comes from the environment /
+# Coolify's env panel (see .env.example).
+x-spark: &spark
+  build: .
+  environment: &spark-env
+    SPARK_ENV: ${SPARK_ENV:-production}
+    SPARK_BASE_URL: ${SERVICE_FQDN_WEB:-http://localhost:8000}
+    SPARK_SECRET_KEY: ${SERVICE_PASSWORD_64_SPARKSECRET:-dev-only-secret-change-me}
+    SPARK_DATABASE_URL: postgresql+asyncpg://spark:${SERVICE_PASSWORD_POSTGRES:-spark}@db:5432/spark
+    SPARK_REDIS_URL: redis://redis:6379/0
+    SPARK_MEDIA_DIR: /data/media
+    SPARK_FORCE_DRY_RUN: ${SPARK_FORCE_DRY_RUN:-false}
+    SPARK_ANTHROPIC_API_KEY: ${SPARK_ANTHROPIC_API_KEY:-}
+    SPARK_AI_MODEL: ${SPARK_AI_MODEL:-claude-opus-5-5}
+    SPARK_ZERNIO_API_KEY: ${SPARK_ZERNIO_API_KEY:-}
+    SPARK_EMAIL_BACKEND: ${SPARK_EMAIL_BACKEND:-console}
+    SPARK_EMAIL_FROM: ${SPARK_EMAIL_FROM:-Spark <hello@example.com>}
+    SPARK_SMTP_HOST: ${SPARK_SMTP_HOST:-}
+    SPARK_SMTP_PORT: ${SPARK_SMTP_PORT:-587}
+    SPARK_SMTP_USER: ${SPARK_SMTP_USER:-}
+    SPARK_SMTP_PASSWORD: ${SPARK_SMTP_PASSWORD:-}
+    SPARK_RESEND_API_KEY: ${SPARK_RESEND_API_KEY:-}
+    SPARK_X_CLIENT_ID: ${SPARK_X_CLIENT_ID:-}
+    SPARK_X_CLIENT_SECRET: ${SPARK_X_CLIENT_SECRET:-}
+    SPARK_LINKEDIN_CLIENT_ID: ${SPARK_LINKEDIN_CLIENT_ID:-}
+    SPARK_LINKEDIN_CLIENT_SECRET: ${SPARK_LINKEDIN_CLIENT_SECRET:-}
+    SPARK_META_APP_ID: ${SPARK_META_APP_ID:-}
+    SPARK_META_APP_SECRET: ${SPARK_META_APP_SECRET:-}
+    SPARK_THREADS_APP_ID: ${SPARK_THREADS_APP_ID:-}
+    SPARK_THREADS_APP_SECRET: ${SPARK_THREADS_APP_SECRET:-}
+    SPARK_PINTEREST_CLIENT_ID: ${SPARK_PINTEREST_CLIENT_ID:-}
+    SPARK_PINTEREST_CLIENT_SECRET: ${SPARK_PINTEREST_CLIENT_SECRET:-}
+    SPARK_TIKTOK_CLIENT_KEY: ${SPARK_TIKTOK_CLIENT_KEY:-}
+    SPARK_TIKTOK_CLIENT_SECRET: ${SPARK_TIKTOK_CLIENT_SECRET:-}
+    SPARK_GOOGLE_CLIENT_ID: ${SPARK_GOOGLE_CLIENT_ID:-}
+    SPARK_GOOGLE_CLIENT_SECRET: ${SPARK_GOOGLE_CLIENT_SECRET:-}
+  volumes:
+    - media:/data/media
+  restart: unless-stopped
+
 services:
   web:
-    build: .
-    env_file: .env
+    <<: *spark
     environment:
-      SPARK_DATABASE_URL: postgresql+asyncpg://spark:${POSTGRES_PASSWORD:-spark}@db:5432/spark
-      SPARK_REDIS_URL: redis://redis:6379/0
-    ports: ["8000:8000"]
-    volumes: ["media:/data/media"]
+      <<: *spark-env
+      SERVICE_FQDN_WEB_8000: ""   # Coolify: route the generated/assigned domain to port 8000
+    expose: ["8000"]
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_started }
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   worker:
-    build: .
+    <<: *spark
     command: spark worker
-    env_file: .env
-    environment:
-      SPARK_DATABASE_URL: postgresql+asyncpg://spark:${POSTGRES_PASSWORD:-spark}@db:5432/spark
-      SPARK_REDIS_URL: redis://redis:6379/0
-    volumes: ["media:/data/media"]
     depends_on:
-      web: { condition: service_started }
-    restart: unless-stopped
+      web: { condition: service_healthy }
 
   db:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: spark
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spark}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES:-spark}
       POSTGRES_DB: spark
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U spark"]
+      test: ["CMD-SHELL", "pg_isready -U spark -d spark"]
       interval: 5s
-      retries: 10
+      timeout: 5s
+      retries: 20
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
     volumes: ["redis:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
     restart: unless-stopped
 
 volumes:
