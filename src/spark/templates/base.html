@@ -176,7 +176,8 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
 </main>
 {% endif %}
 {% block scripts %}{% endblock %}
-<!-- Alpine last, so page scripts above have defined their components -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.9/cdn.min.js"></script>
+<!-- Alpine last and deferred: page scripts (inline above) and the deferred app/shortcuts scripts
+     (earlier in document order) have all defined their components by the time it runs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.9/cdn.min.js" defer></script>
 </body>
 </html>
