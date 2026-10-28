@@ -21,6 +21,8 @@ class User(TimestampMixin, Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[Role] = mapped_column(Enum(Role, native_enum=False), default=Role.editor)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Per-user UI preferences: {"onboarding_dismissed": bool, "default_action": "queue", ...}
+    prefs: Mapped[dict] = mapped_column(JSON, default=dict)
 
     def can_edit(self) -> bool:
         return self.role in (Role.owner, Role.editor)

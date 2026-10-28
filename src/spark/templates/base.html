@@ -117,7 +117,7 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
       {% if user.can_edit() %}<a href="/compose" class="btn" data-size="sm" onclick="if(window.openComposer){openComposer({});return false}">New post</a>{% endif %}
     </div>
   </header>
-  <div class="flex-1 px-4 lg:px-6 py-4 md:py-6 max-w-7xl w-full mx-auto">
+  <div class="flex-1 px-4 lg:px-6 py-4 md:py-6 max-w-7xl w-full mx-auto pb-24 md:pb-6">
     {% for f in pop_flash(request) %}
     <div class="alert mb-4" {% if f.kind=='error' %}data-variant="destructive"{% endif %} role="status">
       {% if f.kind=='error' %}<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
@@ -128,6 +128,14 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
     {% block content %}{% endblock %}
   </div>
 </main>
+<!-- Phone bottom bar -->
+<nav class="bottom-bar md:hidden" aria-label="Quick actions">
+  <a href="/" {% if path=='/' %}aria-current="page"{% endif %}><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg><span>Home</span></a>
+  <a href="/queue" {% if path.startswith('/queue') %}aria-current="page"{% endif %}><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Queue</span></a>
+  {% if user.can_edit() %}<a href="/compose" class="primary" onclick="if(window.openComposer){openComposer({});return false}" aria-label="New post"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></a>{% endif %}
+  <a href="/inbox" {% if path.startswith('/inbox') %}aria-current="page"{% endif %}><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span>Inbox</span></a>
+  <button type="button" onclick="document.getElementById('sidebar')?.open()"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Menu</span></button>
+</nav>
 <!-- Command palette -->
 <dialog id="palette" class="dialog" aria-label="Command palette">
   <div class="!max-w-lg !p-0" x-data="palette()" @keydown="key($event)">

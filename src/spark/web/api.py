@@ -1,6 +1,6 @@
 """Small JSON endpoints for the client (command palette, later: live widgets)."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +17,22 @@ PAGES = [
     ("Links", "/links", ""), ("Bio page", "/bio", ""), ("Contacts", "/contacts", ""), ("Email", "/email", ""),
     ("Social accounts", "/accounts", ""), ("Media", "/media", ""), ("Brand & team", "/settings", "g s"),
 ]
+
+
+ALLOWED_PREFS = {"onboarding_dismissed", "default_action", "shortcuts"}
+
+
+@router.post("/me/prefs")
+async def set_prefs(request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(current_user)):
+    """Small per-user UI preferences (dismiss onboarding, default scheduling action, ...)."""
+    body = await request.json()
+    prefs = dict(user.prefs or {})
+    for k, v in body.items():
+        if k in ALLOWED_PREFS:
+            prefs[k] = v
+    user.prefs = prefs
+    await db.commit()
+    return prefs
 
 
 @router.get("/api/palette")

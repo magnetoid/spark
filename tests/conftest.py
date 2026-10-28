@@ -59,6 +59,9 @@ async def brand(db):
 
 @pytest.fixture
 async def client(brand):
+    from spark import main as m
+
+    m._buckets.clear()  # each test gets a fresh rate-limit window
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver",
                            follow_redirects=False) as c:
         # CSRF: the token is minted on first render; send it as a header like htmx does

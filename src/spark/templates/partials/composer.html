@@ -18,11 +18,13 @@
   {% if autosave %}
   <div class="alert" x-data="{show:true}" x-show="show">
     <h2>Resume unfinished post?</h2>
-    <section>“{{ (autosave.content or '(no text)')[:90] }}{{ '…' if (autosave.content or '')|length > 90 }}” — saved {{ autosave.updated_at|localtime(brand.timezone) }}.</section>
-    <footer class="flex gap-2">
+    <section>
+      <p>“{{ (autosave.content or '(no text)')[:90] }}{{ '…' if (autosave.content or '')|length > 90 }}” — saved {{ autosave.updated_at|localtime(brand.timezone) }}.</p>
+      <div class="flex flex-wrap gap-2 mt-1">
       <button type="button" class="btn" data-size="sm" onclick="{% if modal %}openComposer({post_id: {{ autosave.id }}}){% else %}location.href='/posts/{{ autosave.id }}/edit'{% endif %}">Resume</button>
       <button type="button" class="btn" data-variant="outline" data-size="sm" hx-post="/posts/{{ autosave.id }}/delete" hx-swap="none" @click="show=false">Discard</button>
-    </footer>
+      </div>
+    </section>
   </div>
   {% endif %}
 

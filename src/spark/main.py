@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -15,6 +15,36 @@ from spark.web.deps import LoginRequired, templates
 log = logging.getLogger("spark")
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 CSRF_EXEMPT_PREFIXES = ("/e/u/",)
+
+# ---- rate limiting (token bucket per client+bucket; in-process, good enough per web container) ----
+RATE_LIMITS = {  # path prefix -> (methods, requests, per_seconds)
+    "/login": ({"POST"}, 10, 60), "/setup": ({"POST"}, 10, 60),
+    "/l/": ({"GET"}, 120, 60), "/b/": ({"GET", "POST"}, 60, 60), "/e/": ({"GET", "POST"}, 120, 60),
+}
+_buckets: dict[tuple[str, str], list] = {}
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    return (fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "?"))
+
+
+def rate_limited(request: Request) -> bool:
+    import time
+
+    path = request.url.path
+    for prefix, (methods, limit, per) in RATE_LIMITS.items():
+        if path.startswith(prefix) and request.method in methods:
+            key = (_client_ip(request), prefix)
+            now = time.monotonic()
+            tokens, last = _buckets.get(key, (float(limit), now))
+            tokens = min(float(limit), tokens + (now - last) * (limit / per))
+            if tokens < 1:
+                _buckets[key] = [tokens, now]
+                return True
+            _buckets[key] = [tokens - 1, now]
+            return False
+    return False
 
 
 async def csrf_guard(request: Request) -> None:
@@ -66,6 +96,33 @@ def create_app() -> FastAPI:
               ideas.router, inbox.router, api.router, marketing.router):
         app.include_router(r)
 
+    @app.middleware("http")
+    async def guard_and_headers(request: Request, call_next):
+        if rate_limited(request):
+            return JSONResponse({"detail": "Too many requests — slow down a little"}, 429,
+                                headers={"Retry-After": "30"})
+        response = await call_next(request)
+        h = response.headers
+        h.setdefault("X-Content-Type-Options", "nosniff")
+        h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        h.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        if not request.url.path.startswith("/b/"):  # bio pages may be embedded
+            h.setdefault("X-Frame-Options", "SAMEORIGIN")
+        h.setdefault("Content-Security-Policy",
+                     "default-src 'self'; img-src * data: blob:; media-src * blob:; "
+                     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; "
+                     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+                     "font-src 'self' https://fonts.gstatic.com data:; connect-src 'self'; frame-ancestors 'self'")
+        return response
+
+    @app.exception_handler(Exception)
+    async def _server_error(request: Request, exc: Exception):
+        log.exception("Unhandled error on %s %s", request.method, request.url.path)
+        if "text/html" in request.headers.get("accept", "") and not request.headers.get("HX-Request"):
+            return templates.TemplateResponse(request, "error.html",
+                                              {"code": 500, "message": "Something broke on our side. It's logged; try again in a moment."}, 500)
+        return JSONResponse({"detail": "Internal server error"}, 500)
+
     @app.exception_handler(LoginRequired)
     async def _login_required(request: Request, exc: LoginRequired):
         if request.headers.get("HX-Request"):
@@ -79,8 +136,6 @@ def create_app() -> FastAPI:
         if exc.status_code == 404 and "text/html" in request.headers.get("accept", ""):
             return templates.TemplateResponse(request, "error.html",
                                               {"code": 404, "message": "Page not found"}, 404)
-        from fastapi.responses import JSONResponse
-
         return JSONResponse({"detail": exc.detail}, exc.status_code, headers=exc.headers)
 
     @app.get("/healthz")

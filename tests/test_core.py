@@ -394,3 +394,43 @@ async def test_compose_from_idea_and_reuse(client, db, brand):
     assert idea.post_id and idea.status == "ready"
     r = await client.get(f"/compose/modal?from_post={idea.post_id}")
     assert "Idea body text" in r.text and f'"selected": [{acc.id}]' in r.text
+
+
+def test_every_write_route_requires_a_role():
+    """Any POST/PUT/PATCH/DELETE route must depend on editor/owner, or be on the allowlist."""
+    from fastapi.routing import APIRoute
+
+    from spark.main import app
+    from spark.web import deps
+
+    allow = {"/login", "/setup", "/logout", "/b/{slug}/subscribe", "/e/u/{tok}", "/me/prefs", "/ideas/{idea_id}/move"}
+    offenders = []
+    for r in app.routes:
+        if not isinstance(r, APIRoute) or not (r.methods & {"POST", "PUT", "PATCH", "DELETE"}):
+            continue
+        if r.path in allow:
+            continue
+        calls = {d.call for d in r.dependant.dependencies}
+        if not (calls & {deps.editor, deps.owner}):
+            offenders.append(r.path)
+    assert offenders == [], offenders
+
+
+async def test_rate_limit_and_security_headers(client, db, brand):
+    r = await client.get("/queue")
+    assert r.headers.get("X-Content-Type-Options") == "nosniff" and "Content-Security-Policy" in r.headers
+    from spark import main as m
+
+    m._buckets.clear()
+    codes = [(await client.get("/l/nope")).status_code for _ in range(125)]
+    assert 429 in codes and codes[0] == 404
+    m._buckets.clear()
+
+
+async def test_prefs_and_onboarding(client, db, brand):
+    r = await client.get("/")
+    assert "Get Spark posting" in r.text
+    r = await client.post("/me/prefs", json={"onboarding_dismissed": True, "ignored": 1})
+    assert r.json() == {"onboarding_dismissed": True}
+    r = await client.get("/")
+    assert "Get Spark posting" not in r.text

@@ -9,11 +9,29 @@
   {% else %}<span class="badge" data-variant="outline"><svg data-icon="inline-start" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 17h6v-6M22 17l-8.5-8.5-5 5L2 7"/></svg>{{ pct }}%</span>{% endif %}
 {% endmacro %}
 
-{% if not accounts %}
-<div class="card mb-6">
-  <header><h2>Connect your first channel</h2><p>Spark posts to X, LinkedIn, Instagram, TikTok and more. Connect through Zernio with one key, or with your own developer apps.</p></header>
-  <footer><a href="/accounts" class="btn">Connect channels</a><a href="/settings" class="btn" data-variant="outline">Set brand voice</a></footer>
-</div>
+{% if show_onboarding %}
+<section class="card mb-6" x-data="{show:true}" x-show="show">
+  <header>
+    <h2>Get Spark posting</h2>
+    <p>{{ checklist|selectattr('done')|list|length }} of {{ checklist|length }} done. Each step takes a minute.</p>
+    <div class="card-action"><button type="button" class="btn" data-variant="ghost" data-size="sm" @click="show=false; fetch('/me/prefs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({onboarding_dismissed:true})})">Dismiss</button></div>
+  </header>
+  <section class="!pt-0">
+    <ol class="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+      {% for c in checklist %}
+      <li class="flex items-start gap-3 rounded-lg border border-line p-3 {{ 'opacity-60' if c.done }}">
+        <span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border {{ 'bg-primary border-primary' if c.done else 'border-line' }}" style="{{ 'color:var(--primary-foreground)' if c.done }}">{% if c.done %}✓{% else %}<span class="text-xs text-mute">{{ loop.index }}</span>{% endif %}</span>
+        <span class="min-w-0 text-sm">
+          {% if c.done %}<span class="font-medium line-through">{{ c.label }}</span>
+          {% elif c.action == 'compose' %}<a href="/compose" class="font-medium underline-offset-2 hover:underline" onclick="if(window.openComposer){openComposer({});return false}">{{ c.label }}</a>
+          {% else %}<a href="{{ c.href }}" class="font-medium underline-offset-2 hover:underline">{{ c.label }}</a>{% endif %}
+          <span class="block text-xs text-mute">{{ c.hint }}</span>
+        </span>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+</section>
 {% endif %}
 
 <div class="flex flex-col gap-4 md:gap-6">

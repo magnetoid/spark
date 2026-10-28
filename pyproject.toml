@@ -37,6 +37,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "playwright>=1.64.1",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1",
     "respx>=0.23.1",
@@ -55,3 +56,5 @@ ignore = ["E501", "B008", "B904", "E741"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+markers = ["e2e: browser tests that need a running server and Chromium"]
+addopts = "--ignore=tests/e2e"

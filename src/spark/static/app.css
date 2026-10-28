@@ -89,6 +89,8 @@ body { background: var(--background); color: var(--foreground); }
 .sidebar:not([data-side])[aria-hidden=true] > nav,
 .sidebar[data-side=left][aria-hidden=true] > nav { translate: -100% 0; }
 .sidebar[data-side=right][aria-hidden=true] > nav { translate: 100% 0; }
+/* Same conflict centres dialogs: the dialog body uses the --tw-translate vars at -50%. */
+.dialog > *, .alert-dialog > * { translate: -50% -50%; }
 
 /* shadcn dashboard-01 pieces */
 .site-header { position: sticky; top: 0; z-index: 30; height: 3rem; display: flex; align-items: center; gap: .5rem;
@@ -131,3 +133,11 @@ body { background: var(--background); color: var(--foreground); }
 .prose-sm p { margin: .5rem 0; }
 .stat-grid { display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .stat-grid > div { background: var(--card); padding: 1.25rem; }
+
+/* phone bottom action bar */
+.bottom-bar { position: fixed; inset-inline: 0; bottom: 0; z-index: 35; display: flex; align-items: stretch; justify-content: space-around;
+  height: calc(3.5rem + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);
+  background: color-mix(in oklab, var(--background) 92%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--border); }
+.bottom-bar a, .bottom-bar button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: .6875rem; color: var(--muted-foreground); background: none; border: 0; }
+.bottom-bar a[aria-current=page] { color: var(--foreground); }
+.bottom-bar .primary { flex: 0 0 3.5rem; margin: .375rem .25rem; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); }

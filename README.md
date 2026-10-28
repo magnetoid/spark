@@ -82,3 +82,14 @@ uv run ruff check src tests
 Layout: `src/spark/platforms/` (one adapter per network + `zernio.py` provider + `dry_run.py`), `services/` (publisher, scheduler, ai, analytics, links, rss, email), `web/` (routers: posts, queue, ideas, accounts, marketing…), `templates/` (Jinja + HTMX + Alpine on [Basecoat](https://basecoatui.com)), `worker.py`.
 
 Schema changes go through Alembic: `uv run alembic revision --autogenerate -m "..."`, then `uv run alembic upgrade head` (the Docker image runs this on start). A dev database created by `create_all` needs `uv run alembic stamp <initial revision>` once before upgrading.
+
+## v2: modal composer, live pages, hardening
+
+- **Publish modal** from anywhere: sidebar "New post", the `c` key, empty queue slots, calendar days, idea cards and "Reuse" on sent posts open the composer in a dialog (a full-screen sheet on phones), prefilled from the context. `/compose` still works as a page.
+- **Autosave and resume**: drafts are saved every 2 s while you type; reopening an empty composer offers to resume or discard the last one (hidden from the Posts and Queue lists).
+- **Media**: drop or paste images into the composer, upload progress per file, drag thumbnails to reorder.
+- **No reloads**: Queue, Calendar, Ideas, Inbox and the Overview update in place (HTMX partials + `HX-Trigger` events `toast`, `post-saved`, `posts-changed`); the Overview table and Inbox poll in the background.
+- **Keyboard**: `c` new post, `g` + `o/q/c/i/p/n/a/s` to jump, `/` or `⌘K` command palette, `?` help.
+- **Onboarding**: the Overview shows a five-step checklist (channel, brand voice, posting times, first post, Zernio key) until it is complete or dismissed (per user, `User.prefs`).
+- **Hardening**: CSRF on every state-changing request, rate limits on login/setup and public link routes, security headers (CSP, nosniff, frame options), friendly 500 page, and a test that every write route requires a role.
+- **CI**: `.github/workflows/ci.yml` runs ruff, pytest and a Playwright browser flow (`tests/e2e/`), then builds the Docker image. Locally: `uv run playwright install chromium` once, then `uv run pytest tests/e2e -o addopts=""`.

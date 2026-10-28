@@ -1,0 +1,27 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check src tests
+      - name: Unit and HTTP tests
+        run: uv run pytest -q --ignore=tests/e2e
+      - name: Install Playwright Chromium
+        run: uv run playwright install --with-deps chromium
+      - name: Browser smoke test
+        run: uv run pytest -q tests/e2e
+      - name: Build Docker image
+        run: docker build -t spark:ci .

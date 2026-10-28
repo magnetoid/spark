@@ -59,8 +59,27 @@ async def dashboard(request: Request, days: int = 30, db: AsyncSession = Depends
     recent = (await db.execute(q(PostStatus.published, order=Post.scheduled_at, desc=True))).scalars().all()
     accounts = (await db.execute(
         select(SocialAccount).where(SocialAccount.brand_id == brand.id))).scalars().all()
+    from spark.models import QueueSlot
+
+    s = get_settings()
+    any_post = await db.scalar(select(Post.id).where(Post.brand_id == brand.id, Post.is_autosave.is_(False)).limit(1))
+    slots = await db.scalar(select(QueueSlot.id).where(QueueSlot.brand_id == brand.id).limit(1))
+    checklist = [
+        {"key": "channel", "label": "Connect a channel", "done": bool(accounts), "href": "/accounts",
+         "hint": "Through Zernio with one key, or your own developer apps."},
+        {"key": "voice", "label": "Describe the brand voice", "done": bool(brand.voice_tone or brand.voice_rules),
+         "href": "/settings", "hint": "Every AI draft reads it."},
+        {"key": "slots", "label": "Set posting times", "done": bool(slots), "href": "/settings#queue",
+         "hint": "The queue fills these slots."},
+        {"key": "post", "label": "Queue your first post", "done": bool(any_post), "href": "#", "action": "compose",
+         "hint": "Press c anywhere."},
+        {"key": "zernio", "label": "Add the Zernio key", "done": bool(s.zernio_api_key), "href": "/accounts",
+         "hint": "Unlocks the Inbox and 30+ platforms."},
+    ]
+    show_onboarding = not (user.prefs or {}).get("onboarding_dismissed") and not all(c["done"] for c in checklist)
     ctx = dict(data=data, trend=trend, days=days, upcoming=upcoming, pending=pending, failed=failed,
-               recent=recent, accounts=accounts, ai_enabled=bool(get_settings().anthropic_api_key))
+               recent=recent, accounts=accounts, ai_enabled=bool(s.anthropic_api_key),
+               checklist=checklist, show_onboarding=show_onboarding)
     if request.url.path.endswith("/table"):
         return templates.TemplateResponse(request, "partials/dashboard_table.html",
                                           {"user": user, "brand": brand, **ctx})
