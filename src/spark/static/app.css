@@ -50,6 +50,8 @@ body { background: var(--background); color: var(--foreground); }
 .cal-day.drop { background: var(--accent); }
 .chip { display: block; font-size: .75rem; border-left: 3px solid; padding: .125rem .375rem; margin-top: .25rem; border-radius: 3px; background: var(--card); cursor: grab; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .chip:active { cursor: grabbing; }
+.cal-day.week { min-height: 28rem; }
+.chip.chip-lg { white-space: normal; padding: .375rem .5rem; margin-top: .375rem; }
 
 /* Tailwind Play's unlayered `*{--tw-translate-x:0}` reset overrides Basecoat's layered
    sidebar transform, so set the hidden-state translate directly (unlayered). */

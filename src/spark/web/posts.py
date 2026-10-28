@@ -367,28 +367,50 @@ async def post_delete(post_id: int, request: Request, db: AsyncSession = Depends
 # ---- calendar -------------------------------------------------------------------
 
 @router.get("/calendar")
-async def calendar(request: Request, month: str | None = None, db: AsyncSession = Depends(get_db),
-                   user: User = Depends(current_user), brand: Brand = Depends(require_brand)):
+async def calendar(request: Request, month: str | None = None, week: str | None = None,
+                   view: str = "month", account: int | None = None, campaign: int | None = None,
+                   db: AsyncSession = Depends(get_db), user: User = Depends(current_user),
+                   brand: Brand = Depends(require_brand)):
+    """Month or week grid (Buffer has both), filterable by channel and campaign."""
     zone = ZoneInfo(brand.timezone)
     today = datetime.now(zone).date()
-    first = date.fromisoformat(f"{month}-01") if month else today.replace(day=1)
-    grid_start = first - timedelta(days=first.weekday())
-    weeks = 6
+    view = "week" if view == "week" else "month"
+    if view == "week":
+        anchor = date.fromisoformat(week) if week else today
+        grid_start = anchor - timedelta(days=anchor.weekday())
+        weeks = 1
+        first = grid_start
+        prev_link = f"/calendar?view=week&week={(grid_start - timedelta(days=7)).isoformat()}"
+        next_link = f"/calendar?view=week&week={(grid_start + timedelta(days=7)).isoformat()}"
+        title = f"{grid_start:%b %d} – {(grid_start + timedelta(days=6)):%b %d, %Y}"
+    else:
+        first = date.fromisoformat(f"{month}-01") if month else today.replace(day=1)
+        grid_start = first - timedelta(days=first.weekday())
+        weeks = 6
+        prev_link = f"/calendar?month={(first - timedelta(days=1)):%Y-%m}"
+        next_link = f"/calendar?month={(first + timedelta(days=32)):%Y-%m}"
+        title = first.strftime("%B %Y")
     grid_end = grid_start + timedelta(days=7 * weeks)
     start_utc = datetime.combine(grid_start, datetime.min.time(), zone).astimezone(UTC)
     end_utc = datetime.combine(grid_end, datetime.min.time(), zone).astimezone(UTC)
-    posts = (await db.execute(
-        select(Post).where(Post.brand_id == brand.id, Post.scheduled_at >= start_utc,
-                           Post.scheduled_at < end_utc).order_by(Post.scheduled_at)
-    )).scalars().all()
+    stmt = select(Post).where(Post.brand_id == brand.id, Post.scheduled_at >= start_utc,
+                              Post.scheduled_at < end_utc)
+    if campaign:
+        stmt = stmt.where(Post.campaign_id == campaign)
+    if account:
+        stmt = stmt.where(Post.id.in_(select(PostTarget.post_id).where(PostTarget.account_id == account)))
+    posts = (await db.execute(stmt.order_by(Post.scheduled_at))).scalars().all()
     by_day: dict[date, list[Post]] = {}
     for p in posts:
         by_day.setdefault(as_utc(p.scheduled_at).astimezone(zone).date(), []).append(p)
     days = [grid_start + timedelta(days=i) for i in range(7 * weeks)]
-    prev_m = (first - timedelta(days=1)).strftime("%Y-%m")
-    next_m = (first + timedelta(days=32)).strftime("%Y-%m")
+    filters = f"&account={account}" if account else ""
+    filters += f"&campaign={campaign}" if campaign else ""
     return await render(request, "calendar.html", db, user, brand, days=days, by_day=by_day,
-                        first=first, today=today, prev_m=prev_m, next_m=next_m)
+                        first=first, today=today, view=view, title=title,
+                        prev_link=prev_link + filters, next_link=next_link + filters,
+                        accounts=await _accounts(db, brand), campaigns=await _campaigns(db, brand),
+                        account=account, campaign=campaign)
 
 
 @router.post("/calendar/move")

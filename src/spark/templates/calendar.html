@@ -1,31 +1,50 @@
 {% extends "base.html" %}
 {% block title %}Calendar · Spark{% endblock %}
 {% block content %}
-<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+<div class="flex flex-wrap items-center justify-between gap-4 mb-4">
   <div class="flex items-center gap-3">
-    <a href="/calendar?month={{ prev_m }}" class="btn" data-variant="outline" data-size="sm" aria-label="Previous month">‹</a>
-    <h1 class="text-2xl font-semibold tracking-tight w-48 text-center">{{ first.strftime('%B %Y') }}</h1>
-    <a href="/calendar?month={{ next_m }}" class="btn" data-variant="outline" data-size="sm" aria-label="Next month">›</a>
-    <a href="/calendar" class="text-sm text-cobalt ml-2">Today</a>
+    <a href="{{ prev_link }}" class="btn" data-variant="outline" data-size="sm" aria-label="Previous">‹</a>
+    <h1 class="text-2xl font-semibold tracking-tight min-w-[12rem] text-center">{{ title }}</h1>
+    <a href="{{ next_link }}" class="btn" data-variant="outline" data-size="sm" aria-label="Next">›</a>
+    <a href="/calendar?view={{ view }}{% if account %}&account={{ account }}{% endif %}{% if campaign %}&campaign={{ campaign }}{% endif %}" class="text-sm text-cobalt ml-1">Today</a>
   </div>
-  <div class="text-xs text-mute">Drag a post to another day to reschedule. Times are {{ brand.timezone }}.</div>
+  <form method="get" action="/calendar" class="flex flex-wrap items-center gap-2 text-sm">
+    <input type="hidden" name="view" value="{{ view }}">
+    <div class="tabs"><nav role="tablist" aria-orientation="horizontal" data-variant="line">
+      <a role="tab" href="/calendar?view=week{% if account %}&account={{ account }}{% endif %}{% if campaign %}&campaign={{ campaign }}{% endif %}" aria-selected="{{ 'true' if view=='week' else 'false' }}" class="btn" data-variant="ghost" data-size="sm">Week</a>
+      <a role="tab" href="/calendar?view=month{% if account %}&account={{ account }}{% endif %}{% if campaign %}&campaign={{ campaign }}{% endif %}" aria-selected="{{ 'true' if view=='month' else 'false' }}" class="btn" data-variant="ghost" data-size="sm">Month</a>
+    </nav></div>
+    <select name="account" class="select w-44" onchange="this.form.submit()">
+      <option value="">All channels</option>
+      {% for a in accounts %}<option value="{{ a.id }}" {% if account==a.id %}selected{% endif %}>{{ a.handle }} · {{ a.platform }}</option>{% endfor %}
+    </select>
+    <select name="campaign" class="select w-44" onchange="this.form.submit()">
+      <option value="">All campaigns</option>
+      {% for c in campaigns %}<option value="{{ c.id }}" {% if campaign==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+  </form>
 </div>
+<p class="text-xs text-mute mb-3">Drag a post to another day to reschedule. Times are {{ brand.timezone }}.</p>
+
 <div class="card overflow-hidden" x-data="cal()">
   <div class="grid grid-cols-7 text-xs text-mute border-b border-line">
-    {% for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}<div class="px-2 py-1.5">{{ d }}</div>{% endfor %}
+    {% for d in days[:7] %}<div class="px-2 py-1.5">{{ d.strftime('%a') }}{% if view=='week' %} <span class="num {{ 'badge st-pending_approval' if d==today }}">{{ d.day }}</span>{% endif %}</div>{% endfor %}
   </div>
   <div class="grid grid-cols-7">
     {% for d in days %}
-    <div class="cal-day {{ 'other' if d.month != first.month }} {{ 'today' if d == today }}" data-day="{{ d.isoformat() }}"
+    <div class="cal-day {{ 'week' if view=='week' }} {{ 'other' if view=='month' and d.month != first.month }} {{ 'today' if d == today }}" data-day="{{ d.isoformat() }}"
          @dragover.prevent="$el.classList.add('drop')" @dragleave="$el.classList.remove('drop')" @drop.prevent="drop($event, '{{ d.isoformat() }}'); $el.classList.remove('drop')">
       <div class="flex items-center justify-between">
-        <span class="d text-xs num w-5 h-5 grid place-items-center">{{ d.day }}</span>
-        {% if user.can_edit() and d >= today %}<a href="/compose?at={{ d.isoformat() }}T10:00" class="text-mute hover:text-ink text-xs" title="New post on this day">+</a>{% endif %}
+        {% if view=='month' %}<span class="d text-xs num w-5 h-5 grid place-items-center">{{ d.day }}</span>{% else %}<span></span>{% endif %}
+        {% if user.can_edit() and d >= today %}<a href="/compose?at={{ d.isoformat() }}T10:00{% if account %}&account={{ account }}{% endif %}" class="text-mute hover:text-ink text-xs" title="New post on this day">+</a>{% endif %}
       </div>
       {% for p in by_day.get(d, []) %}
-      <a href="/posts/{{ p.id }}/edit" class="chip" draggable="{{ 'true' if p.status.value in ('scheduled','pending_approval','draft') else 'false' }}" @dragstart="drag($event, {{ p.id }})"
+      <a href="/posts/{{ p.id }}/edit" class="chip {{ 'chip-lg' if view=='week' }}" draggable="{{ 'true' if p.status.value in ('scheduled','pending_approval','draft') else 'false' }}" @dragstart="drag($event, {{ p.id }})"
          style="border-color: {{ p.campaign.color if p.campaign else {'scheduled':'#2E5BE8','pending_approval':'#F2A516','published':'#1E8A5A','failed':'#C73A33','publishing':'#2E5BE8','draft':'#9CA3AF'}[p.status.value] }}" title="{{ p.content }}">
-        <span class="num text-mute">{{ p.scheduled_at|localtime(brand.timezone, '%H:%M') }}</span> {{ p.content or '(no text)' }}
+        <span class="num text-mute">{{ p.scheduled_at|localtime(brand.timezone, '%H:%M') }}</span>
+        {% if view=='week' %}<span class="block whitespace-normal line-clamp-3">{{ p.content or '(no text)' }}</span>
+          <span class="block text-mute truncate">{% for t in p.targets %}{{ t.account.handle }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+        {% else %}{{ p.content or '(no text)' }}{% endif %}
       </a>
       {% endfor %}
     </div>
