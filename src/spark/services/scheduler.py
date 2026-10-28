@@ -66,6 +66,8 @@ def schedule(post: Post, when: datetime, user: User, brand: Brand) -> PostStatus
     """Move a post (and its targets) into the queue, respecting approval."""
     needs_approval = brand.require_approval and not user.can_approve()
     status = PostStatus.pending_approval if needs_approval else PostStatus.scheduled
+    if status == PostStatus.pending_approval and post.status != PostStatus.pending_approval:
+        post.approval_notified_at = None  # owners hear about each new request for approval
     post.scheduled_at = when
     post.status = status
     for t in post.targets:

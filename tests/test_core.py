@@ -590,6 +590,20 @@ async def test_zernio_webhook_marks_target_published_and_failed(client, db, bran
     await db.refresh(t2)
     assert t2.status == PostStatus.failed and "Token expired" in t2.error
 
+    # the same failure reported again per platform is not a second change
+    raw, headers = _signed({"id": "evt-fail-2", "event": "post.platform.failed",
+                            "post": {"id": "zpost-10"}, "account": {"accountId": "z-acc-1"},
+                            "platform": {"status": "failed", "error": "Token expired"}})
+    assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()["result"] == "unchanged"
+
+    # removed on the platform after it went out: still published, not a failure
+    raw, headers = _signed({"id": "evt-del", "event": "post.platform.deleted",
+                            "post": {"id": "zpost-9"}, "account": {"accountId": "z-acc-1"},
+                            "platform": {"status": "deleted"}})
+    assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()["result"] == "updated"
+    await db.refresh(t)
+    assert t.status == PostStatus.published and t.remote_url is None and "Deleted" in t.error
+
     # account disconnected -> paused with a reason; connected again -> back
     raw, headers = _signed({"id": "evt-dc", "event": "account.disconnected",
                             "account": {"accountId": "z-acc-1", "disconnectionType": "unintentional",
@@ -606,3 +620,41 @@ async def test_zernio_webhook_marks_target_published_and_failed(client, db, bran
     assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()["result"] == "connected"
     await db.refresh(acc)
     assert acc.is_active is True and acc.handle == "imba-new" and acc.last_error is None
+
+
+async def test_notify_failed_again_after_retry(db, brand):
+    from spark.services import notify, publisher
+    from spark.services.email import ConsoleSender
+
+    _post, t = await _failed_target(db, brand)
+    assert await notify.notify_failed(db, ConsoleSender()) == 1
+    # Retry, then it fails for good a second time: that is news again
+    publisher._fail(t, "Still broken")
+    await db.commit()
+    assert await notify.notify_failed(db, ConsoleSender()) == 1
+
+
+async def test_notify_approvals_again_after_resubmit(db, brand):
+    from spark.models import Post, PostStatus
+    from spark.services import notify, scheduler
+    from spark.services.email import ConsoleSender
+
+    user = await db.scalar(select(User))
+    brand.require_approval = True
+    post = Post(brand_id=brand.id, content="Needs a look", status=PostStatus.pending_approval, author_id=user.id)
+    db.add(post)
+    await db.commit()
+    assert await notify.notify_approvals(db, ConsoleSender()) == 1
+
+    class Editor:  # an editor who cannot approve resubmits after the post went back to drafts
+        def can_approve(self):
+            return False
+
+    when = datetime.now(UTC) + timedelta(hours=3)
+    scheduler.schedule(post, when, Editor(), brand)  # still pending: no reset, no second email
+    await db.commit()
+    assert await notify.notify_approvals(db, ConsoleSender()) == 0
+    post.status = PostStatus.draft
+    scheduler.schedule(post, when, Editor(), brand)
+    await db.commit()
+    assert await notify.notify_approvals(db, ConsoleSender()) == 1

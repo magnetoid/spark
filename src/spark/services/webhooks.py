@@ -86,12 +86,22 @@ def _apply_platform_result(target: PostTarget, status: str, url: str | None, err
         target.next_attempt_at = None
         target.account.last_error = None
         return bool(changed)
-    if status in ("failed", "deleted"):
-        if target.status == PostStatus.published and status == "failed":
+    if status == "deleted":
+        if target.status == PostStatus.published:
+            # It went out and was removed on the platform later: still published, not a failure.
+            target.remote_url = None
+            target.error = (error or "Deleted on the platform after publishing")[:2000]
+            return True
+        status = "failed"
+    if status == "failed":
+        if target.status == PostStatus.published:
             return False  # we already saw it go out; a late failure report is noise
+        if target.status == PostStatus.failed:
+            return False  # already recorded (post.failed and post.platform.failed both arrive)
         target.status = PostStatus.failed
-        target.error = (error or f"Zernio reported the post as {status}")[:2000]
+        target.error = (error or "Zernio reported the post as failed")[:2000]
         target.next_attempt_at = None
+        target.notified_at = None
         return True
     return False
 

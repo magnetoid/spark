@@ -122,6 +122,7 @@ def _fail(target: PostTarget, error: str) -> None:
     target.status = PostStatus.failed
     target.error = error[:2000]
     target.next_attempt_at = None
+    target.notified_at = None  # a fresh failure gets its own email
 
 
 def _retry_or_fail(target: PostTarget, error: str, retryable: bool) -> None:
