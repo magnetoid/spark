@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -6,7 +7,7 @@ import pytest
 import respx
 from sqlalchemy import select
 
-from spark.models import Brand, Post, PostStatus, PostTarget, SocialAccount, User
+from spark.models import Brand, Post, PostStatus, PostTarget, Role, SocialAccount, User
 from spark.platforms import PublishPayload, get_adapter
 from spark.platforms.bluesky import facets
 from spark.platforms.zernio import ZernioAdapter, from_zernio, to_zernio
@@ -404,7 +405,9 @@ def test_every_write_route_requires_a_role():
     from spark.web import deps
 
     allow = {"/login", "/setup", "/logout", "/b/{slug}/subscribe", "/e/u/{tok}", "/me/prefs", "/me", "/me/password",
-             "/webhooks/zernio", "/ideas/{idea_id}/move"}
+             "/webhooks/zernio", "/ideas/{idea_id}/move",
+             # personal API tokens: any signed-in user manages their own (viewers get read-only tools)
+             "/settings/connectors/mcp/tokens", "/settings/connectors/mcp/tokens/{token_id}/delete"}
     offenders = []
     for r in app.routes:
         if not isinstance(r, APIRoute) or not (r.methods & {"POST", "PUT", "PATCH", "DELETE"}):
@@ -417,12 +420,13 @@ def test_every_write_route_requires_a_role():
     assert offenders == [], offenders
 
 
-async def test_rate_limit_and_security_headers(client, db, brand):
+async def test_rate_limit_and_security_headers(client, db, brand, monkeypatch):
     r = await client.get("/queue")
     assert r.headers.get("X-Content-Type-Options") == "nosniff" and "Content-Security-Policy" in r.headers
     from spark import main as m
 
     m._buckets.clear()
+    monkeypatch.setattr(m, "_clock", lambda: 1000.0)  # no refill during the burst, however slow the machine
     codes = [(await client.get("/l/nope")).status_code for _ in range(125)]
     assert 429 in codes and codes[0] == 404
     m._buckets.clear()
@@ -658,3 +662,162 @@ async def test_notify_approvals_again_after_resubmit(db, brand):
     scheduler.schedule(post, when, Editor(), brand)
     await db.commit()
     assert await notify.notify_approvals(db, ConsoleSender()) == 1
+
+
+
+# ---- Settings → Connectors and the MCP server ------------------------------------------
+
+async def test_connectors_pages_render(client):
+    r = await client.get("/settings/connectors")
+    assert r.status_code == 200
+    names = [n for n in ("Zernio", "Claude AI", "Email delivery", "MCP access", "Direct platform apps") if n in r.text]
+    assert names[0] == "Zernio" and len(names) == 5
+    assert r.text.index("Zernio") < r.text.index("Claude AI")  # Zernio is the first connector
+    for key in ("zernio", "anthropic", "email", "mcp", "direct"):
+        assert (await client.get(f"/settings/connectors/{key}")).status_code == 200, key
+    assert (await client.get("/settings/connectors/nope")).status_code == 404
+    assert "Connectors" in (await client.get("/settings")).text  # tabs on Brand & team
+
+
+async def test_connector_saved_value_overrides_env_and_clears(client, db):
+    from spark.config import get_settings
+    from spark.models import ConnectorSetting
+
+    assert not get_settings().zernio_api_key
+    r = await client.post("/settings/connectors/zernio", data={"zernio_api_key": "sk_live_secret_123456",
+                                                               "zernio_base_url": get_settings().zernio_base_url})
+    assert r.status_code == 303
+    assert get_settings().zernio_api_key == "sk_live_secret_123456"
+    row = await db.get(ConnectorSetting, "zernio_api_key")
+    assert row and "sk_live" not in row.value  # encrypted at rest
+    page = (await client.get("/settings/connectors/zernio")).text
+    assert "sk_live_secret_123456" not in page and "saved in Spark" in page
+    # a blank secret keeps the saved value
+    await client.post("/settings/connectors/zernio", data={"zernio_api_key": ""})
+    assert get_settings().zernio_api_key == "sk_live_secret_123456"
+    # removing it falls back to the environment (empty in tests)
+    await client.post("/settings/connectors/zernio", data={"clear_zernio_api_key": "1"})
+    assert not get_settings().zernio_api_key
+
+
+async def test_connectors_are_owner_only(client, db):
+    user = await db.scalar(select(User))
+    user.role = Role.editor
+    await db.commit()
+    r = await client.post("/settings/connectors/zernio", data={"zernio_api_key": "sk_x"})
+    assert r.status_code == 403
+
+
+async def _mcp_call(client, token, method, params=None):
+    headers = {"Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2025-06-18"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    r = await client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params or {}},
+                          headers=headers)
+    return r
+
+
+async def _tool(client, token, name, **args):
+    import json as _json
+
+    r = await _mcp_call(client, token, "tools/call", {"name": name, "arguments": args})
+    assert r.status_code == 200, r.text
+    res = r.json()["result"]
+    text = res["content"][0]["text"]
+    return res["isError"], (text if res["isError"] else _json.loads(text))
+
+
+@pytest.fixture
+async def mcp(client):
+    import asyncio
+
+    from spark import mcp_server
+
+    # ASGITransport runs no lifespan, so run a fresh session manager in its own task: its
+    # cancel scope must open and close in the same task, which a fixture's teardown is not.
+    mcp_server.reset()
+    started, stop = asyncio.Event(), asyncio.Event()
+
+    async def run():
+        async with mcp_server.session_manager_run():
+            started.set()
+            await stop.wait()
+
+    task = asyncio.create_task(run())
+    await started.wait()
+    yield client
+    stop.set()
+    await task
+
+
+async def _new_token(client) -> str:
+    r = await client.post("/settings/connectors/mcp/tokens", data={"name": "Claude Code"})
+    assert r.status_code == 303
+    page = (await client.get("/settings/connectors/mcp")).text
+    token = re.search(r'value="(spk_[^"]+)"', page).group(1)
+    assert token not in (await client.get("/settings/connectors/mcp")).text  # shown once only
+    return token
+
+
+async def test_mcp_needs_a_valid_token(mcp, db):
+    from spark.models import ApiToken
+
+    assert (await _mcp_call(mcp, None, "tools/list")).status_code == 401
+    assert (await _mcp_call(mcp, "spk_nope", "tools/list")).status_code == 401
+    token = await _new_token(mcp)
+    r = await _mcp_call(mcp, token, "tools/list")
+    names = {t["name"] for t in r.json()["result"]["tools"]}
+    assert {"create_post", "list_posts", "approve_post", "get_analytics"} <= names
+    t = await db.scalar(select(ApiToken))
+    assert t.token_hash != token and t.last_used_at is not None
+    await mcp.post(f"/settings/connectors/mcp/tokens/{t.id}/delete")
+    assert (await _mcp_call(mcp, token, "tools/list")).status_code == 401
+
+
+async def test_mcp_create_schedule_and_list(mcp, db, brand):
+    from spark.models import Post, PostStatus, QueueSlot
+
+    db.add(QueueSlot(brand_id=brand.id, weekday=0, time="09:00"))
+    await db.commit()
+    token = await _new_token(mcp)
+    err, data = await _tool(mcp, token, "list_brands")
+    assert not err and data["brands"][0]["slug"] == "acme" and data["you"]["role"] == "owner"
+    err, data = await _tool(mcp, token, "create_post", content="Queued by an assistant", action="queue")
+    assert not err and data["post"]["status"] == "scheduled" and "Queued for" in data["message"]
+    when = (datetime.now(UTC) + timedelta(days=2)).replace(microsecond=0)
+    err, data = await _tool(mcp, token, "create_post", content="At a time", action="schedule",
+                            scheduled_at=when.strftime("%Y-%m-%dT%H:%M"), channels=["acme"])
+    assert not err and data["post"]["scheduled_at"].startswith(when.strftime("%Y-%m-%dT%H:%M"))
+    err, msg = await _tool(mcp, token, "create_post", content="Too early", action="schedule",
+                           scheduled_at="2020-01-01T10:00")
+    assert err and "past" in msg and "draft" in msg
+    err, data = await _tool(mcp, token, "list_posts", status="scheduled")
+    assert {p["content"] for p in data["posts"]} == {"Queued by an assistant", "At a time"}
+    err, msg = await _tool(mcp, token, "create_post", content="x", channels=["nope"])
+    assert err and "No channel" in msg
+    post = await db.scalar(select(Post).where(Post.content == "Queued by an assistant"))
+    assert post.source == "mcp" and post.status == PostStatus.scheduled
+    err, data = await _tool(mcp, token, "move_to_drafts", post_id=post.id)
+    assert not err and data["post"]["status"] == "draft"
+
+
+async def test_mcp_roles_and_approval(mcp, db, brand):
+    token = await _new_token(mcp)
+    user = await db.scalar(select(User))
+    brand.require_approval = True
+    user.role = Role.editor
+    await db.commit()
+    err, data = await _tool(mcp, token, "create_post", content="Needs approval", action="now")
+    assert not err and data["post"]["status"] == "pending_approval"
+    err, msg = await _tool(mcp, token, "approve_post", post_id=data["post"]["id"])
+    assert err and "owners" in msg.lower()
+    user.role = Role.owner
+    await db.commit()
+    err, ok = await _tool(mcp, token, "approve_post", post_id=data["post"]["id"])
+    assert not err and ok["post"]["status"] == "scheduled"
+    user.role = Role.viewer
+    await db.commit()
+    err, msg = await _tool(mcp, token, "add_idea", title="Nope")
+    assert err and "viewer" in msg
+    err, ideas = await _tool(mcp, token, "list_ideas")
+    assert not err and ideas["ideas"] == []

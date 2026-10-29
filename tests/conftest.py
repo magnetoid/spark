@@ -35,6 +35,10 @@ async def fresh_db():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
+    from spark.services import connectors
+
+    connectors.apply({})  # saved connector values never leak into the next test
+    connectors._loaded_at = 0.0
 
 
 @pytest.fixture

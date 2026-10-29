@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Brand & team · Spark{% endblock %}
+{% block title %}Brand & team · Settings · Spark{% endblock %}
+{% block page_title %}Settings{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold tracking-tight mb-6">Brand &amp; team</h1>
+{% set tab = "brand" %}{% include "partials/settings_nav.html" %}
 <div class="grid lg:grid-cols-3 gap-8">
 <div class="lg:col-span-2 space-y-8">
   <form method="post" action="/settings" class="form card p-6 space-y-5">{{ csrf_field(request) }}

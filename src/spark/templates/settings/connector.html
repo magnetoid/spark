@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}{{ c.name }} · Connectors · Spark{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+{% include "partials/settings_nav.html" %}
+<a href="/settings/connectors" class="text-sm text-mute hover:underline">← All connectors</a>
+<div class="flex flex-wrap items-start gap-4 mt-3 mb-6">
+  <span class="connector-mark lg {{ c.key }}" aria-hidden="true">{{ c.name[:1] }}</span>
+  <div class="flex-1 min-w-[16rem]">
+    <div class="flex items-center gap-2 flex-wrap">
+      <h2 class="text-xl font-semibold">{{ c.name }}</h2>
+      {% if c.kind == 'service' %}<span class="badge dot {{ 'st-published' if configured else 'st-failed' }}">{{ ('Connected' if c.key != 'email' else 'Delivering') if configured else ('Not connected' if c.key != 'email' else 'Console only') }}</span>{% endif %}
+    </div>
+    <p class="text-sm text-mute max-w-2xl">{{ c.description }}{% if c.docs %} <a class="underline" href="{{ c.docs }}" target="_blank" rel="noopener">Docs</a>{% endif %}</p>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-8">
+<div class="lg:col-span-2 space-y-8">
+
+{% if c.fields %}
+<form method="post" action="/settings/connectors/{{ c.key }}" class="form card p-6 space-y-5" autocomplete="off"
+      {% if c.key == 'email' %}x-data="{ backend: '{{ rows[0].value }}' }"{% endif %}>{{ csrf_field(request) }}
+  <h3 class="font-semibold">Configuration</h3>
+  {% if not can_edit %}<div class="alert"><section>Only owners change connectors.</section></div>{% endif %}
+  <fieldset class="grid sm:grid-cols-2 gap-4" {% if not can_edit %}disabled{% endif %}>
+  {% for r in rows %}{% set f = r.f %}
+    <div class="field {% if f.kind in ('secret',) or f.name in ('zernio_base_url', 'email_from') %}sm:col-span-2{% endif %}"
+         {% if c.key == 'email' and f.name.startswith('smtp_') %}x-show="backend === 'smtp'"{% endif %}
+         {% if c.key == 'email' and f.name == 'resend_api_key' %}x-show="backend === 'resend'"{% endif %}>
+      {% if f.kind == 'bool' %}
+        <label class="flex items-center gap-2 font-normal"><input type="hidden" name="{{ f.name }}" value="false"><input type="checkbox" name="{{ f.name }}" value="true" {% if r.value %}checked{% endif %}> {{ f.label }}</label>
+      {% else %}
+      <label for="f-{{ f.name }}" class="flex items-center gap-2">{{ f.label }}
+        <span class="text-xs font-normal text-mute">{% if r.source == 'saved' %}saved in Spark{% elif r.source == 'env' %}from server environment{% elif f.kind == 'secret' %}not set{% else %}default{% endif %}</span>
+      </label>
+      {% if f.kind == 'select' %}
+        <select id="f-{{ f.name }}" class="select" name="{{ f.name }}" {% if c.key == 'email' and f.name == 'email_backend' %}x-model="backend"{% endif %}>
+          {% for v, label in f.options %}<option value="{{ v }}" {% if r.value == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          {% if r.value and r.value not in f.options|map('first')|list %}<option value="{{ r.value }}" selected>{{ r.value }}</option>{% endif %}
+        </select>
+      {% elif f.kind == 'secret' %}
+        <input id="f-{{ f.name }}" type="password" class="input font-mono" name="{{ f.name }}" autocomplete="new-password"
+               placeholder="{{ ('Current: ' ~ r.masked ~ ' · type to replace') if r.has_value else f.placeholder }}">
+      {% else %}
+        <input id="f-{{ f.name }}" type="{{ 'number' if f.kind == 'number' else 'text' }}" class="input" name="{{ f.name }}" value="{{ r.value }}" placeholder="{{ f.placeholder }}">
+      {% endif %}
+      {% endif %}
+      {% if f.help %}<p class="hint">{{ f.help }}</p>{% endif %}
+      {% if r.source == 'saved' and can_edit %}<label class="flex items-center gap-2 text-xs font-normal text-mute mt-1"><input type="checkbox" name="clear_{{ f.name }}" value="1"> Remove the saved value{% if f.kind == 'secret' %} (falls back to the server environment){% endif %}</label>{% endif %}
+    </div>
+  {% endfor %}
+  </fieldset>
+  {% if can_edit %}
+  <div class="flex flex-wrap gap-2">
+    <button class="btn">Save</button>
+    <button class="btn" data-variant="outline" formaction="/settings/connectors/{{ c.key }}/test" formnovalidate>{{ 'Send test email' if c.key == 'email' else 'Test connection' }}</button>
+  </div>
+  {% if c.key == 'email' %}<p class="text-xs text-mute">The test goes to {{ user_email }}. Save first, then test.</p>{% else %}<p class="text-xs text-mute">Save first, then test. Testing uses the saved values.</p>{% endif %}
+  {% endif %}
+</form>
+{% endif %}
+
+{% if c.key == 'zernio' and configured %}
+<section class="card p-6 space-y-4">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h3 class="font-semibold">Accounts</h3>
+      <p class="text-sm text-mute">{{ zernio_accounts or 0 }} account(s) in Spark come through Zernio. Connect more networks on Social accounts.</p>
+    </div>
+    <div class="flex gap-2">
+      {% if user.can_edit() %}<form method="post" action="/accounts/zernio/import">{{ csrf_field(request) }}<button class="btn" data-variant="outline" data-size="sm">Import from Zernio</button></form>{% endif %}
+      <a class="btn" data-size="sm" href="/accounts">Social accounts</a>
+    </div>
+  </div>
+  {% if webhook is defined and webhook is not none %}
+  <div class="border-t border-line pt-4 flex flex-wrap items-center gap-3 text-sm" id="webhooks">
+    <div class="flex-1 min-w-[16rem]">
+      <div class="font-medium">Instant updates (webhooks)</div>
+      {% if webhook.missing %}
+      <p class="text-mute">Zernio does not notify this Spark yet. Publish results and account changes arrive on the next poll.</p>
+      {% else %}
+      <p class="text-mute">
+        {% if webhook.isActive %}<span class="badge st-published">active</span>{% else %}<span class="badge st-failed">disabled by Zernio</span>{% endif %}
+        {{ (webhook.events or [])|length }} events ·
+        {% if webhook.lastFiredAt %}last delivery {{ webhook.lastFiredAt[:16].replace('T', ' ') }}{% else %}no deliveries yet{% endif %}
+        {% if webhook.failureCount %} · {{ webhook.failureCount }} recent failure(s){% endif %}
+      </p>
+      {% endif %}
+      <p class="text-xs text-mute mt-1"><code>{{ webhook.url }}</code></p>
+    </div>
+    <form method="post" action="/accounts/zernio/webhooks">{{ csrf_field(request) }}<button class="btn" data-size="sm" {% if not webhook.missing %}data-variant="outline"{% endif %}>{{ 'Enable webhooks' if webhook.missing else 'Refresh registration' }}</button></form>
+    {% if not webhook.missing %}<form method="post" action="/accounts/zernio/webhooks/test">{{ csrf_field(request) }}<button class="btn" data-size="sm" data-variant="ghost">Send test</button></form>{% endif %}
+  </div>
+  {% elif user.can_approve() %}
+  <p class="text-sm text-mute border-t border-line pt-4">Could not reach Zernio to check webhooks. Try Test connection above.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if c.key == 'mcp' %}
+<section class="card p-6 space-y-3">
+  <h3 class="font-semibold">Server address</h3>
+  <div class="flex gap-2"><input class="input font-mono" readonly value="{{ mcp_url }}" onclick="this.select()"><button type="button" class="btn" data-variant="outline" onclick="navigator.clipboard.writeText('{{ mcp_url }}'); window.toast('Copied')">Copy</button></div>
+  <p class="text-sm text-mute">Streamable HTTP transport. Authenticate with <code>Authorization: Bearer &lt;token&gt;</code>. Tools act as you, with your role: viewers read, editors draft and schedule, owners also approve.</p>
+</section>
+
+<section class="card p-6 space-y-4" id="tokens">
+  <h3 class="font-semibold">Your tokens</h3>
+  {% if new_token %}
+  <div class="alert" data-variant="success" data-new-token>
+    <section class="space-y-2">
+      <p class="font-medium">Copy “{{ new_token.name }}” now. Spark only stores a hash, so it won't be shown again.</p>
+      <div class="flex gap-2"><input class="input font-mono text-xs" readonly value="{{ new_token.token }}" onclick="this.select()" id="new-token"><button type="button" class="btn" data-size="sm" onclick="navigator.clipboard.writeText(document.getElementById('new-token').value); window.toast('Token copied')">Copy</button></div>
+      <p class="text-xs">Claude Code:</p>
+      <pre class="text-xs bg-muted rounded-md p-3 overflow-x-auto whitespace-pre-wrap break-all">claude mcp add --transport http spark {{ mcp_url }} --header "Authorization: Bearer {{ new_token.token }}"</pre>
+    </section>
+  </div>
+  {% endif %}
+  {% if tokens %}
+  <ul class="divide-y divide-line text-sm">
+    {% for t in tokens %}
+    <li class="py-2.5 flex items-center gap-3">
+      <div class="flex-1 min-w-0"><div class="font-medium truncate">{{ t.name }}</div>
+        <div class="text-xs text-mute"><code>{{ t.prefix }}…</code> · created {{ t.created_at|localtime(brand.timezone, '%b %d, %Y') }} · {% if t.last_used_at %}last used {{ t.last_used_at|localtime(brand.timezone) }}{% else %}never used{% endif %}</div></div>
+      <form method="post" action="/settings/connectors/mcp/tokens/{{ t.id }}/delete" onsubmit="return confirm('Revoke this token? Clients using it stop working.')">{{ csrf_field(request) }}<button class="btn" data-size="sm" data-variant="ghost">Revoke</button></form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="text-sm text-mute">No tokens yet. Create one per client so you can revoke them separately.</p>{% endif %}
+  <form method="post" action="/settings/connectors/mcp/tokens" class="flex flex-wrap gap-2">{{ csrf_field(request) }}
+    <input type="text" class="input flex-1 min-w-[12rem]" name="name" placeholder="Name, e.g. Claude Code on my laptop" maxlength="120">
+    <button class="btn">Create token</button>
+  </form>
+</section>
+
+<section class="card p-6 space-y-3">
+  <h3 class="font-semibold">Connect a client</h3>
+  <p class="text-sm font-medium">Claude Code</p>
+  <pre class="text-xs bg-muted rounded-md p-3 overflow-x-auto whitespace-pre-wrap break-all">claude mcp add --transport http spark {{ mcp_url }} --header "Authorization: Bearer spk_…"</pre>
+  <p class="text-sm font-medium">Clients configured with JSON</p>
+  <pre class="text-xs bg-muted rounded-md p-3 overflow-x-auto">{
+  "mcpServers": {
+    "spark": {
+      "type": "http",
+      "url": "{{ mcp_url }}",
+      "headers": { "Authorization": "Bearer spk_…" }
+    }
+  }
+}</pre>
+</section>
+{% endif %}
+
+{% if c.key == 'direct' %}
+<section class="card overflow-hidden">
+  <table class="table text-sm">
+    <thead><tr><th>Platform</th><th>Status</th><th class="hidden sm:table-cell">Environment variables</th></tr></thead>
+    <tbody>
+      {% for a in apps %}
+      <tr><td>{{ a.label }}</td><td>{% if a.configured %}<span class="badge st-published">configured</span>{% else %}<span class="badge st-draft">not set</span>{% endif %}</td><td class="hidden sm:table-cell"><code class="text-xs">{{ a.env }}</code></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+<p class="text-sm text-mute">Register each app's OAuth redirect URL as <code>{{ redirect_base }}&lt;platform&gt;</code>, set the variables in Coolify (or <code>.env</code>), then redeploy. Bluesky, Mastodon and Telegram need no app: connect them with credentials on Social accounts.</p>
+{% endif %}
+
+</div>
+<aside class="space-y-4 text-sm">
+  {% if c.key == 'zernio' %}
+  <div class="card p-5 space-y-2">
+    <h3 class="font-semibold">How Spark uses Zernio</h3>
+    <p class="text-mute">One Zernio profile per brand holds that brand's accounts. Spark publishes through it, mirrors comments into the Inbox and pulls analytics every six hours.</p>
+    <p class="text-mute">With webhooks on, publish results and disconnects arrive within seconds instead of on the next poll.</p>
+  </div>
+  {% elif c.key == 'mcp' %}
+  <div class="card p-5 space-y-2">
+    <h3 class="font-semibold">What an assistant can do</h3>
+    <ul class="space-y-1.5 text-mute">
+      {% for name, desc in mcp_tools %}<li><code class="text-xs">{{ name }}</code> · {{ desc }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% else %}
+  <div class="card p-5 space-y-2">
+    <h3 class="font-semibold">Where values come from</h3>
+    <p class="text-mute">A value saved here is encrypted with the server's secret key and wins over the <code>SPARK_*</code> environment variable. Remove it to fall back to the environment.</p>
+    <p class="text-mute">The worker picks up changes within 30 seconds.</p>
+  </div>
+  {% endif %}
+</aside>
+</div>
+{% endblock %}

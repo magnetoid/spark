@@ -48,7 +48,7 @@ With `SPARK_FORCE_DRY_RUN=true` every platform connects with a fake account and 
 
 ### Through Zernio (recommended)
 
-1. Create an API key at zernio.com and set `SPARK_ZERNIO_API_KEY`.
+1. Create an API key at zernio.com and paste it under **Settings → Connectors → Zernio** (or set `SPARK_ZERNIO_API_KEY`).
 2. Social accounts → *Connect through Zernio* → pick a platform. Spark creates one Zernio profile per brand, sends you through Zernio's OAuth, and saves the returned account.
 3. *Import from Zernio* pulls accounts you connected in Zernio's own UI.
 
@@ -97,4 +97,28 @@ Schema changes go through Alembic: `uv run alembic revision --autogenerate -m ".
 ## Notifications, preferences and Zernio webhooks
 
 - **Email notifications** (worker, every minute): editors and owners get one email when a post fails for good; owners get one per post waiting for approval. **Weekly digest** on Monday 07:00 UTC per brand: published count, impressions, engagements, link clicks, top posts, what is scheduled. Each user opts in or out under **Preferences** (`/me`), which also holds the composer's default action, keyboard shortcuts on/off and the password.
-- **Zernio webhooks** replace polling for the moments that matter. On *Social accounts* an owner presses **Enable webhooks**; Spark registers `{SPARK_BASE_URL}/webhooks/zernio` with Zernio for post and account events. Deliveries are verified with HMAC-SHA256 (`X-Zernio-Signature`; secret from `SPARK_ZERNIO_WEBHOOK_SECRET`, or derived from `SPARK_SECRET_KEY`) and de-duplicated by event id. `post.platform.published/failed`, `post.published/failed/partial` update the matching post target; `account.disconnected` pauses the channel with the reason; `account.connected` adds the channel to the brand whose Zernio profile it belongs to.
+- **Zernio webhooks** replace polling for the moments that matter. Under *Settings → Connectors → Zernio* an owner presses **Enable webhooks**; Spark registers `{SPARK_BASE_URL}/webhooks/zernio` with Zernio for post and account events. Deliveries are verified with HMAC-SHA256 (`X-Zernio-Signature`; secret from `SPARK_ZERNIO_WEBHOOK_SECRET`, or derived from `SPARK_SECRET_KEY`) and de-duplicated by event id. `post.platform.published/failed`, `post.published/failed/partial` update the matching post target; `account.disconnected` pauses the channel with the reason; `account.connected` adds the channel to the brand whose Zernio profile it belongs to.
+
+## Settings, connectors and MCP
+
+**Settings** has three tabs: *Brand & team*, *Connectors* and *Preferences*. *Connectors* lists the services Spark talks to, Zernio first:
+
+| Connector | What it does | Saved in the UI |
+|---|---|---|
+| Zernio | Publishing, inbox and analytics for 14 networks | API key, base URL; webhooks, import, connection test |
+| Claude AI | Generate, rewrite, hashtags, campaign plans | Anthropic API key, model, effort |
+| Email delivery | Notifications, digest, email campaigns | Console / SMTP / Resend and their credentials; test email |
+| MCP access | Lets AI assistants use Spark | Personal tokens |
+| Direct platform apps | Your own X, LinkedIn, Meta… apps | Read-only status; stays in the environment (OAuth redirect URLs) |
+
+Only owners change connectors. A value saved in the UI is Fernet-encrypted with `SPARK_SECRET_KEY` in `connector_settings` and wins over the `SPARK_*` variable; *Remove the saved value* falls back to the environment. Web and worker processes pick up changes within 30 seconds.
+
+### MCP server
+
+Spark is an MCP server at `{SPARK_BASE_URL}/mcp` (Streamable HTTP, stateless, JSON responses). Create a token under *Settings → Connectors → MCP access*; only its SHA-256 hash is stored and it is shown once. Then, for Claude Code:
+
+```bash
+claude mcp add --transport http spark https://spark.imbamarketing.com/mcp --header "Authorization: Bearer spk_..."
+```
+
+Tools run as the token's owner and respect roles (viewers read, editors draft and schedule, owners approve): `list_brands`, `list_channels`, `list_posts`, `get_post`, `create_post` (draft / queue / next / schedule / now), `reschedule_post`, `move_to_drafts`, `approve_post`, `retry_post`, `list_ideas`, `add_idea`, `get_analytics`, `best_posting_times`, `write_posts` (AI drafts in the brand voice, not saved). Posts created through MCP go through the same validation, queue slots and approval rules as the composer and are marked `source = mcp`. Revoking a token cuts access on the next request.

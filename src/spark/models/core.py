@@ -1,6 +1,7 @@
 import enum
+from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Enum, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from spark.db import Base, TimestampMixin
@@ -93,3 +94,32 @@ class Media(TimestampMixin, Base):
     @property
     def url(self) -> str:
         return f"/media/{self.path}"
+
+
+class ConnectorSetting(Base):
+    """A connector value saved from Settings → Connectors. Overrides the SPARK_* environment value.
+
+    `value` is always Fernet-encrypted JSON, so API keys never sit in the database in clear text.
+    """
+
+    __tablename__ = "connector_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)  # a Settings field name
+    value: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+
+
+class ApiToken(TimestampMixin, Base):
+    """Personal access token for the MCP server and other API clients. Only a hash is stored."""
+
+    __tablename__ = "api_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    prefix: Mapped[str] = mapped_column(String(16))  # shown in the list, e.g. "spk_Ab12…"
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    user: Mapped[User] = relationship(lazy="selectin")

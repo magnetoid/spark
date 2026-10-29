@@ -1,9 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Preferences · Spark{% endblock %}
-{% block page_title %}Preferences{% endblock %}
+{% block page_title %}Settings{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold tracking-tight mb-1">Preferences</h1>
-<p class="text-sm text-mute mb-6">Yours only. Brand settings and the team live under <a class="underline" href="/settings">Brand &amp; team</a>.</p>
+{% set tab = "me" %}{% with subtitle="Yours only: profile, notifications, composer defaults and password." %}{% include "partials/settings_nav.html" %}{% endwith %}
 <div class="grid lg:grid-cols-3 gap-8">
 <div class="lg:col-span-2 space-y-8">
   <form method="post" action="/me" class="form card p-6 space-y-6">{{ csrf_field(request) }}
@@ -17,7 +16,7 @@
     </section>
     <section class="space-y-3">
       <h2 class="font-semibold">Email notifications</h2>
-      {% if not email_live %}<div class="alert"><section>Email is in console mode on this server: notifications are logged, not delivered. Set <code>SPARK_EMAIL_BACKEND</code> to smtp or resend.</section></div>{% endif %}
+      {% if not email_live %}<div class="alert"><section>Email is in console mode on this server: notifications are logged, not delivered. {% if user.can_approve() %}<a class="underline" href="/settings/connectors/email">Set up email delivery</a>.{% else %}An owner sets up email delivery under Settings → Connectors.{% endif %}</section></div>{% endif %}
       {% if user.can_edit() %}<label class="flex items-start gap-2 text-sm font-normal"><input type="checkbox" name="notify_failed" value="true" {% if prefs.notify_failed %}checked{% endif %} class="mt-0.5"><span>A post failed to publish<span class="block text-xs text-mute">After the last retry, with the platform's error.</span></span></label>{% endif %}
       {% if user.can_approve() %}<label class="flex items-start gap-2 text-sm font-normal"><input type="checkbox" name="notify_approvals" value="true" {% if prefs.notify_approvals %}checked{% endif %} class="mt-0.5"><span>A post waits for my approval<span class="block text-xs text-mute">Once per post, when editors schedule something.</span></span></label>{% endif %}
       <label class="flex items-start gap-2 text-sm font-normal"><input type="checkbox" name="digest_weekly" value="true" {% if prefs.digest_weekly %}checked{% endif %} class="mt-0.5"><span>Weekly digest<span class="block text-xs text-mute">Monday morning: last week's numbers per brand, top posts, what's coming up.</span></span></label>

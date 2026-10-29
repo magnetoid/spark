@@ -42,7 +42,7 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
 {% set nav = [
   ('Publish', [('/', 'Overview'), ('/ideas', 'Ideas'), ('/compose', 'Compose'), ('/queue', 'Queue'), ('/calendar', 'Calendar'), ('/posts', 'All posts'), ('/campaigns', 'Campaigns'), ('/feeds', 'RSS feeds')]),
   ('Grow', [('/inbox', 'Inbox'), ('/analytics', 'Analytics'), ('/links', 'Links'), ('/bio', 'Bio page'), ('/contacts', 'Contacts'), ('/email', 'Email')]),
-  ('Set up', [('/accounts', 'Social accounts'), ('/media', 'Media'), ('/settings', 'Brand & team'), ('/brands', 'All brands')]),
+  ('Set up', [('/accounts', 'Social accounts'), ('/media', 'Media'), ('/settings', 'Settings'), ('/brands', 'All brands')]),
 ] %}
 {% set ns = namespace(page='Overview') %}
 {% for group, items in nav %}{% for href, label in items %}{% if path==href or (href!='/' and path.startswith(href)) %}{% set ns.page = label %}{% endif %}{% endfor %}{% endfor %}
@@ -88,6 +88,7 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
         <ul class="mt-1">
           <li><a href="/me"><span>Preferences</span></a></li>
           <li><a href="/settings#team"><span>Brand &amp; team</span></a></li>
+          <li><a href="/settings/connectors"><span>Connectors</span></a></li>
           <li><button type="button" onclick="window.basecoat.theme.toggle()"><span class="hidden dark:inline">Light mode</span><span class="dark:hidden">Dark mode</span></button></li>
           <li><form method="post" action="/logout">{{ csrf_field(request) }}<button type="submit"><span>Log out</span></button></form></li>
         </ul>
@@ -164,7 +165,7 @@ tailwind.config = { darkMode: 'class', corePlugins: { preflight: false }, theme:
     <header><h2 id="shortcuts-title">Keyboard shortcuts</h2></header>
     <section>
       <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-        {% for k, v in [('c','New post'),('⌘K or /','Search / jump'),('g o','Overview'),('g q','Queue'),('g c','Calendar'),('g i','Ideas'),('g p','All posts'),('g n','Inbox'),('g a','Analytics'),('g s','Brand & team'),('?','This help')] %}
+        {% for k, v in [('c','New post'),('⌘K or /','Search / jump'),('g o','Overview'),('g q','Queue'),('g c','Calendar'),('g i','Ideas'),('g p','All posts'),('g n','Inbox'),('g a','Analytics'),('g s','Settings'),('?','This help')] %}
         <dt><kbd class="kbd">{{ k }}</kbd></dt><dd class="text-mute">{{ v }}</dd>
         {% endfor %}
       </dl>

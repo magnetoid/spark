@@ -73,7 +73,7 @@ async def dashboard(request: Request, days: int = 30, db: AsyncSession = Depends
          "hint": "The queue fills these slots."},
         {"key": "post", "label": "Queue your first post", "done": bool(any_post), "href": "#", "action": "compose",
          "hint": "Press c anywhere."},
-        {"key": "zernio", "label": "Add the Zernio key", "done": bool(s.zernio_api_key), "href": "/accounts",
+        {"key": "zernio", "label": "Add the Zernio key", "done": bool(s.zernio_api_key), "href": "/settings/connectors/zernio",
          "hint": "Unlocks the Inbox and 30+ platforms."},
     ]
     show_onboarding = not (user.prefs or {}).get("onboarding_dismissed") and not all(c["done"] for c in checklist)

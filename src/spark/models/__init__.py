@@ -1,4 +1,4 @@
-from spark.models.core import Brand, Media, Role, User
+from spark.models.core import ApiToken, Brand, ConnectorSetting, Media, Role, User
 from spark.models.marketing import (
     BioPage,
     Contact,
@@ -24,6 +24,8 @@ from spark.models.social import (
 )
 
 __all__ = [
+    "ApiToken",
+    "ConnectorSetting",
     "BioPage",
     "Brand",
     "Campaign",

@@ -1,0 +1,10 @@
+{# Settings header + tabs. Pass `tab` = brand | connectors | me #}
+<div class="mb-6">
+  <h1 class="text-2xl font-semibold tracking-tight">Settings</h1>
+  <p class="text-sm text-mute mb-4">{{ subtitle or 'Brand, team, the services Spark connects to, and your own preferences.' }}</p>
+  <div class="tabs"><nav role="tablist" aria-orientation="horizontal" data-variant="line">
+    {% for key, href, label in [('brand', '/settings', 'Brand & team'), ('connectors', '/settings/connectors', 'Connectors'), ('me', '/me', 'Preferences')] %}
+    <a role="tab" href="{{ href }}" aria-selected="{{ 'true' if tab==key else 'false' }}" class="btn" data-variant="ghost" data-size="sm">{{ label }}</a>
+    {% endfor %}
+  </nav></div>
+</div>

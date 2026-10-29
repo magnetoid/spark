@@ -91,7 +91,20 @@ async def send_weekly_digest(ctx) -> int:
         return await notify.weekly_digest(db)
 
 
+async def load_connectors(ctx) -> None:
+    """Pick up connector values saved in Settings → Connectors (cached for 30 s)."""
+    from spark.services import connectors
+
+    try:
+        async with SessionLocal() as db:
+            await connectors.refresh(db)
+    except Exception:
+        log.exception("Could not load connector settings")
+
+
 class WorkerSettings:
+    on_startup = load_connectors
+    on_job_start = load_connectors
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
     functions = [publish_now, send_email_campaign]
     cron_jobs = [

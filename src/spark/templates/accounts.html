@@ -62,34 +62,15 @@
     </a>
     {% endfor %}
   </div>
-  {% if webhook is not none %}
-  <div class="card p-4 mt-4 text-sm flex flex-wrap items-center gap-3">
-    <div class="flex-1 min-w-[16rem]">
-      <div class="font-medium">Instant updates (webhooks)</div>
-      {% if webhook.missing %}
-      <p class="text-mute">Zernio does not notify this Spark yet. Publish results and account changes arrive on the next poll.</p>
-      {% else %}
-      <p class="text-mute">
-        {% if webhook.isActive %}<span class="badge st-published">active</span>{% else %}<span class="badge st-failed">disabled by Zernio</span>{% endif %}
-        {{ (webhook.events or [])|length }} events ·
-        {% if webhook.lastFiredAt %}last delivery {{ webhook.lastFiredAt[:16].replace('T', ' ') }}{% else %}no deliveries yet{% endif %}
-        {% if webhook.failureCount %} · {{ webhook.failureCount }} recent failure(s){% endif %}
-      </p>
-      {% endif %}
-      <p class="text-xs text-mute mt-1"><code>{{ webhook_url }}</code></p>
-    </div>
-    <form method="post" action="/accounts/zernio/webhooks">{{ csrf_field(request) }}<button class="btn" data-size="sm" {% if not webhook.missing %}data-variant="outline"{% endif %}>{{ 'Enable webhooks' if webhook.missing else 'Refresh registration' }}</button></form>
-    {% if not webhook.missing %}<form method="post" action="/accounts/zernio/webhooks/test">{{ csrf_field(request) }}<button class="btn" data-size="sm" data-variant="ghost">Send test</button></form>{% endif %}
-  </div>
-  {% endif %}
+  <p class="text-xs text-mute mt-3">API key, instant updates (webhooks) and a connection test live in <a class="underline" href="/settings/connectors/zernio">Settings → Connectors → Zernio</a>.</p>
   {% else %}
-  <div class="card p-5 text-sm text-mute">Set <code>SPARK_ZERNIO_API_KEY</code> in <code>.env</code> and restart to connect through Zernio.</div>
+  <div class="card p-5 text-sm flex flex-wrap items-center justify-between gap-3"><span class="text-mute">Add your Zernio API key to connect 14 networks through Zernio.</span>{% if user.can_approve() %}<a class="btn" data-size="sm" href="/settings/connectors/zernio">Set up Zernio</a>{% else %}<span class="text-xs text-mute">An owner adds it under Settings → Connectors.</span>{% endif %}</div>
   {% endif %}
 </section>
 
 <section>
   <h2 class="font-semibold mb-1">Connect directly</h2>
-  <p class="text-sm text-mute mb-3">Uses your own developer app for each platform (configured in <code>.env</code>). Credential-based platforms need no app.</p>
+  <p class="text-sm text-mute mb-3">Uses your own developer app for each platform (see <a class="underline" href="/settings/connectors/direct">Direct platform apps</a>). Credential-based platforms need no app.</p>
   <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3" x-data="{open:null}">
     {% for name, ad in adapters %}
     <div class="card p-4 text-sm">

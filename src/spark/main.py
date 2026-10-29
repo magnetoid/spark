@@ -14,6 +14,7 @@ from spark.web import (
     api,
     auth,
     brands,
+    connectors,
     ideas,
     inbox,
     marketing,
@@ -33,9 +34,10 @@ CSRF_EXEMPT_PREFIXES = ("/e/u/", "/webhooks/")
 RATE_LIMITS = {  # path prefix -> (methods, requests, per_seconds)
     "/login": ({"POST"}, 10, 60), "/setup": ({"POST"}, 10, 60),
     "/l/": ({"GET"}, 120, 60), "/b/": ({"GET", "POST"}, 60, 60), "/e/": ({"GET", "POST"}, 120, 60),
-    "/webhooks/": ({"POST"}, 600, 60),
+    "/webhooks/": ({"POST"}, 600, 60), "/mcp": ({"GET", "POST", "DELETE"}, 240, 60),
 }
 _buckets: dict[tuple[str, str], list] = {}
+_clock = __import__("time").monotonic  # tests freeze this so refills don't depend on machine speed
 
 
 def _client_ip(request: Request) -> str:
@@ -44,13 +46,11 @@ def _client_ip(request: Request) -> str:
 
 
 def rate_limited(request: Request) -> bool:
-    import time
-
     path = request.url.path
     for prefix, (methods, limit, per) in RATE_LIMITS.items():
         if path.startswith(prefix) and request.method in methods:
             key = (_client_ip(request), prefix)
-            now = time.monotonic()
+            now = _clock()
             tokens, last = _buckets.get(key, (float(limit), now))
             tokens = min(float(limit), tokens + (now - last) * (limit / per))
             if tokens < 1:
@@ -59,6 +59,18 @@ def rate_limited(request: Request) -> bool:
             _buckets[key] = [tokens - 1, now]
             return False
     return False
+
+
+async def _load_connectors() -> None:
+    """Apply connector values saved in the UI (cached for 30 s per process)."""
+    from spark.db import SessionLocal
+    from spark.services import connectors
+
+    try:
+        async with SessionLocal() as db:
+            await connectors.refresh(db)
+    except Exception:  # a missing table before migrations must not take the site down
+        log.warning("Could not load connector settings", exc_info=True)
 
 
 async def csrf_guard(request: Request) -> None:
@@ -84,7 +96,10 @@ async def lifespan(app: FastAPI):
     s.media_dir.mkdir(parents=True, exist_ok=True)
     if not s.is_production or s.database_url.startswith("sqlite"):
         await create_all()
-    yield
+    from spark import mcp_server
+
+    async with mcp_server.session_manager_run():
+        yield
 
 
 def create_app() -> FastAPI:
@@ -107,14 +122,20 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.mount("/media", StaticFiles(directory=s.media_dir), name="media")
     for r in (public.router, auth.router, brands.router, accounts.router, posts.router, queue.router,
-              ideas.router, inbox.router, api.router, marketing.router, me.router, webhooks.router):
+              ideas.router, inbox.router, api.router, marketing.router, me.router, webhooks.router,
+              connectors.router):
         app.include_router(r)
+    from spark import mcp_server
+
+    app.router.routes.append(mcp_server.route)  # MCP over Streamable HTTP; bearer-token auth, no CSRF
 
     @app.middleware("http")
     async def guard_and_headers(request: Request, call_next):
         if rate_limited(request):
             return JSONResponse({"detail": "Too many requests — slow down a little"}, 429,
                                 headers={"Retry-After": "30"})
+        if not request.url.path.startswith(("/static/", "/media/", "/healthz")):
+            await _load_connectors()
         response = await call_next(request)
         h = response.headers
         h.setdefault("X-Content-Type-Options", "nosniff")

@@ -58,21 +58,35 @@ async def accounts(request: Request, db: AsyncSession = Depends(get_db),
     )).scalars().all()
     adapters = [(name, get_adapter(name)) for name in registry()]
     zernio = ZernioAdapter()
-    webhook = None
-    if zernio.is_configured() and user.can_approve():
-        try:
-            hooks = await zernio.list_webhooks()
-            webhook = next((w for w in hooks if w.get("url") == _webhook_url()), None) or {"missing": True}
-        except (PlatformError, Exception) as e:  # Zernio down must not break the page
-            log.warning("Could not list Zernio webhooks: %s", e)
     return await render(request, "accounts.html", db, user, brand, accounts=rows, adapters=adapters,
-                        force_dry_run=get_settings().force_dry_run, webhook=webhook,
-                        webhook_url=_webhook_url(), zernio_ready=zernio.is_configured(),
+                        force_dry_run=get_settings().force_dry_run, zernio_ready=zernio.is_configured(),
                         zernio_platforms=ZERNIO_PLATFORMS)
 
 
 def _webhook_url() -> str:
     return get_settings().base_url.rstrip("/") + "/webhooks/zernio"
+
+
+async def webhook_status() -> dict | None:
+    """Spark's registration in Zernio: the webhook dict, {"missing": True}, or None if Zernio is unreachable."""
+    zernio = ZernioAdapter()
+    if not zernio.is_configured():
+        return None
+    try:
+        hooks = await zernio.list_webhooks()
+    except (PlatformError, Exception) as e:  # Zernio down must not break the page
+        log.warning("Could not list Zernio webhooks: %s", e)
+        return None
+    w = next((w for w in hooks if w.get("url") == _webhook_url()), None)
+    return {**w, "url": _webhook_url()} if w else {"missing": True, "url": _webhook_url()}
+
+
+def _back(request: Request) -> str:
+    ref = request.headers.get("referer") or ""
+    base = get_settings().base_url.rstrip("/")
+    if ref.startswith(base + "/"):
+        return ref
+    return "/settings/connectors/zernio"
 
 
 @router.post("/accounts/zernio/webhooks")
@@ -86,7 +100,7 @@ async def zernio_webhooks_enable(request: Request, user: User = Depends(owner)):
         flash(request, f"Zernio will notify {_webhook_url()} ({len(w.get('events') or ZERNIO_EVENTS)} events)")
     except (PlatformError, Exception) as e:
         flash(request, f"Zernio: could not register the webhook ({e})", "error")
-    return RedirectResponse("/accounts", 303)
+    return RedirectResponse(_back(request), 303)
 
 
 @router.post("/accounts/zernio/webhooks/test")
@@ -102,7 +116,7 @@ async def zernio_webhooks_test(request: Request, user: User = Depends(owner)):
             flash(request, "Test event sent — Zernio reports deliveries on its webhooks page")
     except (PlatformError, Exception) as e:
         flash(request, f"Zernio: test failed ({e})", "error")
-    return RedirectResponse("/accounts", 303)
+    return RedirectResponse(_back(request), 303)
 
 
 # ---- Zernio -------------------------------------------------------------------

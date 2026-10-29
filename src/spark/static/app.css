@@ -141,3 +141,10 @@ body { background: var(--background); color: var(--foreground); }
 .bottom-bar a, .bottom-bar button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: .6875rem; color: var(--muted-foreground); background: none; border: 0; }
 .bottom-bar a[aria-current=page] { color: var(--foreground); }
 .bottom-bar .primary { flex: 0 0 3.5rem; margin: .375rem .25rem; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); }
+
+/* Settings → Connectors: letter mark for each connector */
+.connector-mark { display: inline-grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: none;
+  border-radius: .6rem; font-weight: 700; background: var(--muted); color: var(--foreground);
+  border: 1px solid var(--border); }
+.connector-mark.lg { width: 3rem; height: 3rem; font-size: 1.25rem; }
+[data-connector="zernio"] .connector-mark, .connector-mark.zernio { background: #F2A516; color: #171717; border-color: transparent; }

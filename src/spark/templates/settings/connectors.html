@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Connectors · Settings · Spark{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+{% with subtitle='The services Spark talks to. Keys saved here are encrypted and override the server environment.' %}{% include "partials/settings_nav.html" %}{% endwith %}
+<div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+  {% for card in cards %}{% set c = card.c %}{% set st, label = card.status %}
+  <a href="/settings/connectors/{{ c.key }}" class="card p-5 flex flex-col gap-3 hover:border-amber transition-colors{% if loop.first %} sm:col-span-2 xl:col-span-1 ring-1 ring-amber/40{% endif %}" data-connector="{{ c.key }}">
+    <div class="flex items-start gap-3">
+      <span class="connector-mark" aria-hidden="true">{{ c.name[:1] }}</span>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h2 class="font-semibold">{{ c.name }}</h2>
+          {% if loop.first %}<span class="badge" data-variant="outline">Primary</span>{% endif %}
+        </div>
+        <p class="text-sm text-mute">{{ c.tagline }}</p>
+      </div>
+    </div>
+    <div class="flex items-center justify-between mt-auto pt-1">
+      <span class="badge dot {{ 'st-published' if st=='ok' else ('st-failed' if st=='off' else 'st-draft') }}">{{ label }}</span>
+      <span class="text-xs text-mute">{{ c.tags|join(' · ') }}</span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% if not user.can_approve() %}<p class="text-sm text-mute mt-6">Only owners change connectors. You can create your own MCP tokens.</p>{% endif %}
+{% endblock %}
