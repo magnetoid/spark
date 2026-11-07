@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -1230,3 +1230,24 @@ class GridItem(BaseModel):
 class GridOut(BaseModel):
     account: AccountOut
     items: list[GridItem]
+
+
+# ---- phase 10: reports ---------------------------------------------------------------------------
+class ReportIn(BaseModel):
+    start: date
+    end: date
+    title: str | None = Field(default=None, max_length=200)
+
+
+class ReportOut(BaseModel):
+    id: int
+    title: str
+    start: date
+    end: date
+    data: dict[str, Any]
+    summary: dict[str, Any] | None
+    created_at: datetime | None
+
+
+class ReportSummaryOut(BaseModel):
+    summary: dict[str, Any]

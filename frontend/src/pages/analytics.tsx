@@ -7,6 +7,7 @@ import { EmptyState, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnalytics, useRefreshAnalytics } from "@/features/api4";
+import { ReportsSection } from "@/features/reports/panels";
 import { PlatformMark, platformLabel } from "@/lib/platforms";
 import { fmtDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -116,6 +117,7 @@ export function AnalyticsPage() {
           </section>
         </div>
       )}
+      <div className="mt-6"><ReportsSection /></div>
     </>
   );
 }

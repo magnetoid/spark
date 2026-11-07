@@ -11,7 +11,17 @@ from sqlalchemy import select
 from spark.config import get_settings
 from spark.db import SessionLocal
 from spark.models import EmailCampaign, RssFeed
-from spark.services import agent, analytics, email, evergreen, inbox, notify, publisher, rss
+from spark.services import (
+    agent,
+    analytics,
+    email,
+    evergreen,
+    inbox,
+    notify,
+    publisher,
+    reports,
+    rss,
+)
 from spark.services.ai import AIUnavailable, ContentAI
 
 log = logging.getLogger("spark.worker")
@@ -52,6 +62,11 @@ async def sync_inbox(ctx) -> dict:
 async def classify_inbox(ctx) -> int:
     async with SessionLocal() as db:
         return await inbox.classify_pending(db)
+
+
+async def snapshot_followers(ctx) -> int:
+    async with SessionLocal() as db:
+        return await reports.snapshot_followers(db)
 
 
 async def recycle_evergreen(ctx) -> int:
@@ -141,6 +156,7 @@ class WorkerSettings:
         cron(recycle_evergreen, hour={6}, minute=10),
         cron(start_weekly_plans, hour={7}, minute=5),
         cron(sync_inbox, minute={12, 42}),
+        cron(snapshot_followers, hour={0}, minute=35),
         cron(classify_inbox, minute=set(range(2, 60, 5))),
         cron(send_notifications, second=50),
         cron(send_weekly_digest, weekday=0, hour=7, minute=0),  # Mondays 07:00 UTC

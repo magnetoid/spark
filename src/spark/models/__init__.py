@@ -15,6 +15,7 @@ from spark.models.marketing import (
     ShortLink,
 )
 from spark.models.planning import ContentPillar
+from spark.models.reports import FollowerSnapshot, Report
 from spark.models.social import (
     Campaign,
     Metric,
@@ -35,6 +36,8 @@ __all__ = [
     "PostComment",
     "ShareLink",
     "ConnectorSetting",
+    "FollowerSnapshot",
+    "Report",
     "InboxItem",
     "InboxRule",
     "SavedReply",

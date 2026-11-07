@@ -388,6 +388,22 @@ class ZernioAdapter(PlatformAdapter):
 
         return (await self._req("POST", f"/inbox/reviews/{quote(review_id, safe='')}/reply", json={"accountId": account_id, "message": text})).json()
 
+    async def follower_stats(self, account_ids: set[str]) -> dict[str, int]:
+        """Latest follower count per Zernio account id from /accounts/follower-stats (analytics add-on).
+        Rows carry accountId plus followers/followersCount and a date; the newest row per account wins."""
+        data = (await self._req("GET", "/accounts/follower-stats", params={"accountIds": ",".join(sorted(account_ids))})).json()
+        rows = data.get("data") or data.get("stats") or (data if isinstance(data, list) else [])
+        out: dict[str, tuple[str, int]] = {}
+        for r in rows:
+            aid = r.get("accountId")
+            n = r.get("followers", r.get("followersCount", r.get("count")))
+            if aid not in account_ids or n is None:
+                continue
+            day = str(r.get("date") or r.get("day") or "")
+            if aid not in out or day >= out[aid][0]:
+                out[aid] = (day, int(n))
+        return {k: v[1] for k, v in out.items()}
+
     async def mentions(self, account_ids: set[str], limit: int = 50) -> list[dict]:
         """Mentions of the accounts in other people's posts and comments (last 7 days; needs Zernio's Inbox add-on)."""
         try:

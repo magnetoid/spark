@@ -11,6 +11,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { LoginPage } from "@/pages/login";
 import { SetupPage } from "@/pages/setup";
 import { ReviewPage } from "@/pages/review";
+import { ReportPage } from "@/pages/report";
 import { TodayPage } from "@/pages/today";
 import { PublishingPage } from "@/pages/publishing";
 import { IdeasPage } from "@/pages/ideas";
@@ -46,6 +47,7 @@ const loginRoute = createRoute({
 
 const setupRoute = createRoute({ getParentRoute: () => rootRoute, path: "/setup", component: SetupPage });
 const reviewRoute = createRoute({ getParentRoute: () => rootRoute, path: "/review/$token", component: ReviewPage });
+const reportRoute = createRoute({ getParentRoute: () => rootRoute, path: "/brands/$brandId/reports/$reportId", component: ReportPage });
 
 const shellRoute = createRoute({
   id: "shell",
@@ -67,6 +69,7 @@ export const routeTree = rootRoute.addChildren([
   loginRoute,
   setupRoute,
   reviewRoute,
+  reportRoute,
   shellRoute.addChildren([
     page("/", TodayPage),
     page("/brands/new", NewBrandPage),

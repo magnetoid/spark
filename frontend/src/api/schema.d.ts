@@ -1517,6 +1517,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/brands/{brand_id}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Reports */
+        get: operations["list_reports_brands__brand_id__reports_get"];
+        put?: never;
+        /** Create Report */
+        post: operations["create_report_brands__brand_id__reports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/reports/{report_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Report */
+        get: operations["get_report_brands__brand_id__reports__report_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Report */
+        delete: operations["delete_report_brands__brand_id__reports__report_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/reports/{report_id}/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report Csv */
+        get: operations["report_csv_brands__brand_id__reports__report_id__csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/reports/{report_id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write Summary */
+        post: operations["write_summary_brands__brand_id__reports__report_id__summary_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/brands/{brand_id}/share-links": {
         parameters: {
             query?: never;
@@ -3652,6 +3722,55 @@ export interface components {
             items: components["schemas"]["QueueItem"][];
             /** Slots */
             slots: components["schemas"]["SlotOut"][];
+        };
+        /** ReportIn */
+        ReportIn: {
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /** Title */
+            title?: string | null;
+        };
+        /** ReportOut */
+        ReportOut: {
+            /** Created At */
+            created_at: string | null;
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            };
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Id */
+            id: number;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            } | null;
+            /** Title */
+            title: string;
+        };
+        /** ReportSummaryOut */
+        ReportSummaryOut: {
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            };
         };
         /** RepurposeIn */
         RepurposeIn: {
@@ -8183,6 +8302,198 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QueueOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_reports_brands__brand_id__reports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_report_brands__brand_id__reports_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_report_brands__brand_id__reports__report_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_report_brands__brand_id__reports__report_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_csv_brands__brand_id__reports__report_id__csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    write_summary_brands__brand_id__reports__report_id__summary_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSummaryOut"];
                 };
             };
             /** @description Validation Error */

@@ -88,6 +88,12 @@ class InboxLabels(BaseModel):
     items: list[InboxLabel]
 
 
+class ReportSummary(BaseModel):
+    headline: str = Field(description="One sentence on the period, specific to the numbers")
+    worked: list[str] = Field(description="Two to four findings on what worked, each naming the evidence")
+    next: list[str] = Field(description="Two to four concrete things to do next period")
+
+
 class Suggestions(BaseModel):
     replies: list[str] = Field(description="Three distinct replies in the brand's voice, shortest first")
 
@@ -185,6 +191,17 @@ class ContentAI:
                     "no emoji unless the brand's examples use them. If the message is spam, make the first reply an empty string.")
         out = await self._parse(brand, prompt, Suggestions, max_tokens=2000)
         return out.replies[:3]
+
+    async def summarize_report(self, brand: Brand, data: dict) -> dict:
+        """What worked and what to do next, from a report's numbers."""
+        import json
+
+        slim = {k: data.get(k) for k in ("period", "totals", "channels", "top_posts", "pillars", "compare", "followers", "inbox")}
+        prompt = ("Here is a social media report for the brand as JSON. Write a short, honest summary for the team and the client: a headline, "
+                  "what worked (point at the posts, channels or pillars that explain the numbers), and what to do next period. Plain language, "
+                  "no hype, no claims the data cannot back.\n\n" + json.dumps(slim, default=str)[:30000])
+        out = await self._parse(brand, prompt, ReportSummary, max_tokens=3000)
+        return out.model_dump()
 
     async def describe_image(self, brand: Brand, data: bytes, content_type: str) -> str:
         """Alt text for an image: what is in it, in one or two plain sentences, under 125 characters."""
