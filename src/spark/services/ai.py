@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date
+from typing import Literal
 
 import anthropic
 from pydantic import BaseModel, Field
@@ -77,15 +78,29 @@ def _limits_text(platforms: list[str]) -> str:
     return "\n".join(lines)
 
 
+class InboxLabel(BaseModel):
+    id: int
+    sentiment: Literal["positive", "neutral", "negative"]
+    intent: Literal["question", "complaint", "praise", "lead", "spam", "other"]
+
+
+class InboxLabels(BaseModel):
+    items: list[InboxLabel]
+
+
+class Suggestions(BaseModel):
+    replies: list[str] = Field(description="Three distinct replies in the brand's voice, shortest first")
+
+
 class ContentAI:
-    def __init__(self, client: anthropic.AsyncAnthropic | None = None):
+    def __init__(self, client: anthropic.AsyncAnthropic | None = None, *, model: str | None = None):
         s = get_settings()
         if client is None:
             if not s.anthropic_api_key:
                 raise AIUnavailable("Set SPARK_ANTHROPIC_API_KEY to enable AI features")
             client = anthropic.AsyncAnthropic(api_key=s.anthropic_api_key)
         self.client = client
-        self.model = s.ai_model
+        self.model = model or s.ai_model
         self.effort = s.ai_effort
 
     def _system(self, brand: Brand) -> list[dict]:
@@ -147,6 +162,29 @@ class ContentAI:
             "the text including hashtags must fit the limit."
         )
         return (await self._parse(brand, "\n".join(prompt), Drafts)).drafts
+
+    async def classify_inbox(self, brand: Brand, items: list[dict]) -> list[dict]:
+        """Sentiment and intent for inbox items [{id, kind, text, rating}] with the fast model."""
+        lines = "\n".join(f"- id {i['id']} ({i.get('kind')}{', ' + str(i['rating']) + ' stars' if i.get('rating') else ''}): {str(i.get('text') or '')[:600]!r}" for i in items)
+        prompt = ("Label each inbox item for the brand's social team. sentiment: positive, neutral or negative. intent: question (wants an "
+                  "answer), complaint (unhappy, wants something fixed), praise, lead (wants to buy, book or work together), spam, or other. "
+                  "Return one label per id.\n\n" + lines)
+        out = await self._parse(brand, prompt, InboxLabels, max_tokens=4000)
+        return [lab.model_dump() for lab in out.items]
+
+    async def suggest_replies(self, brand: Brand, item: dict, thread: list[dict]) -> list[str]:
+        """Three replies the team can send as they are, in the brand's voice."""
+        context = "\n".join(f"[{t['direction']}] {t['author']}: {t['text']}" for t in thread if t.get("text"))
+        prompt = (f"Someone wrote to {brand.name} ({item.get('kind')}" + (f", {item['rating']} stars" if item.get("rating") else "") + ").\n"
+                  + (f"On the post: {item['post']}\n" if item.get("post") else "")
+                  + (f"Thread so far:\n{context}\n" if context else "")
+                  + f"The message to answer, from {item.get('author')}: {item.get('text')!r}\n"
+                  + (f"It reads as {item.get('sentiment')} and a {item.get('intent')}.\n" if item.get("intent") else "")
+                  + "Write three different replies in the brand's voice: one short and warm, one that answers fully, one that moves the "
+                    "conversation forward (a question, an offer, a link if the brand has one). Keep each under 280 characters, no hashtags, "
+                    "no emoji unless the brand's examples use them. If the message is spam, make the first reply an empty string.")
+        out = await self._parse(brand, prompt, Suggestions, max_tokens=2000)
+        return out.replies[:3]
 
     async def describe_image(self, brand: Brand, data: bytes, content_type: str) -> str:
         """Alt text for an image: what is in it, in one or two plain sentences, under 125 characters."""

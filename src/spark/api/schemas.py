@@ -229,6 +229,7 @@ class NeedsYou(BaseModel):
     failed: int
     drafts: int
     plan_ready: int = 0  # drafts the agent proposed, waiting in the plan tray
+    replies: int = 0  # open inbox items
 
 
 class WeekPoint(BaseModel):
@@ -845,40 +846,139 @@ class InboxAccount(BaseModel):
     external_id: str
     platform: str
     handle: str
+    avatar: str | None = None
 
 
-class InboxItem(BaseModel):
-    post_id: str
+class InboxAuthor(BaseModel):
+    name: str
+    handle: str | None = None
+    picture: str | None = None
+
+
+class InboxItemOut(BaseModel):
+    id: int
+    kind: str
+    direction: str
+    status: str
+    external_id: str
+    thread_id: str | None
+    parent_external_id: str | None
     account: InboxAccount
-    platform: str
-    content: str | None
-    picture: str | None
+    author: InboxAuthor
+    text: str
+    rating: int | None
     permalink: str | None
-    created_at: str | None
-    comment_count: int
-    like_count: int
+    post: dict[str, Any]
+    attachments: list[Any]
+    received_at: datetime | None
+    sentiment: str | None
+    intent: str | None
+    suggestions: list[str]
+    draft_reply: str | None
+    draft_rule: dict[str, Any] | None
+    assignee: Actor | None
+    replied_at: datetime | None
+    reply_text: str | None
 
 
-class InboxOut(BaseModel):
-    ready: bool
-    error: str | None
+class InboxCounts(BaseModel):
+    open: int
+    drafts: int
+    negative: int
+    resolved: int
+    by_kind: dict[str, int]
+
+
+class InboxPage(BaseModel):
+    items: list[InboxItemOut]
+    counts: InboxCounts
     accounts: list[InboxAccount]
-    items: list[InboxItem]
+    ready: bool
 
 
-class ReplyIn(BaseModel):
-    account: str
-    message: str = Field(min_length=1)
-    comment_id: str | None = None
-    root_uri: str | None = None
-    root_cid: str | None = None
-    parent_cid: str | None = None
+class InboxThreadOut(BaseModel):
+    item: InboxItemOut
+    thread: list[InboxItemOut]
 
 
-class LikeIn(BaseModel):
-    account: str
-    comment_id: str
+class ItemReplyIn(BaseModel):
+    text: str = Field(min_length=1, max_length=10000)
+    from_draft: bool = False
+    saved_reply_id: int | None = None
+
+
+class InboxStatusIn(BaseModel):
+    status: Literal["open", "resolved", "archived"]
+
+
+class AssignIn(BaseModel):
+    user_id: int | None = None
+
+
+class SuggestionsOut(BaseModel):
+    suggestions: list[str]
+
+
+class ItemLikeIn(BaseModel):
     liked: bool = True
+
+
+class InboxSyncOut(BaseModel):
+    new: int
+    updated: int
+    errors: list[str]
+    synced_at: datetime
+
+
+class SavedReplyIn(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+    body: str = Field(min_length=1, max_length=10000)
+    shortcut: str | None = Field(default=None, max_length=40)
+
+
+class SavedReplyUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+    body: str | None = Field(default=None, min_length=1, max_length=10000)
+    shortcut: str | None = Field(default=None, max_length=40)
+
+
+class SavedReplyOut(BaseModel):
+    id: int
+    title: str
+    body: str
+    shortcut: str | None
+    uses: int
+
+
+class InboxRuleIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    enabled: bool = True
+    kinds: list[str] = []
+    platforms: list[str] = []
+    keywords: list[str] = []
+    intents: list[str] = []
+    sentiments: list[str] = []
+    saved_reply_id: int | None = None
+    reply_text: str | None = None
+    assign_to_id: int | None = None
+
+
+class InboxRuleUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    enabled: bool | None = None
+    kinds: list[str] | None = None
+    platforms: list[str] | None = None
+    keywords: list[str] | None = None
+    intents: list[str] | None = None
+    sentiments: list[str] | None = None
+    saved_reply_id: int | None = None
+    reply_text: str | None = None
+    assign_to_id: int | None = None
+
+
+class InboxRuleOut(InboxRuleIn):
+    id: int
+    hits: int
 
 
 class PaletteItem(BaseModel):

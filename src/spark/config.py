@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     image_model: str = "gpt-image-1"
     ai_model: str = "claude-opus-5-5"
     ai_effort: str = "medium"
+    ai_model_fast: str = "claude-haiku-5-5"  # labels and other quick, cheap calls
 
     # Email
     email_backend: str = "console"  # console | smtp | resend

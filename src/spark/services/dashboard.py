@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spark.models import Brand, Post, PostStatus
 from spark.services import analytics, scheduler
+from spark.services import inbox as inbox_svc
 from spark.services.publisher import as_utc
 
 LIVE = (PostStatus.scheduled, PostStatus.pending_approval, PostStatus.publishing, PostStatus.published,
@@ -45,7 +46,8 @@ async def today(db: AsyncSession, brand: Brand) -> dict:
                  "drafts": await count(PostStatus.draft),
                  "plan_ready": await db.scalar(select(func.count(Post.id)).where(
                      Post.brand_id == brand.id, Post.is_autosave.is_(False), Post.status == PostStatus.draft,
-                     Post.agent_run_id.is_not(None))) or 0}
+                     Post.agent_run_id.is_not(None))) or 0,
+                 "replies": await inbox_svc.open_count(db, brand.id)}
 
     data = await analytics.overview(db, brand.id, days=7)
     prev = await analytics.compare(db, brand.id, days=7)

@@ -803,8 +803,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Inbox */
-        get: operations["inbox_brands__brand_id__inbox_get"];
+        /** List Items */
+        get: operations["list_items_brands__brand_id__inbox_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -813,15 +813,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/brands/{brand_id}/inbox/{post_id}/comments": {
+    "/brands/{brand_id}/inbox/items/{item_id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Comments */
-        get: operations["comments_brands__brand_id__inbox__post_id__comments_get"];
+        /** Get Item */
+        get: operations["get_item_brands__brand_id__inbox_items__item_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -830,7 +830,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/brands/{brand_id}/inbox/{post_id}/like": {
+    "/brands/{brand_id}/inbox/items/{item_id}/assign": {
         parameters: {
             query?: never;
             header?: never;
@@ -839,15 +839,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Like */
-        post: operations["like_brands__brand_id__inbox__post_id__like_post"];
+        /** Assign */
+        post: operations["assign_brands__brand_id__inbox_items__item_id__assign_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/brands/{brand_id}/inbox/{post_id}/reply": {
+    "/brands/{brand_id}/inbox/items/{item_id}/like": {
         parameters: {
             query?: never;
             header?: never;
@@ -856,8 +856,148 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reply */
-        post: operations["reply_brands__brand_id__inbox__post_id__reply_post"];
+        /** Like Item */
+        post: operations["like_item_brands__brand_id__inbox_items__item_id__like_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/inbox/items/{item_id}/reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reply Item */
+        post: operations["reply_item_brands__brand_id__inbox_items__item_id__reply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/inbox/items/{item_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set Status */
+        post: operations["set_status_brands__brand_id__inbox_items__item_id__status_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/inbox/items/{item_id}/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suggest Replies */
+        post: operations["suggest_replies_brands__brand_id__inbox_items__item_id__suggest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/inbox/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rules */
+        get: operations["rules_brands__brand_id__inbox_rules_get"];
+        put?: never;
+        /** Create Rule */
+        post: operations["create_rule_brands__brand_id__inbox_rules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/inbox/rules/{rule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Rule */
+        delete: operations["delete_rule_brands__brand_id__inbox_rules__rule_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Rule */
+        patch: operations["update_rule_brands__brand_id__inbox_rules__rule_id__patch"];
+        trace?: never;
+    };
+    "/brands/{brand_id}/inbox/saved-replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Saved Replies */
+        get: operations["saved_replies_brands__brand_id__inbox_saved_replies_get"];
+        put?: never;
+        /** Create Saved Reply */
+        post: operations["create_saved_reply_brands__brand_id__inbox_saved_replies_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/inbox/saved-replies/{reply_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Saved Reply */
+        delete: operations["delete_saved_reply_brands__brand_id__inbox_saved_replies__reply_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Saved Reply */
+        patch: operations["update_saved_reply_brands__brand_id__inbox_saved_replies__reply_id__patch"];
+        trace?: never;
+    };
+    "/brands/{brand_id}/inbox/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync Now */
+        post: operations["sync_now_brands__brand_id__inbox_sync_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2001,6 +2141,11 @@ export interface components {
                 [key: string]: number;
             };
         };
+        /** AssignIn */
+        AssignIn: {
+            /** User Id */
+            user_id?: number | null;
+        };
         /** AutosaveIn */
         AutosaveIn: {
             /**
@@ -2740,6 +2885,8 @@ export interface components {
         };
         /** InboxAccount */
         InboxAccount: {
+            /** Avatar */
+            avatar?: string | null;
             /** External Id */
             external_id: string;
             /** Handle */
@@ -2749,48 +2896,246 @@ export interface components {
             /** Platform */
             platform: string;
         };
-        /** InboxItem */
-        InboxItem: {
+        /** InboxAuthor */
+        InboxAuthor: {
+            /** Handle */
+            handle?: string | null;
+            /** Name */
+            name: string;
+            /** Picture */
+            picture?: string | null;
+        };
+        /** InboxCounts */
+        InboxCounts: {
+            /** By Kind */
+            by_kind: {
+                [key: string]: number;
+            };
+            /** Drafts */
+            drafts: number;
+            /** Negative */
+            negative: number;
+            /** Open */
+            open: number;
+            /** Resolved */
+            resolved: number;
+        };
+        /** InboxItemOut */
+        InboxItemOut: {
             account: components["schemas"]["InboxAccount"];
-            /** Comment Count */
-            comment_count: number;
-            /** Content */
-            content: string | null;
-            /** Created At */
-            created_at: string | null;
-            /** Like Count */
-            like_count: number;
+            assignee: components["schemas"]["Actor"] | null;
+            /** Attachments */
+            attachments: unknown[];
+            author: components["schemas"]["InboxAuthor"];
+            /** Direction */
+            direction: string;
+            /** Draft Reply */
+            draft_reply: string | null;
+            /** Draft Rule */
+            draft_rule: {
+                [key: string]: unknown;
+            } | null;
+            /** External Id */
+            external_id: string;
+            /** Id */
+            id: number;
+            /** Intent */
+            intent: string | null;
+            /** Kind */
+            kind: string;
+            /** Parent External Id */
+            parent_external_id: string | null;
             /** Permalink */
             permalink: string | null;
-            /** Picture */
-            picture: string | null;
-            /** Platform */
-            platform: string;
-            /** Post Id */
-            post_id: string;
+            /** Post */
+            post: {
+                [key: string]: unknown;
+            };
+            /** Rating */
+            rating: number | null;
+            /** Received At */
+            received_at: string | null;
+            /** Replied At */
+            replied_at: string | null;
+            /** Reply Text */
+            reply_text: string | null;
+            /** Sentiment */
+            sentiment: string | null;
+            /** Status */
+            status: string;
+            /** Suggestions */
+            suggestions: string[];
+            /** Text */
+            text: string;
+            /** Thread Id */
+            thread_id: string | null;
         };
-        /** InboxOut */
-        InboxOut: {
+        /** InboxPage */
+        InboxPage: {
             /** Accounts */
             accounts: components["schemas"]["InboxAccount"][];
-            /** Error */
-            error: string | null;
+            counts: components["schemas"]["InboxCounts"];
             /** Items */
-            items: components["schemas"]["InboxItem"][];
+            items: components["schemas"]["InboxItemOut"][];
             /** Ready */
             ready: boolean;
         };
-        /** LikeIn */
-        LikeIn: {
-            /** Account */
-            account: string;
-            /** Comment Id */
-            comment_id: string;
+        /** InboxRuleIn */
+        InboxRuleIn: {
+            /** Assign To Id */
+            assign_to_id?: number | null;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Intents
+             * @default []
+             */
+            intents: string[];
+            /**
+             * Keywords
+             * @default []
+             */
+            keywords: string[];
+            /**
+             * Kinds
+             * @default []
+             */
+            kinds: string[];
+            /** Name */
+            name: string;
+            /**
+             * Platforms
+             * @default []
+             */
+            platforms: string[];
+            /** Reply Text */
+            reply_text?: string | null;
+            /** Saved Reply Id */
+            saved_reply_id?: number | null;
+            /**
+             * Sentiments
+             * @default []
+             */
+            sentiments: string[];
+        };
+        /** InboxRuleOut */
+        InboxRuleOut: {
+            /** Assign To Id */
+            assign_to_id?: number | null;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Hits */
+            hits: number;
+            /** Id */
+            id: number;
+            /**
+             * Intents
+             * @default []
+             */
+            intents: string[];
+            /**
+             * Keywords
+             * @default []
+             */
+            keywords: string[];
+            /**
+             * Kinds
+             * @default []
+             */
+            kinds: string[];
+            /** Name */
+            name: string;
+            /**
+             * Platforms
+             * @default []
+             */
+            platforms: string[];
+            /** Reply Text */
+            reply_text?: string | null;
+            /** Saved Reply Id */
+            saved_reply_id?: number | null;
+            /**
+             * Sentiments
+             * @default []
+             */
+            sentiments: string[];
+        };
+        /** InboxRuleUpdate */
+        InboxRuleUpdate: {
+            /** Assign To Id */
+            assign_to_id?: number | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Intents */
+            intents?: string[] | null;
+            /** Keywords */
+            keywords?: string[] | null;
+            /** Kinds */
+            kinds?: string[] | null;
+            /** Name */
+            name?: string | null;
+            /** Platforms */
+            platforms?: string[] | null;
+            /** Reply Text */
+            reply_text?: string | null;
+            /** Saved Reply Id */
+            saved_reply_id?: number | null;
+            /** Sentiments */
+            sentiments?: string[] | null;
+        };
+        /** InboxStatusIn */
+        InboxStatusIn: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "resolved" | "archived";
+        };
+        /** InboxSyncOut */
+        InboxSyncOut: {
+            /** Errors */
+            errors: string[];
+            /** New */
+            new: number;
+            /**
+             * Synced At
+             * Format: date-time
+             */
+            synced_at: string;
+            /** Updated */
+            updated: number;
+        };
+        /** InboxThreadOut */
+        InboxThreadOut: {
+            item: components["schemas"]["InboxItemOut"];
+            /** Thread */
+            thread: components["schemas"]["InboxItemOut"][];
+        };
+        /** ItemLikeIn */
+        ItemLikeIn: {
             /**
              * Liked
              * @default true
              */
             liked: boolean;
+        };
+        /** ItemReplyIn */
+        ItemReplyIn: {
+            /**
+             * From Draft
+             * @default false
+             */
+            from_draft: boolean;
+            /** Saved Reply Id */
+            saved_reply_id?: number | null;
+            /** Text */
+            text: string;
         };
         /** LinkIn */
         LinkIn: {
@@ -3021,6 +3366,11 @@ export interface components {
              * @default 0
              */
             plan_ready: number;
+            /**
+             * Replies
+             * @default 0
+             */
+            replies: number;
         };
         /** PaletteItem */
         PaletteItem: {
@@ -3303,21 +3653,6 @@ export interface components {
             /** Slots */
             slots: components["schemas"]["SlotOut"][];
         };
-        /** ReplyIn */
-        ReplyIn: {
-            /** Account */
-            account: string;
-            /** Comment Id */
-            comment_id?: string | null;
-            /** Message */
-            message: string;
-            /** Parent Cid */
-            parent_cid?: string | null;
-            /** Root Cid */
-            root_cid?: string | null;
-            /** Root Uri */
-            root_uri?: string | null;
-        };
         /** RepurposeIn */
         RepurposeIn: {
             /**
@@ -3421,6 +3756,37 @@ export interface components {
             platform?: string | null;
             /** Text */
             text: string;
+        };
+        /** SavedReplyIn */
+        SavedReplyIn: {
+            /** Body */
+            body: string;
+            /** Shortcut */
+            shortcut?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** SavedReplyOut */
+        SavedReplyOut: {
+            /** Body */
+            body: string;
+            /** Id */
+            id: number;
+            /** Shortcut */
+            shortcut: string | null;
+            /** Title */
+            title: string;
+            /** Uses */
+            uses: number;
+        };
+        /** SavedReplyUpdate */
+        SavedReplyUpdate: {
+            /** Body */
+            body?: string | null;
+            /** Shortcut */
+            shortcut?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /** SessionOut */
         SessionOut: {
@@ -3526,6 +3892,11 @@ export interface components {
             time: string;
             /** Weekday */
             weekday: number;
+        };
+        /** SuggestionsOut */
+        SuggestionsOut: {
+            /** Suggestions */
+            suggestions: string[];
         };
         /** TagCount */
         TagCount: {
@@ -5883,11 +6254,19 @@ export interface operations {
             };
         };
     };
-    inbox_brands__brand_id__inbox_get: {
+    list_items_brands__brand_id__inbox_get: {
         parameters: {
             query?: {
-                account?: string | null;
-                days?: number;
+                status?: string;
+                kind?: string | null;
+                account?: number | null;
+                assignee?: string | null;
+                sentiment?: string | null;
+                intent?: string | null;
+                q?: string | null;
+                has_draft?: boolean | null;
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path: {
@@ -5903,7 +6282,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InboxOut"];
+                    "application/json": components["schemas"]["InboxPage"];
                 };
             };
             /** @description Validation Error */
@@ -5917,15 +6296,12 @@ export interface operations {
             };
         };
     };
-    comments_brands__brand_id__inbox__post_id__comments_get: {
+    get_item_brands__brand_id__inbox_items__item_id__get: {
         parameters: {
-            query: {
-                account: string;
-                cursor?: string | null;
-            };
+            query?: never;
             header?: never;
             path: {
-                post_id: string;
+                item_id: number;
                 brand_id: number;
             };
             cookie?: never;
@@ -5938,7 +6314,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["InboxThreadOut"];
                 };
             };
             /** @description Validation Error */
@@ -5952,19 +6328,55 @@ export interface operations {
             };
         };
     };
-    like_brands__brand_id__inbox__post_id__like_post: {
+    assign_brands__brand_id__inbox_items__item_id__assign_post: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                post_id: string;
+                item_id: number;
                 brand_id: number;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LikeIn"];
+                "application/json": components["schemas"]["AssignIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxItemOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    like_item_brands__brand_id__inbox_items__item_id__like_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemLikeIn"];
             };
         };
         responses: {
@@ -5988,19 +6400,19 @@ export interface operations {
             };
         };
     };
-    reply_brands__brand_id__inbox__post_id__reply_post: {
+    reply_item_brands__brand_id__inbox_items__item_id__reply_post: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                post_id: string;
+                item_id: number;
                 brand_id: number;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReplyIn"];
+                "application/json": components["schemas"]["ItemReplyIn"];
             };
         };
         responses: {
@@ -6010,7 +6422,370 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["InboxItemOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_status_brands__brand_id__inbox_items__item_id__status_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InboxStatusIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxItemOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_replies_brands__brand_id__inbox_items__item_id__suggest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rules_brands__brand_id__inbox_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxRuleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_rule_brands__brand_id__inbox_rules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InboxRuleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxRuleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_rule_brands__brand_id__inbox_rules__rule_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_rule_brands__brand_id__inbox_rules__rule_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InboxRuleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxRuleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    saved_replies_brands__brand_id__inbox_saved_replies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedReplyOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_saved_reply_brands__brand_id__inbox_saved_replies_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedReplyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedReplyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_saved_reply_brands__brand_id__inbox_saved_replies__reply_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reply_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_saved_reply_brands__brand_id__inbox_saved_replies__reply_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reply_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedReplyUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedReplyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_now_brands__brand_id__inbox_sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxSyncOut"];
                 };
             };
             /** @description Validation Error */

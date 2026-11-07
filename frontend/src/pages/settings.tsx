@@ -7,6 +7,7 @@ import { readTheme, setTheme, useBrand, usePerms, useWorkspace, type ThemeMode }
 import { MembersSection } from "@/features/collab/panels";
 import { AgentSection, JanusSection } from "@/features/agent/panels";
 import { GuardrailsSection, PillarsSection } from "@/features/planning/panels";
+import { RulesSection, SavedRepliesSection } from "@/features/inbox/panels";
 import { useAccounts } from "@/features/posts/api";
 import { PlatformMark, platformLabel } from "@/lib/platforms";
 import { PageHeader } from "@/components/page";
@@ -25,7 +26,7 @@ import {
 import { fmtDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-const TABS = [["brand", "Brand & team"], ["times", "Posting times"], ["connectors", "Connectors"], ["me", "Preferences"]] as const;
+const TABS = [["brand", "Brand & team"], ["times", "Posting times"], ["inbox", "Inbox"], ["connectors", "Connectors"], ["me", "Preferences"]] as const;
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const TIMEZONES: string[] = (() => { try { return (Intl as unknown as { supportedValuesOf: (k: string) => string[] }).supportedValuesOf("timeZone"); } catch { return ["UTC"]; } })();
 
@@ -43,7 +44,7 @@ export function SettingsPage() {
                   className={cn("-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm", tab === k ? "border-brand font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink")}>{label}</button>
         ))}
       </div>
-      {tab === "brand" ? <BrandTab /> : tab === "times" ? <TimesTab /> : tab === "connectors" ? (search.connector ? <ConnectorDetail connectorKey={search.connector} onBack={() => go({ connector: undefined })} /> : <ConnectorsTab onOpen={(k) => go({ connector: k })} />) : <MeTab />}
+      {tab === "brand" ? <BrandTab /> : tab === "times" ? <TimesTab /> : tab === "inbox" ? <InboxTab /> : tab === "connectors" ? (search.connector ? <ConnectorDetail connectorKey={search.connector} onBack={() => go({ connector: undefined })} /> : <ConnectorsTab onOpen={(k) => go({ connector: k })} />) : <MeTab />}
     </>
   );
 }
@@ -160,6 +161,16 @@ function TeamSection() {
         </DialogContent>
       </Dialog>
     </section>
+  );
+}
+
+// ---- inbox ---------------------------------------------------------------------------------------
+function InboxTab() {
+  return (
+    <div className="grid gap-6 lg:grid-cols-3">
+      <div className="space-y-6 lg:col-span-2"><SavedRepliesSection /><RulesSection /></div>
+      <aside className="space-y-2 rounded-card border border-line bg-surface p-4 text-sm text-ink-2 self-start"><h3 className="font-semibold text-ink">How the inbox fills</h3><p>Zernio sends every new comment, message and review to Spark the moment it happens; a sync twice an hour catches anything missed. A small model labels sentiment and intent; replies are suggested on request in the brand's voice.</p><p>Rules never send on their own: the reply they prepare waits under “Replies to approve”.</p></aside>
+    </div>
   );
 }
 

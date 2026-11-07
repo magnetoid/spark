@@ -19,7 +19,6 @@ export type TeamOut = S["TeamOut"];
 export type ConnectorCard = S["ConnectorCard"];
 export type ConnectorOut = S["ConnectorOut"];
 export type TokenOut = S["TokenOut"];
-export type InboxOut = S["InboxOut"];
 export type PaletteItem = S["PaletteItem"];
 
 const bp = (brand_id: number) => ({ params: { path: { brand_id } } });
@@ -132,21 +131,6 @@ export const useCreateToken = () => useAction(async (name: string) => unwrap(awa
 export const useDeleteToken = () => useAction(async (id: number) => unwrap(await api.DELETE("/me/tokens/{token_id}", { params: { path: { token_id: id } } })), [["tokens"], ["connectors"]], "Token revoked");
 export const useUpdateMe = () => useAction(async (body: S["MeUpdate"]) => unwrap(await api.PATCH("/me", { body })), [["session"]], "Preferences saved");
 export const useChangePassword = () => useAction(async (body: S["PasswordChange"]) => unwrap(await api.POST("/me/password", { body })), [], "Password changed");
-
-// ---- inbox ------------------------------------------------------------------------------------
-export const useInbox = (b: number, account?: string, days = 30) => useQuery({
-  queryKey: ["inbox", b, account ?? "", days],
-  queryFn: async () => unwrap(await api.GET("/brands/{brand_id}/inbox", { params: { path: { brand_id: b }, query: { account, days } } })),
-  refetchInterval: 120_000,
-});
-export const useComments = (b: number, postId: string | null, account: string | null) => useQuery({
-  queryKey: ["comments", b, postId, account], enabled: !!postId && !!account,
-  queryFn: async () => unwrap(await api.GET("/brands/{brand_id}/inbox/{post_id}/comments", { params: { path: { brand_id: b, post_id: postId! }, query: { account: account! } } })) as Promise<{ comments: Record<string, unknown>[]; pagination: Record<string, unknown> }>,
-});
-export const useReply = (b: number) => useAction(async ({ postId, body }: { postId: string; body: S["ReplyIn"] }) =>
-  unwrap(await api.POST("/brands/{brand_id}/inbox/{post_id}/reply", { params: { path: { brand_id: b, post_id: postId } }, body })) as Promise<{ message: string }>, [["comments", b]]);
-export const useLike = (b: number) => useAction(async ({ postId, body }: { postId: string; body: S["LikeIn"] }) =>
-  unwrap(await api.POST("/brands/{brand_id}/inbox/{post_id}/like", { params: { path: { brand_id: b, post_id: postId } }, body })), [["comments", b]]);
 
 // ---- palette ------------------------------------------------------------------------------------
 export const usePalette = (b: number, enabled: boolean) => useQuery({ queryKey: ["palette", b], enabled, staleTime: 30_000, queryFn: async () => unwrap(await api.GET("/brands/{brand_id}/palette", bp(b))) });

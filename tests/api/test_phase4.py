@@ -270,31 +270,6 @@ async def test_api_tokens(api, db, brand):
 
 
 # ---- inbox (live from Zernio) --------------------------------------------------------------
-@respx.mock
-async def test_inbox_list_and_reply(api, db, brand, monkeypatch):
-    from spark.config import get_settings
-
-    monkeypatch.setattr(get_settings(), "zernio_api_key", "sk_test")
-    acc = SocialAccount(brand_id=brand.id, platform="linkedin", provider="zernio", external_id="z-acc", handle="imba")
-    db.add(acc)
-    await db.commit()
-    respx.get("https://zernio.com/api/v1/inbox/comments").mock(return_value=httpx.Response(200, json={
-        "data": [{"id": "p1", "accountId": "z-acc", "platform": "linkedin", "content": "Hello", "commentCount": 2, "likeCount": 4,
-                  "createdTime": "2026-11-01T10:00:00Z"}], "pagination": {"hasMore": False}}))
-    respx.get("https://zernio.com/api/v1/inbox/comments/p1").mock(return_value=httpx.Response(200, json={
-        "comments": [{"id": "c1", "text": "Nice", "author": {"name": "Ana"}, "createdAt": "2026-11-01T10:00:00Z"}], "pagination": {}}))
-    reply = respx.post("https://zernio.com/api/v1/inbox/comments/p1").mock(return_value=httpx.Response(200, json={"ok": True}))
-    bid = await _bid(api)
-    r = await api.get(f"{API}/brands/{bid}/inbox")
-    assert r.status_code == 200, r.text
-    assert r.json()["ready"] is True and r.json()["items"][0]["post_id"] == "p1" and r.json()["items"][0]["account"]["handle"] == "imba"
-    r = await api.get(f"{API}/brands/{bid}/inbox/p1/comments", params={"account": "z-acc"})
-    assert r.status_code == 200 and r.json()["comments"][0]["text"] == "Nice"
-    r = await api.post(f"{API}/brands/{bid}/inbox/p1/reply", json={"account": "z-acc", "message": "Thanks!", "comment_id": "c1"})
-    assert r.status_code == 200 and reply.called
-    assert (await api.post(f"{API}/brands/{bid}/inbox/p1/reply", json={"account": "nope", "message": "x"})).status_code == 404
-
-
 # ---- palette ---------------------------------------------------------------------------------
 async def test_palette_lists_actions_channels_and_posts(api, db, brand):
     bid = await _bid(api)

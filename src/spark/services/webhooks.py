@@ -21,6 +21,7 @@ from sqlalchemy.orm import selectinload
 from spark.config import get_settings
 from spark.models import Brand, Post, PostStatus, PostTarget, SocialAccount, WebhookEvent
 from spark.platforms.zernio import from_zernio
+from spark.services import inbox as inbox_svc
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ ZERNIO_EVENTS = [
     "post.published", "post.failed", "post.partial",
     "post.platform.published", "post.platform.failed", "post.platform.deleted",
     "account.connected", "account.disconnected", "account.permissions_changed",
+    "comment.received", "message.received", "review.new", "review.updated", "review.deleted",
 ]
 
 
@@ -111,6 +113,9 @@ async def handle_zernio_event(db: AsyncSession, payload: dict) -> str:
     event = payload.get("event", "")
     if payload.get("test") or event == "webhook.test":
         return "test"
+
+    if event in inbox_svc.INBOX_EVENTS:
+        return await inbox_svc.ingest_event(db, payload)
 
     if event.startswith("post.platform."):
         acc = await _account(db, (payload.get("account") or {}).get("accountId"))

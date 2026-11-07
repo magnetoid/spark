@@ -625,6 +625,23 @@
         "title": "AnalyticsOut",
         "type": "object"
       },
+      "AssignIn": {
+        "properties": {
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "title": "AssignIn",
+        "type": "object"
+      },
       "AutosaveIn": {
         "properties": {
           "content": {
@@ -2909,6 +2926,17 @@
       },
       "InboxAccount": {
         "properties": {
+          "avatar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar"
+          },
           "external_id": {
             "title": "External Id",
             "type": "string"
@@ -2935,16 +2963,105 @@
         "title": "InboxAccount",
         "type": "object"
       },
-      "InboxItem": {
+      "InboxAuthor": {
+        "properties": {
+          "handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handle"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "picture": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Picture"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "InboxAuthor",
+        "type": "object"
+      },
+      "InboxCounts": {
+        "properties": {
+          "by_kind": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Kind",
+            "type": "object"
+          },
+          "drafts": {
+            "title": "Drafts",
+            "type": "integer"
+          },
+          "negative": {
+            "title": "Negative",
+            "type": "integer"
+          },
+          "open": {
+            "title": "Open",
+            "type": "integer"
+          },
+          "resolved": {
+            "title": "Resolved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "open",
+          "drafts",
+          "negative",
+          "resolved",
+          "by_kind"
+        ],
+        "title": "InboxCounts",
+        "type": "object"
+      },
+      "InboxItemOut": {
         "properties": {
           "account": {
             "$ref": "#/components/schemas/InboxAccount"
           },
-          "comment_count": {
-            "title": "Comment Count",
-            "type": "integer"
+          "assignee": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Actor"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "content": {
+          "attachments": {
+            "items": {},
+            "title": "Attachments",
+            "type": "array"
+          },
+          "author": {
+            "$ref": "#/components/schemas/InboxAuthor"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "draft_reply": {
             "anyOf": [
               {
                 "type": "string"
@@ -2953,9 +3070,29 @@
                 "type": "null"
               }
             ],
-            "title": "Content"
+            "title": "Draft Reply"
           },
-          "created_at": {
+          "draft_rule": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Rule"
+          },
+          "external_id": {
+            "title": "External Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "intent": {
             "anyOf": [
               {
                 "type": "string"
@@ -2964,11 +3101,22 @@
                 "type": "null"
               }
             ],
-            "title": "Created At"
+            "title": "Intent"
           },
-          "like_count": {
-            "title": "Like Count",
-            "type": "integer"
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "parent_external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent External Id"
           },
           "permalink": {
             "anyOf": [
@@ -2981,7 +3129,47 @@
             ],
             "title": "Permalink"
           },
-          "picture": {
+          "post": {
+            "additionalProperties": true,
+            "title": "Post",
+            "type": "object"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "replied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replied At"
+          },
+          "reply_text": {
             "anyOf": [
               {
                 "type": "string"
@@ -2990,32 +3178,75 @@
                 "type": "null"
               }
             ],
-            "title": "Picture"
+            "title": "Reply Text"
           },
-          "platform": {
-            "title": "Platform",
+          "sentiment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentiment"
+          },
+          "status": {
+            "title": "Status",
             "type": "string"
           },
-          "post_id": {
-            "title": "Post Id",
+          "suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
             "type": "string"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thread Id"
           }
         },
         "required": [
-          "post_id",
+          "id",
+          "kind",
+          "direction",
+          "status",
+          "external_id",
+          "thread_id",
+          "parent_external_id",
           "account",
-          "platform",
-          "content",
-          "picture",
+          "author",
+          "text",
+          "rating",
           "permalink",
-          "created_at",
-          "comment_count",
-          "like_count"
+          "post",
+          "attachments",
+          "received_at",
+          "sentiment",
+          "intent",
+          "suggestions",
+          "draft_reply",
+          "draft_rule",
+          "assignee",
+          "replied_at",
+          "reply_text"
         ],
-        "title": "InboxItem",
+        "title": "InboxItemOut",
         "type": "object"
       },
-      "InboxOut": {
+      "InboxPage": {
         "properties": {
           "accounts": {
             "items": {
@@ -3024,20 +3255,12 @@
             "title": "Accounts",
             "type": "array"
           },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
+          "counts": {
+            "$ref": "#/components/schemas/InboxCounts"
           },
           "items": {
             "items": {
-              "$ref": "#/components/schemas/InboxItem"
+              "$ref": "#/components/schemas/InboxItemOut"
             },
             "title": "Items",
             "type": "array"
@@ -3048,35 +3271,453 @@
           }
         },
         "required": [
-          "ready",
-          "error",
+          "items",
+          "counts",
           "accounts",
-          "items"
+          "ready"
         ],
-        "title": "InboxOut",
+        "title": "InboxPage",
         "type": "object"
       },
-      "LikeIn": {
+      "InboxRuleIn": {
         "properties": {
-          "account": {
-            "title": "Account",
+          "assign_to_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assign To Id"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "intents": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Intents",
+            "type": "array"
+          },
+          "keywords": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Keywords",
+            "type": "array"
+          },
+          "kinds": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
             "type": "string"
           },
-          "comment_id": {
-            "title": "Comment Id",
+          "platforms": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Platforms",
+            "type": "array"
+          },
+          "reply_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply Text"
+          },
+          "saved_reply_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Reply Id"
+          },
+          "sentiments": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Sentiments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "InboxRuleIn",
+        "type": "object"
+      },
+      "InboxRuleOut": {
+        "properties": {
+          "assign_to_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assign To Id"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "hits": {
+            "title": "Hits",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "intents": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Intents",
+            "type": "array"
+          },
+          "keywords": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Keywords",
+            "type": "array"
+          },
+          "kinds": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
             "type": "string"
           },
+          "platforms": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Platforms",
+            "type": "array"
+          },
+          "reply_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply Text"
+          },
+          "saved_reply_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Reply Id"
+          },
+          "sentiments": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Sentiments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "id",
+          "hits"
+        ],
+        "title": "InboxRuleOut",
+        "type": "object"
+      },
+      "InboxRuleUpdate": {
+        "properties": {
+          "assign_to_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assign To Id"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "intents": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intents"
+          },
+          "keywords": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keywords"
+          },
+          "kinds": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kinds"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "platforms": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platforms"
+          },
+          "reply_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply Text"
+          },
+          "saved_reply_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Reply Id"
+          },
+          "sentiments": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sentiments"
+          }
+        },
+        "title": "InboxRuleUpdate",
+        "type": "object"
+      },
+      "InboxStatusIn": {
+        "properties": {
+          "status": {
+            "enum": [
+              "open",
+              "resolved",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "InboxStatusIn",
+        "type": "object"
+      },
+      "InboxSyncOut": {
+        "properties": {
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "new": {
+            "title": "New",
+            "type": "integer"
+          },
+          "synced_at": {
+            "format": "date-time",
+            "title": "Synced At",
+            "type": "string"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "new",
+          "updated",
+          "errors",
+          "synced_at"
+        ],
+        "title": "InboxSyncOut",
+        "type": "object"
+      },
+      "InboxThreadOut": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/InboxItemOut"
+          },
+          "thread": {
+            "items": {
+              "$ref": "#/components/schemas/InboxItemOut"
+            },
+            "title": "Thread",
+            "type": "array"
+          }
+        },
+        "required": [
+          "item",
+          "thread"
+        ],
+        "title": "InboxThreadOut",
+        "type": "object"
+      },
+      "ItemLikeIn": {
+        "properties": {
           "liked": {
             "default": true,
             "title": "Liked",
             "type": "boolean"
           }
         },
+        "title": "ItemLikeIn",
+        "type": "object"
+      },
+      "ItemReplyIn": {
+        "properties": {
+          "from_draft": {
+            "default": false,
+            "title": "From Draft",
+            "type": "boolean"
+          },
+          "saved_reply_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved Reply Id"
+          },
+          "text": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
         "required": [
-          "account",
-          "comment_id"
+          "text"
         ],
-        "title": "LikeIn",
+        "title": "ItemReplyIn",
         "type": "object"
       },
       "LinkIn": {
@@ -3762,6 +4403,11 @@
           "plan_ready": {
             "default": 0,
             "title": "Plan Ready",
+            "type": "integer"
+          },
+          "replies": {
+            "default": 0,
+            "title": "Replies",
             "type": "integer"
           }
         },
@@ -4667,69 +5313,6 @@
         "title": "QueueOut",
         "type": "object"
       },
-      "ReplyIn": {
-        "properties": {
-          "account": {
-            "title": "Account",
-            "type": "string"
-          },
-          "comment_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Comment Id"
-          },
-          "message": {
-            "minLength": 1,
-            "title": "Message",
-            "type": "string"
-          },
-          "parent_cid": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Cid"
-          },
-          "root_cid": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Root Cid"
-          },
-          "root_uri": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Root Uri"
-          }
-        },
-        "required": [
-          "account",
-          "message"
-        ],
-        "title": "ReplyIn",
-        "type": "object"
-      },
       "RepurposeIn": {
         "properties": {
           "account_ids": {
@@ -5043,6 +5626,124 @@
           "text"
         ],
         "title": "RewriteIn",
+        "type": "object"
+      },
+      "SavedReplyIn": {
+        "properties": {
+          "body": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "shortcut": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shortcut"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ],
+        "title": "SavedReplyIn",
+        "type": "object"
+      },
+      "SavedReplyOut": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "shortcut": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shortcut"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "uses": {
+            "title": "Uses",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "body",
+          "shortcut",
+          "uses"
+        ],
+        "title": "SavedReplyOut",
+        "type": "object"
+      },
+      "SavedReplyUpdate": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "shortcut": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shortcut"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "SavedReplyUpdate",
         "type": "object"
       },
       "SessionOut": {
@@ -5396,6 +6097,22 @@
           "time"
         ],
         "title": "SlotRow",
+        "type": "object"
+      },
+      "SuggestionsOut": {
+        "properties": {
+          "suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "suggestions"
+        ],
+        "title": "SuggestionsOut",
         "type": "object"
       },
       "TagCount": {
@@ -9399,7 +10116,7 @@
     },
     "/brands/{brand_id}/inbox": {
       "get": {
-        "operationId": "inbox_brands__brand_id__inbox_get",
+        "operationId": "list_items_brands__brand_id__inbox_get",
         "parameters": [
           {
             "in": "path",
@@ -9412,12 +10129,38 @@
           },
           {
             "in": "query",
-            "name": "account",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "open",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
             "required": false,
             "schema": {
               "anyOf": [
                 {
                   "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "account",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
                 },
                 {
                   "type": "null"
@@ -9428,79 +10171,7 @@
           },
           {
             "in": "query",
-            "name": "days",
-            "required": false,
-            "schema": {
-              "default": 30,
-              "maximum": 90,
-              "minimum": 1,
-              "title": "Days",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InboxOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Inbox",
-        "tags": [
-          "inbox"
-        ]
-      }
-    },
-    "/brands/{brand_id}/inbox/{post_id}/comments": {
-      "get": {
-        "operationId": "comments_brands__brand_id__inbox__post_id__comments_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "post_id",
-            "required": true,
-            "schema": {
-              "title": "Post Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "brand_id",
-            "required": true,
-            "schema": {
-              "title": "Brand Id",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "account",
-            "required": true,
-            "schema": {
-              "title": "Account",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "cursor",
+            "name": "assignee",
             "required": false,
             "schema": {
               "anyOf": [
@@ -9511,7 +10182,93 @@
                   "type": "null"
                 }
               ],
-              "title": "Cursor"
+              "title": "Assignee"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sentiment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sentiment"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_draft",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Draft"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
             }
           }
         ],
@@ -9519,7 +10276,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/InboxPage"
+                }
               }
             },
             "description": "Successful Response"
@@ -9535,23 +10294,74 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Comments",
+        "summary": "List Items",
         "tags": [
           "inbox"
         ]
       }
     },
-    "/brands/{brand_id}/inbox/{post_id}/like": {
-      "post": {
-        "operationId": "like_brands__brand_id__inbox__post_id__like_post",
+    "/brands/{brand_id}/inbox/items/{item_id}": {
+      "get": {
+        "operationId": "get_item_brands__brand_id__inbox_items__item_id__get",
         "parameters": [
           {
             "in": "path",
-            "name": "post_id",
+            "name": "item_id",
             "required": true,
             "schema": {
-              "title": "Post Id",
-              "type": "string"
+              "title": "Item Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxThreadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Item",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/items/{item_id}/assign": {
+      "post": {
+        "operationId": "assign_brands__brand_id__inbox_items__item_id__assign_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
             }
           },
           {
@@ -9568,7 +10378,68 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LikeIn"
+                "$ref": "#/components/schemas/AssignIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assign",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/items/{item_id}/like": {
+      "post": {
+        "operationId": "like_item_brands__brand_id__inbox_items__item_id__like_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemLikeIn"
               }
             }
           },
@@ -9594,23 +10465,23 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Like",
+        "summary": "Like Item",
         "tags": [
           "inbox"
         ]
       }
     },
-    "/brands/{brand_id}/inbox/{post_id}/reply": {
+    "/brands/{brand_id}/inbox/items/{item_id}/reply": {
       "post": {
-        "operationId": "reply_brands__brand_id__inbox__post_id__reply_post",
+        "operationId": "reply_item_brands__brand_id__inbox_items__item_id__reply_post",
         "parameters": [
           {
             "in": "path",
-            "name": "post_id",
+            "name": "item_id",
             "required": true,
             "schema": {
-              "title": "Post Id",
-              "type": "string"
+              "title": "Item Id",
+              "type": "integer"
             }
           },
           {
@@ -9627,7 +10498,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReplyIn"
+                "$ref": "#/components/schemas/ItemReplyIn"
               }
             }
           },
@@ -9637,7 +10508,9 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/InboxItemOut"
+                }
               }
             },
             "description": "Successful Response"
@@ -9653,7 +10526,559 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Reply",
+        "summary": "Reply Item",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/items/{item_id}/status": {
+      "post": {
+        "operationId": "set_status_brands__brand_id__inbox_items__item_id__status_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboxStatusIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Status",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/items/{item_id}/suggest": {
+      "post": {
+        "operationId": "suggest_replies_brands__brand_id__inbox_items__item_id__suggest_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Suggest Replies",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/rules": {
+      "get": {
+        "operationId": "rules_brands__brand_id__inbox_rules_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InboxRuleOut"
+                  },
+                  "title": "Response Rules Brands  Brand Id  Inbox Rules Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rules",
+        "tags": [
+          "inbox"
+        ]
+      },
+      "post": {
+        "operationId": "create_rule_brands__brand_id__inbox_rules_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboxRuleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxRuleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Rule",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/rules/{rule_id}": {
+      "delete": {
+        "operationId": "delete_rule_brands__brand_id__inbox_rules__rule_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Rule",
+        "tags": [
+          "inbox"
+        ]
+      },
+      "patch": {
+        "operationId": "update_rule_brands__brand_id__inbox_rules__rule_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboxRuleUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxRuleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Rule",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/saved-replies": {
+      "get": {
+        "operationId": "saved_replies_brands__brand_id__inbox_saved_replies_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SavedReplyOut"
+                  },
+                  "title": "Response Saved Replies Brands  Brand Id  Inbox Saved Replies Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Saved Replies",
+        "tags": [
+          "inbox"
+        ]
+      },
+      "post": {
+        "operationId": "create_saved_reply_brands__brand_id__inbox_saved_replies_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedReplyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedReplyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Saved Reply",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/saved-replies/{reply_id}": {
+      "delete": {
+        "operationId": "delete_saved_reply_brands__brand_id__inbox_saved_replies__reply_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reply_id",
+            "required": true,
+            "schema": {
+              "title": "Reply Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Saved Reply",
+        "tags": [
+          "inbox"
+        ]
+      },
+      "patch": {
+        "operationId": "update_saved_reply_brands__brand_id__inbox_saved_replies__reply_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reply_id",
+            "required": true,
+            "schema": {
+              "title": "Reply Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedReplyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedReplyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Saved Reply",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/sync": {
+      "post": {
+        "operationId": "sync_now_brands__brand_id__inbox_sync_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxSyncOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync Now",
         "tags": [
           "inbox"
         ]

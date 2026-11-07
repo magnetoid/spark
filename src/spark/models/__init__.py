@@ -1,6 +1,7 @@
 from spark.models.agent import AgentRun
 from spark.models.collab import ActivityLog, BrandMember, PostComment, ShareLink
 from spark.models.core import ApiToken, Brand, ConnectorSetting, Media, Role, User
+from spark.models.inbox import InboxItem, InboxRule, SavedReply
 from spark.models.marketing import (
     BioPage,
     Contact,
@@ -34,6 +35,9 @@ __all__ = [
     "PostComment",
     "ShareLink",
     "ConnectorSetting",
+    "InboxItem",
+    "InboxRule",
+    "SavedReply",
     "ContentPillar",
     "BioPage",
     "Brand",

@@ -350,6 +350,53 @@ class ZernioAdapter(PlatformAdapter):
         method = "DELETE" if liked else "POST"
         await self._req(method, f"/inbox/comments/{post_id}/{comment_id}/like", json={"accountId": account_id})
 
+    async def _page(self, path: str, account_ids: set[str], params: dict, limit: int, key: str = "data") -> list[dict]:
+        out: list[dict] = []
+        params = dict(params)
+        while True:
+            data = (await self._req("GET", path, params=params)).json()
+            out += [r for r in data.get(key, []) if not account_ids or r.get("accountId") in account_ids]
+            page = data.get("pagination") or {}
+            if not page.get("hasMore") or not (page.get("nextCursor") or page.get("cursor")) or len(out) >= limit:
+                return out[:limit]
+            params["cursor"] = page.get("nextCursor") or page.get("cursor")
+
+    async def conversations(self, account_ids: set[str], limit: int = 50) -> list[dict]:
+        """Direct-message conversations across the key's accounts (Facebook, Instagram, X, Bluesky, Reddit, Telegram, WhatsApp…)."""
+        return await self._page("/inbox/conversations", account_ids, {"limit": min(limit, 100), "sortOrder": "desc"}, limit)
+
+    async def conversation_messages(self, conversation_id: str, account_id: str, limit: int = 50) -> list[dict]:
+        data = (await self._req("GET", f"/inbox/conversations/{conversation_id}/messages",
+                                params={"accountId": account_id, "limit": min(limit, 100), "sortOrder": "asc"})).json()
+        return data.get("messages") or []
+
+    async def send_message(self, conversation_id: str, account_id: str, text: str) -> dict:
+        import uuid
+
+        return (await self._req("POST", f"/inbox/conversations/{conversation_id}/messages", json={"accountId": account_id, "message": text},
+                                headers={"Idempotency-Key": str(uuid.uuid4())})).json()
+
+    async def mark_read(self, conversation_id: str, account_id: str) -> None:
+        await self._req("POST", f"/inbox/conversations/{conversation_id}/read", json={"accountId": account_id})
+
+    async def reviews(self, account_ids: set[str], limit: int = 50) -> list[dict]:
+        """Google Business and Facebook reviews. Each row: id, platform, accountId, rating, text, reviewer, created, hasReply, reply."""
+        return await self._page("/inbox/reviews", account_ids, {"limit": min(limit, 100), "sortBy": "date", "sortOrder": "desc"}, limit)
+
+    async def reply_review(self, review_id: str, account_id: str, text: str) -> dict:
+        from urllib.parse import quote
+
+        return (await self._req("POST", f"/inbox/reviews/{quote(review_id, safe='')}/reply", json={"accountId": account_id, "message": text})).json()
+
+    async def mentions(self, account_ids: set[str], limit: int = 50) -> list[dict]:
+        """Mentions of the accounts in other people's posts and comments (last 7 days; needs Zernio's Inbox add-on)."""
+        try:
+            return await self._page("/inbox/mentions", account_ids, {"limit": min(limit, 100)}, limit)
+        except PlatformError as e:  # the add-on is optional: no mentions is not an error
+            if any(code in str(e) for code in ("403", "404", "402")):
+                return []
+            raise
+
     # ---- webhooks (POST /webhooks/settings etc.) -------------------------------------
     async def list_webhooks(self) -> list[dict]:
         r = await self._req("GET", "/webhooks/settings")
