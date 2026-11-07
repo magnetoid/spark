@@ -137,12 +137,12 @@ async def test_share_link_review_flow(api, db, brand):
         assert page["brand"]["name"] == "Acme" and [p["id"] for p in page["posts"]] == [post.id]
         assert page["posts"][0]["channels"][0]["platform"] == "dry_run"
         r = await anon.post(f"{API}/public/review/{token}/posts/{post.id}/request-changes", json={"name": "Dana (client)", "body": "Shorter please"})
-        assert r.status_code == 200 and r.json()["post"]["status"] == "draft"
+        assert r.status_code == 200 and r.json()["status"] == "draft"
         r = await anon.get(f"{API}/brands/{brand.id}/posts/{post.id}/comments")
         assert r.status_code == 401  # internal API still needs a user
         post2 = await _pending_post(db, brand)
         r = await anon.post(f"{API}/public/review/{token}/posts/{post2.id}/approve", json={"name": "Dana"})
-        assert r.status_code == 200 and r.json()["post"]["status"] == "scheduled"
+        assert r.status_code == 200 and r.json()["status"] == "scheduled"
         assert (await anon.get(f"{API}/public/review/nope")).status_code == 404
     comments = (await api.get(f"{API}/brands/{brand.id}/posts/{post.id}/comments")).json()
     assert comments[0]["kind"] == "change_request" and comments[0]["author"]["name"] == "Dana (client)"

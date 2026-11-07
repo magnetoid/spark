@@ -46,6 +46,13 @@ webhook every Monday at 05:00 UTC, so Janus follows its `main` branch weekly wit
 remembering. Add two repository secrets: `COOLIFY_JANUS_WEBHOOK` (the webhook URL) and
 `COOLIFY_TOKEN` (an API token). The "Update now" button in Spark does the same on demand.
 
+## One Janus user per client, when it matters
+
+The token Janus uses sees every brand its Spark user belongs to. For an agency whose clients
+must never see each other's drafts through the agent, make one Spark user per brand (viewer on
+that brand only), one token each, and one Janus service (or profile) per brand pointing at its
+own token. A single shared viewer is fine when every brand belongs to the same team.
+
 ## What Janus is allowed to do
 
 - Spark MCP tools are limited in `config.yaml` to reading: `list_brands`, `list_channels`,

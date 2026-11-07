@@ -41,5 +41,5 @@ async def overview(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depe
 
 @router.post("/brands/{brand_id}/analytics/refresh")
 async def refresh(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
-    n = await analytics.collect_metrics(db)
+    n = await analytics.collect_metrics(db, brand_id=ctx.brand.id)
     return {"collected": n, "message": f"Pulled {n} metric snapshot(s)"}

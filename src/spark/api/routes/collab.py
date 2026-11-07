@@ -22,9 +22,8 @@ from spark.api.schemas import (
     MemberIn,
     MemberOut,
     MemberUpdate,
-    PostOut,
-    PostResult,
     ReviewAction,
+    ReviewActionOut,
     ReviewChannel,
     ReviewPage,
     ReviewPost,
@@ -84,7 +83,11 @@ async def _members(db: AsyncSession, brand_id: int) -> list[MemberOut]:
 async def list_members(
     db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)
 ):
-    return await _members(db, ctx.brand.id)
+    members = await _members(db, ctx.brand.id)
+    if not ctx.can_manage():  # names for everyone, addresses for owners
+        for m in members:
+            m.email = ""
+    return members
 
 
 @router.post("/members", response_model=MemberOut, status_code=201)
@@ -101,7 +104,7 @@ async def add_member(
         user = User(
             email=email,
             name=body.name.strip(),
-            role=Role.editor if body.role != "client" else Role.viewer,
+            role=Role.viewer,  # brand roles grant everything else
             password_hash=hash_password(body.password),
         )
         db.add(user)
@@ -412,7 +415,7 @@ async def _review_post(db: AsyncSession, p: Post) -> ReviewPost:
         .scalars()
         .all()
     )
-    media = (await db.execute(select(Media).where(Media.id.in_(p.media_ids)))).scalars().all() if p.media_ids else []
+    media = (await db.execute(select(Media).where(Media.id.in_(p.media_ids), Media.brand_id == p.brand_id))).scalars().all() if p.media_ids else []
     return ReviewPost(
         id=p.id,
         content=p.content,
@@ -421,7 +424,8 @@ async def _review_post(db: AsyncSession, p: Post) -> ReviewPost:
         scheduled_at=as_utc(p.scheduled_at),
         media=[f"{get_settings().base_url}{m.url}" for m in media],
         channels=[
-            ReviewChannel(platform=t.account.platform, handle=t.account.handle)
+            ReviewChannel(platform=t.account.platform, handle=t.account.handle, text=t.content_override or p.content,
+                          first_comment=t.first_comment or None, thread=list(t.thread or []), post_type=t.post_type or "post")
             for t in p.targets
             if t.account
         ],
@@ -443,14 +447,14 @@ async def review_page(token: str, db: AsyncSession = Depends(get_db)):
 
 
 async def _reviewable(db: AsyncSession, link: ShareLink, post_id: int) -> Post:
-    post = await _brand_post(db, link.brand_id, post_id)
-    ids = (link.scope or {}).get("post_ids")
-    if ids and post.id not in ids:
-        raise not_found("No such post")
-    return post
+    """Only posts the review page itself shows can be acted on through the link."""
+    for p in await _review_posts(db, link):
+        if p.id == post_id:
+            return p
+    raise not_found("No such post")
 
 
-@public.post("/{token}/posts/{post_id}/request-changes", response_model=PostResult)
+@public.post("/{token}/posts/{post_id}/request-changes", response_model=ReviewActionOut)
 async def review_request_changes(
     token: str, post_id: int, body: ReviewAction, db: AsyncSession = Depends(get_db)
 ):
@@ -482,10 +486,10 @@ async def review_request_changes(
     )
     await db.commit()
     await events.publish("posts", brand.id, ids=[post.id])
-    return PostResult(message="Thanks, the team will see your note", post=PostOut.of(post))
+    return ReviewActionOut(message="Thanks, the team will see your note", status=post.status.value)
 
 
-@public.post("/{token}/posts/{post_id}/approve", response_model=PostResult)
+@public.post("/{token}/posts/{post_id}/approve", response_model=ReviewActionOut)
 async def review_approve(
     token: str, post_id: int, body: ReviewAction, db: AsyncSession = Depends(get_db)
 ):
@@ -517,4 +521,4 @@ async def review_approve(
     await db.commit()
     await svc.enqueue_due(post)
     await events.publish("posts", brand.id, ids=[post.id])
-    return PostResult(message="Approved", post=PostOut.of(post))
+    return ReviewActionOut(message="Approved", status=post.status.value)

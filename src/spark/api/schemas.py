@@ -753,6 +753,8 @@ class ConnectResult(BaseModel):
 class ImportResult(BaseModel):
     imported: int
     accounts: list[AccountOut]
+    skipped: list[str] = []
+
 
 
 class SlotIn(BaseModel):
@@ -1072,6 +1074,15 @@ class ShareLinkCreated(ShareLinkOut):
 class ReviewChannel(BaseModel):
     platform: str
     handle: str
+    text: str = ""
+    first_comment: str | None = None
+    thread: list[str] = []
+    post_type: str = "post"
+
+
+class ReviewActionOut(BaseModel):
+    message: str
+    status: str
 
 
 class ReviewPost(BaseModel):
@@ -1178,12 +1189,14 @@ class AgentStatusOut(BaseModel):
 class AgentApplyIn(BaseModel):
     post_indexes: list[int] | None = None
     schedule: bool | None = None
+    what: Literal["posts", "voice"] | None = None
 
 
 class AgentApplyOut(BaseModel):
     created: int
     post_ids: list[int]
     voice_applied: bool
+    skipped: int = 0
 
 
 class PlanOut(BaseModel):

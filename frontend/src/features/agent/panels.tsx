@@ -144,6 +144,7 @@ export function RunView({ id, onBack }: { id: number; onBack?: () => void }) {
   const selected = picked ?? posts.map((_, i) => i);
   const text = (run.output ?? "").replace(/```\s*spark-proposal[\s\S]*?```/i, "").trim();
   const partial = run.events.filter((e) => e.event === "message.delta").map((e) => String(e.delta ?? "")).join("");
+  const applied = ((run.proposal as { applied?: { posts?: string; voice?: string } }).applied) ?? {};
   const tools = run.events.filter((e) => e.event === "tool.completed" || e.event === "tool.started");
   return (
     <div className="space-y-4 text-sm">
@@ -162,17 +163,18 @@ export function RunView({ id, onBack }: { id: number; onBack?: () => void }) {
 
       {posts.length > 0 && (
         <section className="rounded-card border border-line">
-          <header className="flex items-center justify-between border-b border-line px-4 py-2"><h3 className="font-semibold">{posts.length} proposed {posts.length === 1 ? "post" : "posts"}</h3>{!run.applied_at && posts.length > 1 && <button type="button" className="text-xs text-ink-2 hover:underline" onClick={() => setPicked(selected.length === posts.length ? [] : posts.map((_, i) => i))}>{selected.length === posts.length ? "Select none" : "Select all"}</button>}</header>
+          <header className="flex items-center justify-between border-b border-line px-4 py-2"><h3 className="font-semibold">{posts.length} proposed {posts.length === 1 ? "post" : "posts"}</h3>{!applied.posts && posts.length > 1 && <button type="button" className="text-xs text-ink-2 hover:underline" onClick={() => setPicked(selected.length === posts.length ? [] : posts.map((_, i) => i))}>{selected.length === posts.length ? "Select none" : "Select all"}</button>}</header>
           <ul className="divide-y divide-line">
             {posts.map((p, i) => (
               <li key={i} className="flex gap-3 px-4 py-3">
-                {!run.applied_at && <input type="checkbox" className="mt-1 accent-[var(--brand)]" checked={selected.includes(i)} onChange={() => setPicked(selected.includes(i) ? selected.filter((x) => x !== i) : [...selected, i])} aria-label={`Include post ${i + 1}`} />}
+                {!applied.posts && <input type="checkbox" className="mt-1 accent-[var(--brand)]" checked={selected.includes(i)} onChange={() => setPicked(selected.includes(i) ? selected.filter((x) => x !== i) : [...selected, i])} aria-label={`Include post ${i + 1}`} />}
                 <div className="min-w-0 flex-1">
                   <p className="whitespace-pre-wrap">{p.content}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-2">
                     <ChannelMarks ids={p.channel_ids} />
                     {p.when && <span className="tnum">{fmtDateTime(p.when, brand.timezone)}</span>}
                     {p.pillar && <span>{p.pillar}</span>}
+                    {p.channel_ids.length === 0 && <span className="text-st-pending">no channel matched; it will not be added</span>}
                     {p.link && <a href={p.link} target="_blank" rel="noopener" className="truncate underline">{p.link}</a>}
                   </div>
                 </div>
@@ -180,12 +182,12 @@ export function RunView({ id, onBack }: { id: number; onBack?: () => void }) {
             ))}
           </ul>
           <footer className="flex flex-wrap items-center gap-2 border-t border-line px-4 py-3">
-            {run.applied_at ? (
-              <span className="text-xs text-ink-2">Added to the plan {fmtDateTime(run.applied_at, brand.timezone)}. <Link to="/publishing" search={(s) => ({ ...s, view: "plan" })} className="underline">Open the plan</Link></span>
+            {applied.posts ? (
+              <span className="text-xs text-ink-2">Added to the plan {fmtDateTime(applied.posts, brand.timezone)}. <Link to="/publishing" search={(s) => ({ ...s, view: "plan" })} className="underline">Open the plan</Link></span>
             ) : canEdit ? (
               <>
-                <Button size="sm" disabled={apply.isPending || selected.length === 0} onClick={() => apply.mutate({ id: run.id, body: { post_indexes: selected, schedule: false } })}><CalendarCheck className="size-4" />Add {selected.length} to the plan as drafts</Button>
-                <Button size="sm" variant="outline" disabled={apply.isPending || selected.length === 0} onClick={() => apply.mutate({ id: run.id, body: { post_indexes: selected, schedule: true } })}>Schedule {selected.length} now</Button>
+                <Button size="sm" disabled={apply.isPending || selected.length === 0} onClick={() => apply.mutate({ id: run.id, body: { what: "posts", post_indexes: selected, schedule: false } })}><CalendarCheck className="size-4" />Add {selected.length} to the plan as drafts</Button>
+                <Button size="sm" variant="outline" disabled={apply.isPending || selected.length === 0} onClick={() => apply.mutate({ id: run.id, body: { what: "posts", post_indexes: selected, schedule: true } })}>Schedule {selected.length} now</Button>
                 <span className="text-xs text-ink-2">Drafts land in Publishing › Plan for a last look.</span>
               </>
             ) : <span className="text-xs text-ink-2">An editor adds these to the plan.</span>}
@@ -203,8 +205,8 @@ export function RunView({ id, onBack }: { id: number; onBack?: () => void }) {
             ))}
           </dl>
           <footer className="flex items-center gap-2 border-t border-line px-4 py-3">
-            {run.applied_at ? <span className="text-xs text-ink-2">In use since {fmtDateTime(run.applied_at, brand.timezone)}.</span>
-              : canManage ? <Button size="sm" disabled={apply.isPending} onClick={() => apply.mutate({ id: run.id, body: {} })}>Use this voice</Button>
+            {applied.voice ? <span className="text-xs text-ink-2">In use since {fmtDateTime(applied.voice, brand.timezone)}.</span>
+              : canManage ? <Button size="sm" disabled={apply.isPending} onClick={() => apply.mutate({ id: run.id, body: { what: "voice" } })}>Use this voice</Button>
               : <span className="text-xs text-ink-2">An owner decides whether to adopt it.</span>}
           </footer>
         </section>

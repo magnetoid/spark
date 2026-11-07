@@ -103,7 +103,7 @@ class Janus:
     async def events(self, run_id: str) -> AsyncIterator[dict]:
         """Yield the run's events until the stream closes. Frames are `data: <json>`; comments are keepalives."""
         async with (
-            httpx.AsyncClient(timeout=httpx.Timeout(10.0, read=None)) as c,
+            httpx.AsyncClient(timeout=httpx.Timeout(10.0, read=120.0)) as c,
             c.stream(
                 "GET",
                 f"{self.base_url}/v1/runs/{run_id}/events",

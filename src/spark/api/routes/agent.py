@@ -127,10 +127,11 @@ async def apply_run(
     ctx: deps.BrandCtx = Depends(deps.editor_brand),
 ):
     r = await _run(db, ctx, run_id)
-    if (r.proposal or {}).get("voice_profile") and not ctx.can_manage():
+    what = body.what or ("posts" if (r.proposal or {}).get("posts") else "voice")
+    if what == "voice" and not ctx.can_manage():
         raise ApiError(403, "forbidden", "Only owners change the brand voice")
     try:
-        out = await agent.apply(db, ctx.brand, ctx.user, r, body.post_indexes, body.schedule)
+        out = await agent.apply(db, ctx.brand, ctx.user, r, body.post_indexes, body.schedule, what)
     except agent.NotApplicable as e:
         raise ApiError(409, "not_applicable", str(e)) from e
     return AgentApplyOut(**out)

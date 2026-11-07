@@ -299,13 +299,13 @@ function ListView({ status }: { status: "draft" | "pending_approval" | "publishe
   const { data, isPending } = usePosts(brand.id, { status, limit: 100 });
   const actions = usePostActions(brand.id);
   const composer = useComposer();
-  const { canApprove } = usePerms();
+  const { canApprove, canEdit } = usePerms();
   if (isPending) return <Skeleton className="h-48" />;
   const items = data?.items ?? [];
   const bar = status === "pending_approval" ? <ReviewLinksBar /> : null;
   if (!items.length) {
     const copy = { draft: ["No drafts", "Start a post and save it as a draft; it waits here."], pending_approval: ["Nothing waits for approval", "Posts from editors show up here when the brand requires approval."], published: ["Nothing sent yet", "Published posts appear here with their links."], failed: ["Nothing failed", "Posts that could not be published after retrying show up here with the platform's error."] }[status];
-    return <>{bar}<EmptyState icon={CalendarDays} title={copy[0]} body={copy[1]} action={status !== "published" ? <Button size="sm" onClick={() => composer.open()}>Write a post</Button> : undefined} /></>;
+    return <>{bar}<EmptyState icon={CalendarDays} title={copy[0]} body={copy[1]} action={status !== "published" && canEdit ? <Button size="sm" onClick={() => composer.open()}>Write a post</Button> : undefined} /></>;
   }
   return (
     <>{bar}
@@ -324,12 +324,12 @@ function ListView({ status }: { status: "draft" | "pending_approval" | "publishe
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
-            {status === "draft" && <Button size="sm" variant="outline" onClick={() => actions.place.mutate({ id: p.id, action: "next" })}>Share next</Button>}
-            {status === "failed" && <Button size="sm" onClick={() => actions.retry.mutate(p.id)}>Retry</Button>}
+            {status === "draft" && canEdit && <Button size="sm" variant="outline" onClick={() => actions.place.mutate({ id: p.id, action: "next" })}>Share next</Button>}
+            {status === "failed" && canEdit && <Button size="sm" onClick={() => actions.retry.mutate(p.id)}>Retry</Button>}
             {status === "pending_approval" && canApprove && <Button size="sm" onClick={() => actions.approve.mutate(p.id)}>Approve</Button>}
-            {status === "published" && <IconBtn label="Reuse" onClick={() => composer.open({ fromPostId: p.id })}><Copy className="size-4" /></IconBtn>}
-            {status !== "published" && <IconBtn label="Edit" onClick={() => composer.open({ postId: p.id })}><Pencil className="size-4" /></IconBtn>}
-            {status === "draft" && <IconBtn label="Delete" onClick={() => confirm("Delete this draft?") && actions.remove.mutate(p.id)}><Trash2 className="size-4" /></IconBtn>}
+            {status === "published" && canEdit && <IconBtn label="Reuse" onClick={() => composer.open({ fromPostId: p.id })}><Copy className="size-4" /></IconBtn>}
+            {status !== "published" && canEdit && <IconBtn label="Edit" onClick={() => composer.open({ postId: p.id })}><Pencil className="size-4" /></IconBtn>}
+            {status === "draft" && canEdit && <IconBtn label="Delete" onClick={() => confirm("Delete this draft?") && actions.remove.mutate(p.id)}><Trash2 className="size-4" /></IconBtn>}
           </div>
         </li>
       ))}

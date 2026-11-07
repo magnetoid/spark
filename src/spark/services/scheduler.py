@@ -72,9 +72,11 @@ async def next_free_slot(db: AsyncSession, brand: Brand, after: datetime | None 
     return after + timedelta(hours=1)
 
 
-def schedule(post: Post, when: datetime, user: User, brand: Brand) -> PostStatus:
-    """Move a post (and its targets) into the queue, respecting approval."""
-    needs_approval = brand.require_approval and not user.can_approve()
+def schedule(post: Post, when: datetime, user: User, brand: Brand, can_approve: bool | None = None) -> PostStatus:
+    """Move a post (and its targets) into the queue, respecting approval. `can_approve` is the user's
+    standing in this brand (owner or client); the workspace role is only a fallback."""
+    approver = user.can_approve() if can_approve is None else can_approve
+    needs_approval = brand.require_approval and not approver
     status = PostStatus.pending_approval if needs_approval else PostStatus.scheduled
     if status == PostStatus.pending_approval and post.status != PostStatus.pending_approval:
         post.approval_notified_at = None  # owners hear about each new request for approval
@@ -101,7 +103,7 @@ async def brand_slots(db: AsyncSession, brand: Brand, account_ids: list[int] | N
     return slots or [QueueSlot(weekday=d, time=t) for d in range(7) for t in DEFAULT_SLOTS]
 
 
-async def prioritize(db: AsyncSession, brand: Brand, post: Post, user: User) -> PostStatus:
+async def prioritize(db: AsyncSession, brand: Brand, post: Post, user: User, can_approve: bool | None = None) -> PostStatus:
     """Buffer's "Share next": put `post` in the very next slot and bump the other queued
     posts that sit in slots one slot down. Posts at custom times keep their time."""
     now = datetime.now(UTC)
@@ -121,7 +123,7 @@ async def prioritize(db: AsyncSession, brand: Brand, post: Post, user: User) -> 
         )
     ).scalars().all()
     in_slots = [p for p in queued if as_utc(p.scheduled_at).replace(second=0, microsecond=0) in slot_set]
-    status = schedule(post, slot_times[0], user, brand)
+    status = schedule(post, slot_times[0], user, brand, can_approve)
     for p, when in zip(in_slots, slot_times[1:], strict=False):
         p.scheduled_at = when
         for t in p.targets:

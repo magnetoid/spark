@@ -33,7 +33,7 @@ async def _acc(db, brand) -> SocialAccount:
 
 class FakeAI:
     async def describe_image(self, brand, data: bytes, content_type: str) -> str:
-        assert data[:4] == b"\x89PNG" and content_type == "image/png"
+        assert data[:2] == b"\xff\xd8" and content_type == "image/jpeg"  # vision gets a shrunk JPEG
         return f"A red rectangle for {brand.name}"
 
     async def generate(self, brand, brief, platforms, *, source_text=None, link=None, variants=1):

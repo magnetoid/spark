@@ -49,6 +49,11 @@ async def follow_agent_run(ctx, run_id: int) -> str:
         return await agent.follow(db, run_id)
 
 
+async def sweep_agent_runs(ctx) -> int:
+    async with SessionLocal() as db:
+        return await agent.sweep_stale(db)
+
+
 async def start_weekly_plans(ctx) -> int:
     async with SessionLocal() as db:
         return await agent.start_due_weekly_plans(db)
@@ -155,6 +160,7 @@ class WorkerSettings:
         cron(collect_metrics, hour={0, 6, 12, 18}, minute=20),
         cron(recycle_evergreen, hour={6}, minute=10),
         cron(start_weekly_plans, hour={7}, minute=5),
+        cron(sweep_agent_runs, minute=set(range(1, 60, 5))),
         cron(sync_inbox, minute={12, 42}),
         cron(snapshot_followers, hour={0}, minute=35),
         cron(classify_inbox, minute=set(range(2, 60, 5))),

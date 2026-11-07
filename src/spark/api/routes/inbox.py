@@ -34,7 +34,7 @@ from spark.db import get_db
 from spark.models import InboxItem, InboxRule, SavedReply, SocialAccount, User
 from spark.platforms.base import PlatformError
 from spark.platforms.zernio import ZernioAdapter
-from spark.services import activity, events
+from spark.services import access, activity, events
 from spark.services import ai as ai_svc
 from spark.services import inbox as svc
 from spark.services.publisher import as_utc
@@ -235,8 +235,10 @@ async def assign(
     ctx: deps.BrandCtx = Depends(deps.editor_brand),
 ):
     it = await _item(db, ctx, item_id)
-    if body.user_id is not None and await db.get(User, body.user_id) is None:
-        raise not_found("No such user")
+    if body.user_id is not None:
+        u = await db.get(User, body.user_id)
+        if u is None or await access.role_for(db, u, ctx.brand.id) is None:
+            raise not_found("That person is not a member of this brand")
     it.assignee_id = body.user_id
     await db.commit()
     await db.refresh(it, ["assignee"])
@@ -269,6 +271,8 @@ async def like_item(
     if it.kind != "comment":
         raise ApiError(422, "not_a_comment", "Only comments can be liked")
     acc = await db.get(SocialAccount, it.account_id)
+    if acc is None:
+        raise ApiError(409, "no_channel", "This channel is no longer connected")
     try:
         await ZernioAdapter().like_comment(
             it.thread_id or "", it.external_id, acc.external_id, body.liked
@@ -404,6 +408,10 @@ async def create_rule(
         raise ApiError(
             422, "no_action", "A rule prepares a reply or assigns someone; pick at least one"
         )
+    if body.saved_reply_id is not None:
+        sr = await db.get(SavedReply, body.saved_reply_id)
+        if sr is None or sr.brand_id != ctx.brand.id:
+            raise not_found("No such saved reply in this brand")
     r = InboxRule(brand_id=ctx.brand.id, **body.model_dump())
     r.name = r.name.strip()
     db.add(r)

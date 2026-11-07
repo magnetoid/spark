@@ -365,7 +365,7 @@ async def classify_pending(db: AsyncSession, limit: int = 50) -> int:
                 .where(
                     InboxItem.direction == "incoming",
                     InboxItem.classified_at.is_(None),
-                    InboxItem.status != "archived",
+                    InboxItem.status == "open",
                 )
                 .order_by(InboxItem.id)
                 .limit(limit)
@@ -376,11 +376,22 @@ async def classify_pending(db: AsyncSession, limit: int = 50) -> int:
     )
     if not rows:
         return 0
+    done = 0
+    now = datetime.now(UTC)
+    blank = [it for it in rows if not (it.text or "").strip()]
+    for it in blank:  # a star-only review or an attachment-only message: nothing for a model to read
+        it.sentiment = "positive" if (it.rating or 0) >= 4 else "negative" if it.rating and it.rating <= 2 else "neutral"
+        it.intent, it.classified_at = "other", now
+        done += 1
+    rows = [it for it in rows if it not in blank]
+    if blank:
+        await db.commit()
+    if not rows:
+        return done
     try:
         ai = _ai(fast=True)
     except ai_svc.AIUnavailable:
-        return 0
-    done = 0
+        return done
     by_brand: dict[int, list[InboxItem]] = {}
     for it in rows:
         by_brand.setdefault(it.brand_id, []).append(it)
@@ -393,8 +404,12 @@ async def classify_pending(db: AsyncSession, limit: int = 50) -> int:
         try:
             labels = await ai.classify_inbox(brand, payload)
         except ai_svc.AIUnavailable as e:
-            log.warning("Inbox classification skipped for %s: %s", brand.slug, e)
-            continue
+            log.warning("Inbox classification failed for %s: %s; items marked neutral", brand.slug, e)
+            labels = []
+        labelled = {int(lab.get("id", 0)) for lab in labels}
+        for it in items:  # one attempt: what the model did not label is neutral/other, not retried every five minutes
+            if it.id not in labelled:
+                it.sentiment, it.intent, it.classified_at = "neutral", "other", datetime.now(UTC)
         by_id = {it.id: it for it in items}
         now = datetime.now(UTC)
         for lab in labels:

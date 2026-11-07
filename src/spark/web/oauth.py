@@ -31,19 +31,28 @@ def _back(notice: str, kind: str = "success", brand: Brand | None = None) -> Red
     return RedirectResponse(f"/channels?{urlencode(q)}", 303)
 
 
-async def _brand(request: Request, db: AsyncSession) -> Brand | None:
-    """The brand the SPA passed as ?brand=<id>, else the first one."""
+async def _brand(request: Request, db: AsyncSession, user: User | None = None) -> Brand | None:
+    """The brand the SPA passed as ?brand=<id>, else the first one the user can see. None when the
+    user is not a member of the brand they asked for."""
+    from spark.services import access
+
     raw = request.query_params.get("brand")
     if raw and raw.isdigit():
         b = await db.get(Brand, int(raw))
-        if b:
-            return b
+        if b is None or (user is not None and await access.role_for(db, user, b.id) is None):
+            return None
+        return b
+    if user is not None:
+        visible = await access.visible_brands(db, user)
+        return visible[0][0] if visible else None
     return await db.scalar(select(Brand).order_by(Brand.id).limit(1))
 
 
 @router.get("/accounts/connect/{platform}")
 async def connect(platform: str, request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(editor)):
-    brand = await _brand(request, db)
+    brand = await _brand(request, db, user)
+    if brand is None:
+        return _back("You are not a member of that brand", "error")
     if brand is None:
         return _back("Create a brand first", "error")
     try:
@@ -82,7 +91,9 @@ async def callback(platform: str, request: Request, db: AsyncSession = Depends(g
 
 @router.get("/accounts/zernio/connect/{platform}")
 async def zernio_connect(platform: str, request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(editor)):
-    brand = await _brand(request, db)
+    brand = await _brand(request, db, user)
+    if brand is None:
+        return _back("You are not a member of that brand", "error")
     if brand is None:
         return _back("Create a brand first", "error")
     adapter = ZernioAdapter.for_platform(platform)

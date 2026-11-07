@@ -278,6 +278,12 @@ async def summarize(db: AsyncSession, brand: Brand, rep: Report) -> dict:
     return rep.summary
 
 
+def _cell(v) -> str:
+    """Spreadsheets run cells that start with = + - @; a leading apostrophe keeps them text."""
+    s = str(v)
+    return "'" + s if s[:1] in ("=", "+", "-", "@", "\t", "\r") else s
+
+
 def to_csv(rep: Report) -> str:
     d = rep.data or {}
     buf = io.StringIO()
@@ -298,7 +304,7 @@ def to_csv(rep: Report) -> str:
     w.writerow(
         [
             "totals",
-            rep.title,
+            _cell(rep.title),
             "",
             t.get("published", 0),
             t.get("impressions", 0),
@@ -311,7 +317,7 @@ def to_csv(rep: Report) -> str:
         w.writerow(
             [
                 "channel",
-                c["handle"],
+                _cell(c["handle"]),
                 c["platform"],
                 c["posts"],
                 c["impressions"],
@@ -324,7 +330,7 @@ def to_csv(rep: Report) -> str:
         w.writerow(
             [
                 "post",
-                p["content"].replace("\n", " "),
+                _cell(p["content"].replace("\n", " ")),
                 p["platform"],
                 1,
                 p["impressions"],

@@ -249,7 +249,7 @@ async def move(post_id: int, body: MoveIn, db: AsyncSession = Depends(get_db), c
         when = _when(body.when)
         if when < datetime.now(UTC):
             raise ApiError(422, "in_the_past", "That slot is in the past")
-        status = scheduler.schedule(post, when.astimezone(UTC), ctx.user, ctx.brand)
+        status = scheduler.schedule(post, when.astimezone(UTC), ctx.user, ctx.brand, ctx.can_approve())
         msg = f"Moved to {svc._fmt(when, ctx.brand)}" + (" (awaiting approval)" if status == PostStatus.pending_approval else "")
     elif body.day:
         try:

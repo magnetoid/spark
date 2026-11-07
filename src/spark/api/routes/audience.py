@@ -131,6 +131,8 @@ async def list_email(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = De
 
 @router.post(B + "/email", response_model=EmailOut, status_code=201)
 async def create_email(body: EmailCreate, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+    if body.list_id is not None and not await svc.lists_for(db, ctx.brand, [body.list_id]):
+        raise not_found("No such list in this brand")
     c = EmailCampaign(brand_id=ctx.brand.id, name=body.name.strip(), list_id=body.list_id, body_html="<p>Hi {{first_name}},</p><p>…</p>")
     db.add(c)
     await db.commit()
@@ -148,6 +150,8 @@ async def update_email(cid: int, body: EmailUpdate, db: AsyncSession = Depends(g
     if c.status in ("sending", "sent"):
         raise ApiError(409, "already_sent", "Sent campaigns can't be edited")
     data = body.model_dump(exclude_unset=True)
+    if data.get("list_id") is not None and not await svc.lists_for(db, ctx.brand, [data["list_id"]]):
+        raise not_found("No such list in this brand")
     for k in ("name", "subject", "preheader", "body_html", "list_id"):
         if k in data:
             setattr(c, k, data[k] if k != "preheader" else (data[k] or None))

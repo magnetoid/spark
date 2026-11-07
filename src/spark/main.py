@@ -172,6 +172,9 @@ def create_app() -> FastAPI:
         h = response.headers
         h.setdefault("X-Content-Type-Options", "nosniff")
         h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        if request.url.path.startswith("/media/"):  # uploads never run as pages on this origin
+            h["Content-Security-Policy"] = "sandbox; default-src 'none'; img-src 'self'; media-src 'self'"
+            h["Content-Disposition"] = h.get("Content-Disposition", "inline")
         h.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
         if not request.url.path.startswith("/b/"):  # bio pages may be embedded
             h.setdefault("X-Frame-Options", "SAMEORIGIN")

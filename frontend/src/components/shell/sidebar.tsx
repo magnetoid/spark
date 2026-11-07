@@ -68,7 +68,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild><Link to="/brands/new">Add a brand</Link></DropdownMenuItem>
+            {user.role === "owner" && <DropdownMenuItem asChild><Link to="/brands/new">Add a brand</Link></DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

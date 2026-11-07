@@ -2073,6 +2073,8 @@ export interface components {
             post_indexes?: number[] | null;
             /** Schedule */
             schedule?: boolean | null;
+            /** What */
+            what?: ("posts" | "voice") | null;
         };
         /** AgentApplyOut */
         AgentApplyOut: {
@@ -2080,6 +2082,11 @@ export interface components {
             created: number;
             /** Post Ids */
             post_ids: number[];
+            /**
+             * Skipped
+             * @default 0
+             */
+            skipped: number;
             /** Voice Applied */
             voice_applied: boolean;
         };
@@ -2945,6 +2952,11 @@ export interface components {
             accounts: components["schemas"]["AccountOut"][];
             /** Imported */
             imported: number;
+            /**
+             * Skipped
+             * @default []
+             */
+            skipped: string[];
         };
         /** ImportRowError */
         ImportRowError: {
@@ -3825,12 +3837,36 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** ReviewActionOut */
+        ReviewActionOut: {
+            /** Message */
+            message: string;
+            /** Status */
+            status: string;
+        };
         /** ReviewChannel */
         ReviewChannel: {
+            /** First Comment */
+            first_comment?: string | null;
             /** Handle */
             handle: string;
             /** Platform */
             platform: string;
+            /**
+             * Post Type
+             * @default post
+             */
+            post_type: string;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /**
+             * Thread
+             * @default []
+             */
+            thread: string[];
         };
         /** ReviewPage */
         ReviewPage: {
@@ -9105,7 +9141,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PostResult"];
+                    "application/json": components["schemas"]["ReviewActionOut"];
                 };
             };
             /** @description Validation Error */
@@ -9141,7 +9177,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PostResult"];
+                    "application/json": components["schemas"]["ReviewActionOut"];
                 };
             };
             /** @description Validation Error */

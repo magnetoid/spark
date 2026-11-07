@@ -81,7 +81,7 @@ def _member(u: User) -> TeamOut:
 
 
 @router.get("/team", response_model=list[TeamOut])
-async def team(db: AsyncSession = Depends(get_db), user: User = Depends(deps.current_user)):
+async def team(db: AsyncSession = Depends(get_db), user: User = Depends(deps.owner)):
     return [_member(u) for u in (await db.execute(select(User).order_by(User.name))).scalars().all()]
 
 
@@ -183,7 +183,7 @@ def _connector(key: str) -> conn.Connector:
 
 
 @router.get("/settings/connectors/{key}", response_model=ConnectorOut)
-async def connector(key: str, db: AsyncSession = Depends(get_db), user: User = Depends(deps.current_user)):
+async def connector(key: str, db: AsyncSession = Depends(get_db), user: User = Depends(deps.owner)):
     return await _connector_out(db, _connector(key), user)
 
 

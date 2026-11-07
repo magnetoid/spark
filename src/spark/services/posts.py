@@ -22,7 +22,7 @@ from spark.models import (
     User,
 )
 from spark.platforms import PublishPayload, adapter_for
-from spark.services import guardrails, jobs, scheduler
+from spark.services import access, guardrails, jobs, scheduler
 from spark.services.links import shorten_in_text
 from spark.services.publisher import as_utc, validate_post
 
@@ -76,7 +76,12 @@ async def save_post(
         db.add(post)
     post.is_autosave = False
     campaign = await db.get(Campaign, campaign_id) if campaign_id else None
+    if campaign is not None and campaign.brand_id != brand.id:
+        campaign, campaign_id = None, None
     utm = campaign.utm_campaign if campaign else None
+    if media_ids:
+        own = set((await db.execute(select(Media.id).where(Media.id.in_(media_ids), Media.brand_id == brand.id))).scalars())
+        media_ids = [i for i in media_ids if i in own]
 
     async def short(text: str | None) -> str | None:
         if not text or not brand.auto_shorten_links:
@@ -138,18 +143,19 @@ async def place_post(db: AsyncSession, brand: Brand, user: User, post: Post, act
     if problems:
         scheduler.unschedule(post)
         raise PlaceError(problems)
+    approver = access.can_approve(await access.role_for(db, user, brand.id))
     if action == "now":
-        scheduler.schedule(post, datetime.now(UTC), user, brand)
+        scheduler.schedule(post, datetime.now(UTC), user, brand, approver)
         return "Publishing now…" if post.status == PostStatus.scheduled else "Sent for approval"
     if action == "queue":
         slot = await scheduler.next_free_slot(db, brand, account_ids=[t.account_id for t in post.targets])
-        status = scheduler.schedule(post, slot, user, brand)
+        status = scheduler.schedule(post, slot, user, brand, approver)
         msg = f"Queued for {_fmt(slot, brand)}"
     elif action == "next":
-        status = await scheduler.prioritize(db, brand, post, user)
+        status = await scheduler.prioritize(db, brand, post, user, approver)
         msg = f"Sharing next, at {_fmt(post.scheduled_at, brand)}"
     else:
-        status = scheduler.schedule(post, when, user, brand)
+        status = scheduler.schedule(post, when, user, brand, approver)
         msg = "Scheduled"
     if status == PostStatus.pending_approval:
         msg += " (awaiting approval)" if action != "schedule" else " — awaiting approval"

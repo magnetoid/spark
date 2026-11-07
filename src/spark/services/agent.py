@@ -200,8 +200,34 @@ async def start(db: AsyncSession, brand: Brand, user: User | None, kind: str, pr
     if run.status == "running":
         queued = await jobs.enqueue("follow_agent_run", run.id)
         if not queued and INLINE_FOLLOW:
-            asyncio.get_running_loop().create_task(_follow_in_own_session(run.id))
+            _keep(asyncio.get_running_loop().create_task(_follow_in_own_session(run.id)))
     return run
+
+
+_TASKS: set[asyncio.Task] = set()
+
+
+def _keep(task: asyncio.Task) -> None:
+    _TASKS.add(task)
+    task.add_done_callback(_TASKS.discard)
+
+
+STALE_AFTER = timedelta(minutes=15)
+
+
+async def sweep_stale(db: AsyncSession, after: timedelta = STALE_AFTER) -> int:
+    """Fail runs that have had no news for a while: a lost stream, a dead worker, a hung Janus."""
+    cutoff = datetime.now(UTC) - after
+    rows = (await db.execute(select(AgentRun).where(AgentRun.status.in_(["queued", "running", "waiting_approval"])))).scalars().all()
+    n = 0
+    for run in rows:
+        seen = as_utc(run.updated_at) or as_utc(run.created_at)
+        if seen and seen < cutoff:
+            run.status, run.error, run.finished_at = "failed", "No news from Janus for a while; the run was closed. Try again.", datetime.now(UTC)
+            n += 1
+    if n:
+        await db.commit()
+    return n
 
 
 async def _follow_in_own_session(run_id: int) -> None:
@@ -234,6 +260,7 @@ async def follow(db: AsyncSession, run_id: int) -> str:
     brand = await db.get(Brand, run.brand_id)
     client = Janus()
     try:
+        last_flush = 0.0
         async for ev in client.events(run.janus_run_id):
             name = ev.get("event")
             run.events = _merge_event(run.events or [], ev)
@@ -258,10 +285,17 @@ async def follow(db: AsyncSession, run_id: int) -> str:
                 )
             elif name == "run.cancelled":
                 run.status, run.finished_at = "cancelled", datetime.now(UTC)
+            if name == "message.delta" and asyncio.get_running_loop().time() - last_flush < 1.0:
+                continue  # deltas are frequent: write them about once a second
+            last_flush = asyncio.get_running_loop().time()
             await db.commit()
             await events.publish("agent", run.brand_id, ids=[run.id])
     except JanusError as e:
         run.status, run.error, run.finished_at = "failed", str(e), datetime.now(UTC)
+    except asyncio.CancelledError:  # the worker's job timeout: record it, then let the cancellation through
+        run.status, run.error, run.finished_at = "failed", "The run took too long and was stopped", datetime.now(UTC)
+        await db.commit()
+        raise
     except Exception as e:  # network drop mid-stream: keep what we have, mark failed
         log.exception("Agent run %s stream broke", run.id)
         run.status, run.error, run.finished_at = (
@@ -354,7 +388,8 @@ async def parse_proposal(db: AsyncSession, brand: Brand, output: str) -> dict:
                 "content": str(raw["content"]).strip(),
                 "link": (str(raw.get("link")).strip() or None) if raw.get("link") else None,
                 "channels": wanted,
-                "channel_ids": ids or [a.id for a in accounts],
+                "channel_ids": ids,
+                "needs_channels": not ids,
                 "when": when,
                 "pillar": raw.get("pillar"),
                 "pillar_id": pillar.id if pillar else None,
@@ -388,16 +423,26 @@ async def apply(
     run: AgentRun,
     indexes: list[int] | None = None,
     schedule: bool | None = None,
+    what: str | None = None,
 ) -> dict:
     if run.status != "completed":
         raise NotApplicable("This run has no finished proposal to apply")
-    if run.applied_at is not None:
-        raise NotApplicable("This proposal was already applied")
     proposal = run.proposal or {}
+    applied = dict(proposal.get("applied") or {})
+    if what is None:
+        what = "posts" if proposal.get("posts") else "voice"
+    if applied.get(what):
+        raise NotApplicable(f"The {what} of this proposal were already applied")
+    if what == "voice" and not proposal.get("voice_profile"):
+        raise NotApplicable("This proposal has no voice to apply")
     auto = guardrails.config(brand).get("auto_schedule", False) if schedule is None else schedule
     created: list[int] = []
-    for i, item in enumerate(proposal.get("posts") or []):
+    skipped = 0
+    for i, item in enumerate(proposal.get("posts") or [] if what == "posts" else []):
         if indexes is not None and i not in indexes:
+            continue
+        if not item.get("channel_ids"):
+            skipped += 1  # no known channel: a person picks one in the composer instead
             continue
         post = await svc.save_post(
             db,
@@ -422,13 +467,15 @@ async def apply(
                 pass  # stays a draft in the plan tray
         created.append(post.id)
     voice_applied = False
-    vp = proposal.get("voice_profile")
+    vp = proposal.get("voice_profile") if what == "voice" else None
     if vp:
         brand.voice_profile = {**vp, "learned_at": datetime.now(UTC).isoformat(), "run_id": run.id}
         for field in ("tone", "audience", "rules", "examples"):
             if vp.get(field):
                 setattr(brand, f"voice_{field}", vp[field])
         voice_applied = True
+    applied[what] = datetime.now(UTC).isoformat()
+    run.proposal = {**proposal, "applied": applied}
     run.applied_at = datetime.now(UTC)
     activity.record(
         db,
@@ -443,7 +490,7 @@ async def apply(
     await db.commit()
     await events.publish("posts", brand.id, ids=created)
     await events.publish("agent", brand.id, ids=[run.id])
-    return {"created": len(created), "post_ids": created, "voice_applied": voice_applied}
+    return {"created": len(created), "post_ids": created, "voice_applied": voice_applied, "skipped": skipped}
 
 
 # ---- the plan tray ------------------------------------------------------------------------------------

@@ -107,9 +107,12 @@ async def write_alt_text(media_id: int, db: AsyncSession = Depends(get_db), ctx:
         ai = ai_svc.ContentAI()
     except ai_svc.AIUnavailable as e:
         raise ApiError(400, "ai_unavailable", str(e)) from e
-    data = (get_settings().media_dir / m.path).read_bytes()
     try:
-        m.alt_text = await ai.describe_image(ctx.brand, data, m.content_type)
+        data, ctype = await images.for_vision((get_settings().media_dir / m.path).read_bytes(), m.content_type)
+    except images.BadImage as e:
+        raise ApiError(422, "bad_image", str(e)) from e
+    try:
+        m.alt_text = await ai.describe_image(ctx.brand, data, ctype)
     except ai_svc.AIUnavailable as e:
         raise ApiError(400, "ai_unavailable", str(e)) from e
     await db.commit()
@@ -121,7 +124,10 @@ async def crop_media(media_id: int, body: MediaCropIn, db: AsyncSession = Depend
     m = await _media(db, ctx, media_id)
     if not m.content_type.startswith("image/"):
         raise ApiError(422, "not_an_image", "Only images can be cropped")
-    return MediaOut.of(await images.crop(db, ctx.brand, m, body.ratio, body.x, body.y))
+    try:
+        return MediaOut.of(await images.crop(db, ctx.brand, m, body.ratio, body.x, body.y))
+    except images.BadImage as e:
+        raise ApiError(422, "bad_image", str(e)) from e
 
 
 @router.delete(B + "/media/{media_id}", status_code=204)

@@ -85,6 +85,12 @@ async def _need(db: AsyncSession, user: User, brand: Brand, level: Literal["edit
         raise ToolError("Only owners and clients approve posts.")
 
 
+async def _visible_brand_rows(db: AsyncSession, user: User) -> list[Brand]:
+    from spark.services.access import visible_brands
+
+    return [b for b, _role in await visible_brands(db, user)]
+
+
 async def _brand(db: AsyncSession, ref: str | None, user: User) -> Brand:
     from spark.services.access import visible_brands
 
@@ -202,7 +208,7 @@ async def _place(db: AsyncSession, post: Post, brand: Brand, user: User, action:
 async def list_brands(ctx: Context) -> dict:
     """List the brands in this Spark workspace, with channel counts, and who you are."""
     async with _Session(ctx) as (db, user):
-        brands = (await db.execute(select(Brand).order_by(Brand.name))).scalars().all()
+        brands = await _visible_brand_rows(db, user)
         counts = dict((await db.execute(select(SocialAccount.brand_id, func.count(SocialAccount.id))
                                         .group_by(SocialAccount.brand_id))).all())
         return {"you": {"name": user.name, "email": user.email, "role": user.role.value},

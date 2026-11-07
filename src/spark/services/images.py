@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import io
 import logging
 from pathlib import Path
 
 import httpx
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spark.config import get_settings
@@ -16,6 +17,7 @@ from spark.models import Brand, Media
 from spark.security import token
 
 log = logging.getLogger("spark.images")
+Image.MAX_IMAGE_PIXELS = 40_000_000  # a decompression bomb would otherwise take hundreds of MB
 
 RATIOS = {
     "1:1": (1, 1),
@@ -26,6 +28,10 @@ RATIOS = {
     "1.91:1": (191, 100),
 }
 SIZES = {"square": "1024x1024", "portrait": "1024x1536", "landscape": "1536x1024"}
+
+
+class BadImage(Exception):
+    """The bytes are not an image Pillow can read."""
 
 
 class ImagesUnavailable(Exception):
@@ -93,7 +99,10 @@ def crop_bytes(data: bytes, ratio: str, x: float = 0.5, y: float = 0.5) -> tuple
 
 async def crop(db: AsyncSession, brand: Brand, src: Media, ratio: str, x: float, y: float) -> Media:
     data = (get_settings().media_dir / src.path).read_bytes()
-    out, w, h = crop_bytes(data, ratio, x, y)
+    try:
+        out, w, h = await asyncio.to_thread(crop_bytes, data, ratio, x, y)
+    except (UnidentifiedImageError, OSError, ValueError) as e:
+        raise BadImage("That file is not an image Spark can crop") from e
     stem = Path(src.filename).stem
     m = _store(
         brand,
@@ -165,3 +174,23 @@ async def test_connection() -> tuple[bool, str]:
     if r.status_code == 200:
         return True, f"OpenAI answered: {s.image_model} is available"
     return False, f"OpenAI answered {r.status_code}: {r.text[:160]}"
+
+
+VISION_MAX_PX = 1568
+
+
+def _shrink(data: bytes, max_px: int = VISION_MAX_PX) -> bytes:
+    with Image.open(io.BytesIO(data)) as im:
+        im = im.convert("RGB")
+        im.thumbnail((max_px, max_px))
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=85, optimize=True)
+        return buf.getvalue()
+
+
+async def for_vision(data: bytes, content_type: str) -> tuple[bytes, str]:
+    """A copy small enough for the vision API: JPEG, longest side 1568px."""
+    try:
+        return await asyncio.to_thread(_shrink, data), "image/jpeg"
+    except (UnidentifiedImageError, OSError, ValueError) as e:
+        raise BadImage("That file is not an image Spark can describe") from e

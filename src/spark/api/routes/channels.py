@@ -65,14 +65,14 @@ async def zernio_import(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx =
     if not adapter.is_configured():
         raise ApiError(400, "not_configured", "Add the Zernio API key under Settings → Connectors first")
     try:
-        pairs = await adapter.list_accounts(None)
+        pairs = await adapter.list_accounts(ctx.brand.zernio_profile_id)
     except PlatformError as e:
         raise ApiError(502, "zernio", f"Zernio: {e}")
-    rows = []
+    rows, skipped = [], []
     for platform, acc in pairs:
-        rows += await svc.save_connected(db, ctx.brand, platform, [acc], provider="zernio")
+        rows += await svc.save_connected(db, ctx.brand, platform, [acc], provider="zernio", skipped=skipped)
     await db.commit()
-    return ImportResult(imported=len(rows), accounts=[AccountOut.of(a) for a in rows])
+    return ImportResult(imported=len(rows), accounts=[AccountOut.of(a) for a in rows], skipped=skipped)
 
 
 async def _account(db: AsyncSession, ctx: deps.BrandCtx, account_id: int) -> SocialAccount:

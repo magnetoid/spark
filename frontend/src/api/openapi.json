@@ -209,6 +209,21 @@
               }
             ],
             "title": "Schedule"
+          },
+          "what": {
+            "anyOf": [
+              {
+                "enum": [
+                  "posts",
+                  "voice"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "What"
           }
         },
         "title": "AgentApplyIn",
@@ -226,6 +241,11 @@
             },
             "title": "Post Ids",
             "type": "array"
+          },
+          "skipped": {
+            "default": 0,
+            "title": "Skipped",
+            "type": "integer"
           },
           "voice_applied": {
             "title": "Voice Applied",
@@ -2897,6 +2917,14 @@
           "imported": {
             "title": "Imported",
             "type": "integer"
+          },
+          "skipped": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Skipped",
+            "type": "array"
           }
         },
         "required": [
@@ -5575,8 +5603,37 @@
         "title": "ReviewAction",
         "type": "object"
       },
+      "ReviewActionOut": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "status"
+        ],
+        "title": "ReviewActionOut",
+        "type": "object"
+      },
       "ReviewChannel": {
         "properties": {
+          "first_comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Comment"
+          },
           "handle": {
             "title": "Handle",
             "type": "string"
@@ -5584,6 +5641,24 @@
           "platform": {
             "title": "Platform",
             "type": "string"
+          },
+          "post_type": {
+            "default": "post",
+            "title": "Post Type",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          },
+          "thread": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Thread",
+            "type": "array"
           }
         },
         "required": [
@@ -14604,7 +14679,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PostResult"
+                  "$ref": "#/components/schemas/ReviewActionOut"
                 }
               }
             },
@@ -14665,7 +14740,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PostResult"
+                  "$ref": "#/components/schemas/ReviewActionOut"
                 }
               }
             },

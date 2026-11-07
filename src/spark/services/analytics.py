@@ -23,11 +23,13 @@ from spark.services.publisher import as_utc
 log = logging.getLogger(__name__)
 
 
-async def collect_metrics(db: AsyncSession, max_age_days: int = 30) -> int:
+async def collect_metrics(db: AsyncSession, max_age_days: int = 30, brand_id: int | None = None) -> int:
     since = datetime.now(UTC) - timedelta(days=max_age_days)
+    scope = [PostTarget.account_id.in_(select(SocialAccount.id).where(SocialAccount.brand_id == brand_id))] if brand_id else []
     rows = (
         await db.execute(
             select(PostTarget).where(
+                *scope,
                 PostTarget.status == PostStatus.published,
                 PostTarget.published_at >= since,
                 PostTarget.remote_id.is_not(None),
