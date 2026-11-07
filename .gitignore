@@ -9,3 +9,6 @@ scratch*
 .pytest_cache/
 .ruff_cache/
 .DS_Store
+frontend/node_modules/
+frontend/dist/
+.superpowers/

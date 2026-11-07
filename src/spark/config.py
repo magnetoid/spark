@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     media_dir: Path = Path("./media")
     max_upload_mb: int = 50
+    # Built React app (frontend/dist). Served under spa_base while the Jinja UI keeps "/";
+    # the cutover sets spa_base to "/". Missing directory = the SPA simply is not served.
+    spa_dir: Path = Path("frontend/dist")
+    spa_base: str = "/app"
 
     # AI
     anthropic_api_key: str | None = None

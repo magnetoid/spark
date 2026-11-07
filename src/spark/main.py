@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -29,12 +29,18 @@ from spark.web.deps import LoginRequired, templates
 log = logging.getLogger("spark")
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 CSRF_EXEMPT_PREFIXES = ("/e/u/", "/webhooks/")
+SPA_BASE = get_settings().spa_base.rstrip("/") or ""
+# The React app bundles everything, so it needs no CDNs, no eval and no inline scripts.
+SPA_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+           "img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data:; "
+           "connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'")
 
 # ---- rate limiting (token bucket per client+bucket; in-process, good enough per web container) ----
 RATE_LIMITS = {  # path prefix -> (methods, requests, per_seconds)
     "/login": ({"POST"}, 10, 60), "/setup": ({"POST"}, 10, 60),
     "/l/": ({"GET"}, 120, 60), "/b/": ({"GET", "POST"}, 60, 60), "/e/": ({"GET", "POST"}, 120, 60),
     "/webhooks/": ({"POST"}, 600, 60), "/mcp": ({"GET", "POST", "DELETE"}, 240, 60),
+    "/api/v1/auth/": ({"POST"}, 10, 60),
 }
 _buckets: dict[tuple[str, str], list] = {}
 _clock = __import__("time").monotonic  # tests freeze this so refills don't depend on machine speed
@@ -102,6 +108,50 @@ async def lifespan(app: FastAPI):
         yield
 
 
+def _spa_index():
+    """index.html of the built React app, or None when there is no build (tests, API-only)."""
+    index = get_settings().spa_dir / "index.html"
+    return index if index.is_file() else None
+
+
+def _mount_spa(app: FastAPI) -> None:
+    """Serve the React app: hashed assets forever, every other path gets index.html (client routing)."""
+    from starlette.staticfiles import StaticFiles as _Static
+
+    class HashedAssets(_Static):
+        def file_response(self, *args, **kwargs):
+            resp = super().file_response(*args, **kwargs)
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return resp
+
+    assets_prefix = f"{SPA_BASE}/assets"
+
+    async def assets(path: str):
+        d = get_settings().spa_dir / "assets"
+        if not d.is_dir():
+            raise HTTPException(404)
+        return await HashedAssets(directory=d).get_response(path, {"type": "http", "method": "GET", "headers": []})
+
+    async def index(path: str = ""):
+        file = _spa_index()
+        if file is None:
+            raise HTTPException(404, "The app is not built on this server")
+        root = get_settings().spa_dir.resolve()
+        if path and "/" not in path.strip("/"):
+            # a file at the root of the build (theme.js, favicon.svg, manifest), never outside it
+            candidate = (root / path).resolve()
+            if candidate.parent == root and candidate.is_file() and candidate.name != "index.html":
+                return FileResponse(candidate, headers={"Cache-Control": "public, max-age=3600"})
+        return FileResponse(file, headers={"Cache-Control": "no-cache"})
+
+    app.add_api_route(assets_prefix + "/{path:path}", assets, methods=["GET"], include_in_schema=False)
+    if SPA_BASE:
+        app.add_api_route(SPA_BASE, index, methods=["GET"], include_in_schema=False)
+        app.add_api_route(SPA_BASE + "/{path:path}", index, methods=["GET"], include_in_schema=False)
+    else:  # after the cutover the SPA owns every path no other route claimed
+        app.add_api_route("/{path:path}", index, methods=["GET"], include_in_schema=False)
+
+
 def create_app() -> FastAPI:
     s = get_settings()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -126,8 +176,10 @@ def create_app() -> FastAPI:
               connectors.router):
         app.include_router(r)
     from spark import mcp_server
+    from spark.api.app import api as json_api
 
     app.router.routes.append(mcp_server.route)  # MCP over Streamable HTTP; bearer-token auth, no CSRF
+    app.mount("/api/v1", json_api)  # JSON API for the React app; its own CSRF/auth rules live in spark.api.deps
 
     @app.middleware("http")
     async def guard_and_headers(request: Request, call_next):
@@ -143,6 +195,8 @@ def create_app() -> FastAPI:
         h.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
         if not request.url.path.startswith("/b/"):  # bio pages may be embedded
             h.setdefault("X-Frame-Options", "SAMEORIGIN")
+        if request.url.path == SPA_BASE or request.url.path.startswith(SPA_BASE + "/"):
+            h.setdefault("Content-Security-Policy", SPA_CSP)
         h.setdefault("Content-Security-Policy",
                      "default-src 'self'; img-src * data: blob:; media-src * blob:; "
                      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; "
@@ -176,6 +230,8 @@ def create_app() -> FastAPI:
     @app.get("/healthz")
     async def healthz():
         return {"ok": True}
+
+    _mount_spa(app)
 
     return app
 

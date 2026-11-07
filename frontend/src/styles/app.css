@@ -1,0 +1,184 @@
+@import "tailwindcss";
+@import "@fontsource-variable/hanken-grotesk";
+@import "@fontsource-variable/bricolage-grotesque";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Spark design tokens.
+  Neutral graphite base; the only loud colour is the active brand (--brand), set per
+  workspace by applyBrandColor(). Status colours mean one thing each and always come
+  with a label. Three radii follow hierarchy: controls, cards, overlays.
+*/
+:root {
+  --paper: #f7f8fa;
+  --surface: #ffffff;
+  --ink: #171a21;
+  --ink-2: #5b616e;
+  --line: #e3e6eb;
+  --line-strong: #cfd4dc;
+  --hover: #eef0f4;
+
+  --brand: #f2a516;
+  --brand-fg: #171a21;
+  --brand-soft: #fdf1d6;
+  --brand-ring: #f2a516;
+
+  --st-published: #1f8f5f;
+  --st-scheduled: #2f6fed;
+  --st-pending: #6d4ae0;
+  --st-failed: #d13b3b;
+  --st-draft: #6b7280;
+  --st-publishing: #0e9aa7;
+
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-overlay: 14px;
+
+  /* shadcn/ui variables mapped onto the tokens above */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-fg);
+  --secondary: var(--hover);
+  --secondary-foreground: var(--ink);
+  --muted: var(--hover);
+  --muted-foreground: var(--ink-2);
+  --accent: var(--hover);
+  --accent-foreground: var(--ink);
+  --destructive: var(--st-failed);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--brand-ring);
+  --radius: var(--radius-card);
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--ink);
+  --sidebar-border: var(--line);
+}
+
+.dark {
+  --paper: #16181d;
+  --surface: #1e2128;
+  --ink: #eceef2;
+  --ink-2: #9aa1ad;
+  --line: #2b2f38;
+  --line-strong: #3a3f4b;
+  --hover: #262a33;
+
+  --brand-fg: #171a21;
+  --brand-soft: #332a14;
+
+  --st-published: #3fbf85;
+  --st-scheduled: #6b96ff;
+  --st-pending: #9c82ff;
+  --st-failed: #f06464;
+  --st-draft: #9aa1ad;
+  --st-publishing: #3fc3cf;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-hover: var(--hover);
+  --color-brand: var(--brand);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-soft: var(--brand-soft);
+  --color-st-published: var(--st-published);
+  --color-st-scheduled: var(--st-scheduled);
+  --color-st-pending: var(--st-pending);
+  --color-st-failed: var(--st-failed);
+  --color-st-draft: var(--st-draft);
+  --color-st-publishing: var(--st-publishing);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+
+  --radius-control: var(--radius-control);
+  --radius-card: var(--radius-card);
+  --radius-overlay: var(--radius-overlay);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Hanken Grotesk Variable", ui-sans-serif, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/60;
+  }
+  html {
+    font-feature-settings: "ss01", "cv11";
+  }
+  body {
+    @apply bg-paper text-ink font-sans;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  h1, h2, h3, .display {
+    @apply font-display tracking-tight;
+    font-variation-settings: "opsz" 48, "wdth" 100;
+  }
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* The brand rail: a thin strip of the active brand colour at the left edge of the shell */
+  .brand-rail {
+    box-shadow: inset 3px 0 0 0 var(--brand);
+  }
+  .nav-item {
+    @apply flex items-center gap-2.5 rounded-control px-2.5 py-1.5 text-[13.5px] text-ink-2 transition-colors;
+  }
+  .nav-item:hover {
+    @apply bg-hover text-ink;
+  }
+  .nav-item[aria-current="page"] {
+    @apply bg-brand-soft text-ink font-medium;
+  }
+  .status-dot {
+    @apply inline-block size-2 rounded-full;
+    background: currentColor;
+  }
+}
