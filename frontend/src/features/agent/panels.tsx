@@ -66,6 +66,9 @@ function AskBody({ prompt, setPrompt, kind, setKind, runId, setRunId }: {
   const { data: runs = [] } = useAgentRuns(brand?.id ?? 0);
   if (!brand) return <p className="p-5 text-sm text-ink-2">Pick a brand first.</p>;
   if (isPending) return <Skeleton className="m-5 h-24" />;
+  if (!status?.configured && status?.managed) {
+    return <p className="p-5 text-sm text-ink-2">The built-in agent is starting. Give it a minute and try again.</p>;
+  }
   if (!status?.configured) {
     return (
       <div className="p-5 text-sm">
@@ -324,21 +327,22 @@ export function AgentSection() {
 export function JanusSection({ info }: { info?: Record<string, unknown> | null }) {
   const { user } = useWorkspace();
   const update = useJanusUpdate();
-  const s = (info ?? {}) as { configured?: boolean; healthy?: boolean; version?: string | null; base_url?: string | null; checked_at?: string; can_update?: boolean };
+  const s = (info ?? {}) as { configured?: boolean; healthy?: boolean; version?: string | null; base_url?: string | null; checked_at?: string; can_update?: boolean; managed?: boolean };
   return (
     <section className="mt-6 space-y-3 rounded-card border border-line bg-surface p-5 text-sm">
-      <h3 className="font-semibold">Service</h3>
+      <h3 className="font-semibold">{s.managed ? "Built-in service" : "Service"}</h3>
+      {s.managed && <p className="text-ink-2">Janus runs as part of this Spark installation. Spark gave it its key, its address and a read-only account, and pushes the options above whenever you save them. Nothing to wire up.</p>}
       <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-[auto_1fr]">
-        <dt className="text-ink-2">Status</dt><dd className={cn(s.configured && s.healthy ? "text-st-published" : s.configured ? "text-st-failed" : "text-ink-2")}>{!s.configured ? "Not set up" : s.healthy ? "Healthy" : "Not answering"}</dd>
+        <dt className="text-ink-2">Status</dt><dd className={cn(s.configured && s.healthy ? "text-st-published" : s.configured ? "text-st-failed" : "text-ink-2")}>{!s.configured ? "Not set up" : s.healthy ? "Healthy" : s.managed ? "Starting or restarting" : "Not answering"}</dd>
         <dt className="text-ink-2">Version</dt><dd className="tnum">{s.version ?? (s.healthy ? "hidden by this install" : "—")}</dd>
         <dt className="text-ink-2">Address</dt><dd className="truncate">{s.base_url ?? "—"}</dd>
       </dl>
       <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
         {user.role === "owner" && <Button size="sm" variant="outline" disabled={!s.can_update || update.isPending} onClick={() => update.mutate(undefined)}><RefreshCw className={cn("size-4", update.isPending && "animate-spin")} />Update now</Button>}
-        <span className="text-xs text-ink-2">{s.can_update ? "Rebuilds Janus from the latest main branch through Coolify. A GitHub Action does the same every Monday." : "Add the update webhook above to rebuild Janus from here."}</span>
+        <span className="text-xs text-ink-2">{s.managed ? "Restarts Janus; it pulls the latest release on the way back up. This also happens every Monday." : s.can_update ? "Rebuilds Janus through the deploy hook." : "Add the update webhook above to rebuild Janus from here."}</span>
       </div>
-      <p className="text-xs text-ink-2">Setup notes: <a className="underline" href="https://github.com/magnetoid/spark/tree/main/deploy/janus" target="_blank" rel="noopener">deploy/janus/README.md</a>.</p>
-      <div className="flex items-center gap-2 text-xs text-ink-2"><Label className="text-xs">Mounted config</Label><code className="rounded bg-hover px-1">/opt/data/config.yaml</code> read-only Spark tools, no shell</div>
+      {!s.managed && <p className="text-xs text-ink-2">Running Janus elsewhere? Notes in <a className="underline" href="https://github.com/magnetoid/spark/tree/main/deploy/janus" target="_blank" rel="noopener">deploy/janus/README.md</a>.</p>}
+      <div className="flex items-center gap-2 text-xs text-ink-2"><Label className="text-xs">Access</Label>read-only Spark tools as “Janus (agent)”, no shell, memory per brand</div>
     </section>
   );
 }

@@ -33,7 +33,7 @@ REFRESH_SECONDS = 30
 class Field:
     name: str  # Settings attribute
     label: str
-    kind: str = "text"  # text | secret | select | number | bool
+    kind: str = "text"  # text | secret | select | number | bool | textarea
     options: tuple[tuple[str, str], ...] = ()
     help: str = ""
     placeholder: str = ""
@@ -74,11 +74,18 @@ CONNECTORS: tuple[Connector, ...] = (
                     "The update webhook lets Spark rebuild Janus from its latest main branch.",
         docs="https://github.com/magnetoid/Janus-Agent",
         fields=(
-            Field("janus_base_url", "Address", placeholder="http://janus:8642", help="Where Spark reaches Janus; inside Coolify use the service name."),
-            Field("janus_api_key", "API key", "secret", help="The API_SERVER_KEY the Janus service was started with."),
-            Field("janus_update_webhook", "Update webhook", "secret", placeholder="https://coolify…/api/v1/deploy?uuid=…&force=true",
-                  help="Coolify → Janus app → Webhooks. “Update now” and the weekly GitHub Action call it."),
-            Field("janus_update_token", "Update token", "secret", help="Coolify API token sent as a Bearer with the webhook, if it needs one."),
+            Field("janus_base_url", "Address", placeholder="http://janus:8642", help="Only for a Janus that runs elsewhere; the built-in service needs nothing here."),
+            Field("janus_api_key", "API key", "secret", help="Only for a Janus that runs elsewhere: its API_SERVER_KEY."),
+            Field("janus_model", "Model", placeholder="claude-opus-5-5", help="Empty = the same model as Claude AI."),
+            Field("janus_effort", "Reasoning effort", "select", options=(("low", "Low"), ("medium", "Medium"), ("high", "High")),
+                  help="How long Janus thinks per step. Medium suits planning; high for voice learning and reports."),
+            Field("janus_approvals", "Shell approvals", "select", options=(("manual", "Ask (Spark denies)"), ("off", "Off")),
+                  help="Janus has no shell toolset here, so this rarely matters; leave it on Ask."),
+            Field("janus_soul", "Personality", "textarea", help="Who Janus is inside Spark. Empty = the built-in text; the brand's voice and guardrails are added per run."),
+            Field("janus_extra_yaml", "Extra configuration (YAML)", "textarea", placeholder="skills:\n  external_dirs: [/data/janus/skills]",
+                  help="Merged over the configuration Spark writes: extra MCP servers, skills, memory, anything from Janus's config.yaml."),
+            Field("janus_update_webhook", "Update webhook", "secret", help="Only for a Janus that runs elsewhere: a deploy hook that rebuilds it."),
+            Field("janus_update_token", "Update token", "secret", help="Only for a Janus that runs elsewhere."),
         ),
         required=("janus_base_url", "janus_api_key"), tags=("Agent", "Planning", "Voice"),
     ),
@@ -278,9 +285,9 @@ async def test(connector: Connector, user_email: str | None = None) -> tuple[boo
 
             j = Janus()
             if not await j.health():
-                return False, f"Janus at {j.base_url} did not answer /health"
+                return False, f"Janus at {j.base_url} did not answer /health" + (" (it may still be starting)" if s.janus_managed else "")
             v = await j.version()
-            return True, f"Janus answered: healthy{', version ' + v if v else ''}"
+            return True, f"Janus answered: healthy{', version ' + v if v else ''}{' · built in' if s.janus_managed else ''}"
         if connector.key == "anthropic":
             import anthropic
 

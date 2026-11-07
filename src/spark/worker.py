@@ -49,6 +49,30 @@ async def follow_agent_run(ctx, run_id: int) -> str:
         return await agent.follow(db, run_id)
 
 
+async def sync_janus(ctx) -> dict:
+    s = get_settings()
+    if not s.janus_managed:
+        return {"result": "skipped"}
+    from spark.services import janus_setup
+
+    async with SessionLocal() as db:
+        return await janus_setup.sync(db)
+
+
+async def update_janus(ctx) -> dict:
+    """Monday 05:00 UTC: restart the built-in Janus so it pulls the latest release on the way up."""
+    s = get_settings()
+    if not s.janus_managed:
+        return {"result": "skipped"}
+    from spark.services import janus_setup
+
+    try:
+        return await janus_setup.restart_for_update()
+    except Exception as e:  # Janus down: the next weekly pass tries again
+        log.warning("Weekly Janus update skipped: %s", e)
+        return {"result": "failed"}
+
+
 async def sweep_agent_runs(ctx) -> int:
     async with SessionLocal() as db:
         return await agent.sweep_stale(db)
@@ -161,6 +185,8 @@ class WorkerSettings:
         cron(recycle_evergreen, hour={6}, minute=10),
         cron(start_weekly_plans, hour={7}, minute=5),
         cron(sweep_agent_runs, minute=set(range(1, 60, 5))),
+        cron(sync_janus, minute={7, 37}),
+        cron(update_janus, weekday=0, hour={5}, minute=0),
         cron(sync_inbox, minute={12, 42}),
         cron(snapshot_followers, hour={0}, minute=35),
         cron(classify_inbox, minute=set(range(2, 60, 5))),

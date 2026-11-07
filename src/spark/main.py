@@ -87,8 +87,17 @@ async def lifespan(app: FastAPI):
         await create_all()
     from spark import mcp_server
 
+    janus_task = None
+    if s.janus_managed and s.janus_base_url and s.janus_api_key:
+        import asyncio
+
+        from spark.services import janus_setup
+
+        janus_task = asyncio.create_task(janus_setup.sync_when_up())
     async with mcp_server.session_manager_run():
         yield
+    if janus_task is not None:
+        janus_task.cancel()
 
 
 def _spa_index():

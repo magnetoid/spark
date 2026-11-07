@@ -1184,6 +1184,7 @@ class AgentStatusOut(BaseModel):
     base_url: str | None
     checked_at: datetime
     can_update: bool
+    managed: bool = False
 
 
 class AgentApplyIn(BaseModel):

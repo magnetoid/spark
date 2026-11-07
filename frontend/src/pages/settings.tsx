@@ -275,11 +275,12 @@ function ConnectorDetail({ connectorKey, onBack }: { connectorKey: string; onBac
               <h3 className="font-semibold">Configuration</h3>
               <fieldset disabled={!isOwner} className="grid gap-4 sm:grid-cols-2">
                 {data.fields.map((f) => (
-                  <div key={f.name} className={cn("space-y-1.5", (f.kind === "secret" || ["zernio_base_url", "email_from"].includes(f.name)) && "sm:col-span-2")}>
+                  <div key={f.name} className={cn("space-y-1.5", (f.kind === "secret" || f.kind === "textarea" || ["zernio_base_url", "email_from"].includes(f.name)) && "sm:col-span-2")}>
                     {f.kind === "bool" ? <label className="flex items-center gap-2 text-sm"><Switch name={f.name} defaultChecked={Boolean(f.value)} />{f.label}</label> : (
                       <>
                         <Label htmlFor={`cf-${f.name}`} className="flex items-center gap-2">{f.label}<span className="text-xs font-normal text-ink-2">{f.source === "saved" ? "saved in Spark" : f.source === "env" ? "from server environment" : f.kind === "secret" ? (f.has_value ? "" : "not set") : "default"}</span></Label>
-                        {f.kind === "select" ? <Select name={f.name} defaultValue={String(f.value ?? "")}><SelectTrigger id={`cf-${f.name}`}><SelectValue /></SelectTrigger><SelectContent>{f.options.map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select>
+                        {f.kind === "textarea" ? <Textarea id={`cf-${f.name}`} name={f.name} rows={6} defaultValue={String(f.value ?? "")} placeholder={f.placeholder} className="font-mono text-xs" />
+                         : f.kind === "select" ? <Select name={f.name} defaultValue={String(f.value ?? "")}><SelectTrigger id={`cf-${f.name}`}><SelectValue /></SelectTrigger><SelectContent>{f.options.map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select>
                          : f.kind === "secret" ? <Input id={`cf-${f.name}`} name={f.name} type="password" autoComplete="new-password" className="font-mono" placeholder={f.has_value ? `Current: ${f.masked} · type to replace` : f.placeholder} />
                          : <Input id={`cf-${f.name}`} name={f.name} type={f.kind === "number" ? "number" : "text"} defaultValue={String(f.value ?? "")} placeholder={f.placeholder} />}
                       </>

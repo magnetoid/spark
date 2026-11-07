@@ -15,6 +15,10 @@ x-spark: &spark
     SPARK_ANTHROPIC_API_KEY: ${SPARK_ANTHROPIC_API_KEY:-}
     SPARK_AI_MODEL: ${SPARK_AI_MODEL:-claude-opus-5-5}
     SPARK_ZERNIO_API_KEY: ${SPARK_ZERNIO_API_KEY:-}
+    # The built-in Janus agent: same generated key on both sides, address fixed by this file
+    SPARK_JANUS_MANAGED: "true"
+    SPARK_JANUS_BASE_URL: http://janus:8642
+    SPARK_JANUS_API_KEY: ${SERVICE_PASSWORD_64_JANUSKEY:-dev-only-janus-key-change-me}
     SPARK_EMAIL_BACKEND: ${SPARK_EMAIL_BACKEND:-console}
     SPARK_EMAIL_FROM: ${SPARK_EMAIL_FROM:-Spark <hello@example.com>}
     SPARK_SMTP_HOST: ${SPARK_SMTP_HOST:-}
@@ -64,6 +68,18 @@ services:
     depends_on:
       web: { condition: service_healthy }
 
+  janus:
+    build:
+      context: .
+      dockerfile: deploy/janus/Dockerfile
+    environment:
+      API_SERVER_KEY: ${SERVICE_PASSWORD_64_JANUSKEY:-dev-only-janus-key-change-me}
+      ANTHROPIC_API_KEY: ${SPARK_ANTHROPIC_API_KEY:-}
+      JANUS_AUTO_UPDATE: ${JANUS_AUTO_UPDATE:-true}
+    volumes: ["janus:/data/janus"]
+    expose: ["8642"]
+    restart: unless-stopped
+
   db:
     image: postgres:16-alpine
     environment:
@@ -92,3 +108,4 @@ volumes:
   pgdata:
   media:
   redis:
+  janus:

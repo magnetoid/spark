@@ -12,6 +12,7 @@ class Role(enum.StrEnum):
     editor = "editor"
     viewer = "viewer"
     client = "client"  # per-brand only: reads and approves
+    agent = "agent"  # the built-in Janus user: reads every brand, changes nothing
 
 
 class User(TimestampMixin, Base):

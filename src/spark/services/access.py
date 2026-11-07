@@ -30,9 +30,9 @@ def can_manage(role: str | None) -> bool:
 
 async def roles_for(db: AsyncSession, user: User) -> dict[int, str]:
     """{brand_id: role} for every brand the user may see."""
-    if user.role == Role.owner:
+    if user.role in (Role.owner, Role.agent):
         ids = (await db.execute(select(Brand.id))).scalars().all()
-        return dict.fromkeys(ids, "owner")
+        return dict.fromkeys(ids, "owner" if user.role == Role.owner else "viewer")
     rows = (await db.execute(select(BrandMember.brand_id, BrandMember.role).where(BrandMember.user_id == user.id))).all()
     return {bid: role for bid, role in rows}
 
@@ -40,6 +40,8 @@ async def roles_for(db: AsyncSession, user: User) -> dict[int, str]:
 async def role_for(db: AsyncSession, user: User, brand_id: int) -> str | None:
     if user.role == Role.owner:
         return "owner"
+    if user.role == Role.agent:
+        return "viewer"
     return await db.scalar(select(BrandMember.role).where(BrandMember.user_id == user.id, BrandMember.brand_id == brand_id))
 
 

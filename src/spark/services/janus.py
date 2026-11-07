@@ -145,6 +145,14 @@ class Janus:
             raise JanusError(_error_text(r))
         return r.json()
 
+    async def put_config(self, body: dict) -> dict:
+        """Change Janus's configuration (raw YAML, api keys, restart) through its config API."""
+        async with httpx.AsyncClient(timeout=60) as c:
+            r = await c.put(f"{self.base_url}/v1/config", json=body, headers=self._headers())
+        if r.status_code >= 400:
+            raise JanusError(_error_text(r))
+        return r.json() if r.content else {}
+
     async def stop(self, run_id: str) -> None:
         async with httpx.AsyncClient(timeout=10) as c:
             await c.post(f"{self.base_url}/v1/runs/{run_id}/stop", headers=self._headers())

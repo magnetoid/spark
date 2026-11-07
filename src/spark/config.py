@@ -24,7 +24,13 @@ class Settings(BaseSettings):
     # Janus agent (github.com/magnetoid/Janus-Agent), deployed next to Spark; see deploy/janus
     janus_base_url: str | None = None
     janus_api_key: str | None = None
-    janus_update_webhook: str | None = None  # Coolify deploy webhook that rebuilds Janus from its main branch
+    janus_managed: bool = False  # true in the compose stack: the `janus` service is wired in, Spark pushes its config
+    janus_model: str | None = None  # defaults to ai_model
+    janus_effort: str = "medium"
+    janus_approvals: str = "manual"
+    janus_soul: str | None = None  # the personality; the built-in text when empty
+    janus_extra_yaml: str | None = None  # merged over the configuration Spark writes
+    janus_update_webhook: str | None = None  # external installs only: a deploy hook that rebuilds Janus
     janus_update_token: str | None = None
     # Image generation (Claude makes no images): OpenAI's image model behind the "Image generation" connector
     openai_api_key: str | None = None

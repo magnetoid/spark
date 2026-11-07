@@ -579,24 +579,21 @@ _status_cache: dict = {"at": None, "value": None}
 
 
 async def status(force: bool = False) -> dict:
+    """What the UI shows about Janus. Health and version are cached for a minute; the flags are live."""
     now = datetime.now(UTC)
-    if not force and _status_cache["at"] and now - _status_cache["at"] < timedelta(seconds=60):
-        return _status_cache["value"]
     s = get_settings()
-    out = {
-        "configured": configured(),
-        "healthy": False,
-        "version": None,
-        "base_url": s.janus_base_url,
-        "checked_at": now,
-        "can_update": bool(s.janus_update_webhook),
-    }
-    if out["configured"]:
-        client = Janus()
-        out["healthy"] = await client.health()
-        if out["healthy"]:
-            out["version"] = await client.version()
-    _status_cache.update(at=now, value=out)
+    out = {"configured": configured(), "healthy": False, "version": None, "base_url": s.janus_base_url, "checked_at": now,
+           "can_update": bool(s.janus_managed or s.janus_update_webhook), "managed": bool(s.janus_managed)}
+    if not out["configured"]:
+        return out
+    cached = _status_cache["value"]
+    if not force and cached and _status_cache["at"] and now - _status_cache["at"] < timedelta(seconds=60) and cached.get("base_url") == s.janus_base_url:
+        return {**out, "healthy": cached["healthy"], "version": cached["version"], "checked_at": cached["checked_at"]}
+    client = Janus()
+    out["healthy"] = await client.health()
+    if out["healthy"]:
+        out["version"] = await client.version()
+    _status_cache.update(at=now, value=dict(out))
     return out
 
 

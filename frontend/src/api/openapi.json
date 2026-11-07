@@ -478,6 +478,11 @@
             "title": "Healthy",
             "type": "boolean"
           },
+          "managed": {
+            "default": false,
+            "title": "Managed",
+            "type": "boolean"
+          },
           "version": {
             "anyOf": [
               {
@@ -14941,9 +14946,29 @@
         ]
       }
     },
+    "/settings/janus/sync": {
+      "post": {
+        "description": "Push Spark's configuration to the built-in Janus now.",
+        "operationId": "janus_sync_settings_janus_sync_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Janus Sync",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
     "/settings/janus/update": {
       "post": {
-        "description": "Ask Coolify to rebuild the Janus service from its latest main branch.",
+        "description": "Built in: restart the gateway, which pulls the latest Janus on its way back up.\nElsewhere: ask the deploy hook to rebuild the Janus service.",
         "operationId": "janus_update_settings_janus_update_post",
         "responses": {
           "200": {

@@ -68,7 +68,7 @@ async def _brand_people(db: AsyncSession, brand_id: int) -> list[tuple[User, str
     """Active users who can see this brand, with their role in it: workspace owners first, then members."""
     from spark.models import BrandMember, Role
 
-    users = {u.id: u for u in await _users(db)}
+    users = {u.id: u for u in await _users(db) if u.role != Role.agent}
     out = [(u, "owner") for u in users.values() if u.role == Role.owner]
     seen = {u.id for u, _ in out}
     for m in (

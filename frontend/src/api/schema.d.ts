@@ -1917,6 +1917,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/janus/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Janus Sync
+         * @description Push Spark's configuration to the built-in Janus now.
+         */
+        post: operations["janus_sync_settings_janus_sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings/janus/update": {
         parameters: {
             query?: never;
@@ -1928,7 +1948,8 @@ export interface paths {
         put?: never;
         /**
          * Janus Update
-         * @description Ask Coolify to rebuild the Janus service from its latest main branch.
+         * @description Built in: restart the gateway, which pulls the latest Janus on its way back up.
+         *     Elsewhere: ask the deploy hook to rebuild the Janus service.
          */
         post: operations["janus_update_settings_janus_update_post"];
         delete?: never;
@@ -2158,6 +2179,11 @@ export interface components {
             configured: boolean;
             /** Healthy */
             healthy: boolean;
+            /**
+             * Managed
+             * @default false
+             */
+            managed: boolean;
             /** Version */
             version: string | null;
         };
@@ -9324,6 +9350,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    janus_sync_settings_janus_sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

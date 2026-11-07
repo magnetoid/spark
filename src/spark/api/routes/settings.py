@@ -1,5 +1,7 @@
 """Settings: posting slots, team, brand deletion, connectors, personal tokens, Zernio webhooks."""
 
+import logging
+
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +29,7 @@ from spark.services import connectors as conn
 from spark.services import tokens
 from spark.services.publisher import as_utc
 
+log = logging.getLogger("spark.settings")
 router = APIRouter(tags=["settings"])
 B = "/brands/{brand_id}"
 
@@ -82,7 +85,8 @@ def _member(u: User) -> TeamOut:
 
 @router.get("/team", response_model=list[TeamOut])
 async def team(db: AsyncSession = Depends(get_db), user: User = Depends(deps.owner)):
-    return [_member(u) for u in (await db.execute(select(User).order_by(User.name))).scalars().all()]
+    rows = (await db.execute(select(User).where(User.role != Role.agent).order_by(User.name))).scalars().all()
+    return [_member(u) for u in rows]
 
 
 @router.post("/team", response_model=TeamOut, status_code=201)
@@ -126,6 +130,7 @@ def _field_rows(c: conn.Connector) -> list[ConnectorFieldOut]:
 
 async def _connector_out(db: AsyncSession, c: conn.Connector, user: User) -> ConnectorOut:
     extra: dict = {}
+    hidden: set[str] = set()
     if c.key == "mcp":
         extra = {"mcp_url": get_settings().base_url.rstrip("/") + "/mcp"}
     elif c.key == "janus":
@@ -133,6 +138,8 @@ async def _connector_out(db: AsyncSession, c: conn.Connector, user: User) -> Con
 
         st = await agent_svc.status()
         extra = {"janus": {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in st.items()}}
+        if get_settings().janus_managed:  # the wiring comes from compose; only Janus's own options are shown
+            hidden = {"janus_base_url", "janus_api_key", "janus_update_webhook", "janus_update_token"}
         from spark.mcp_server import TOOLS_FOR_UI
 
         extra["tools"] = [{"name": n, "summary": s} for n, s in TOOLS_FOR_UI]
@@ -148,7 +155,7 @@ async def _connector_out(db: AsyncSession, c: conn.Connector, user: User) -> Con
 
             extra["webhook"] = await webhook_status()
     return ConnectorOut(key=c.key, name=c.name, tagline=c.tagline, description=c.description, docs=c.docs, kind=c.kind,
-                        configured=conn.is_configured(c), fields=_field_rows(c), extra=extra)
+                        configured=conn.is_configured(c), fields=[f for f in _field_rows(c) if f.name not in hidden], extra=extra)
 
 
 @router.get("/settings/connectors", response_model=list[ConnectorCard])
@@ -198,6 +205,12 @@ async def connector_save(key: str, body: ConnectorSave, db: AsyncSession = Depen
     for name in body.clear:
         form[f"clear_{name}"] = "1"
     await conn.save(db, c, form, user.id)
+    if key == "janus" and get_settings().janus_managed:
+        from spark.services import janus_setup
+
+        out = await janus_setup.sync(db, force=True)  # best effort: the connector page shows the result
+        if out["result"] in ("unreachable", "failed"):
+            log.warning("Janus configuration not pushed after save: %s", out["detail"])
     return await _connector_out(db, c, user)
 
 
@@ -209,14 +222,34 @@ async def connector_test(key: str, user: User = Depends(deps.owner)):
     return {"message": msg}
 
 
+@router.post("/settings/janus/sync")
+async def janus_sync(db: AsyncSession = Depends(get_db), user: User = Depends(deps.owner)):
+    """Push Spark's configuration to the built-in Janus now."""
+    from spark.services import janus_setup
+
+    out = await janus_setup.sync(db, force=True)
+    if out["result"] in ("unreachable", "failed", "unconfigured"):
+        raise ApiError(502, "janus_sync_failed", out["detail"])
+    return {"message": out["detail"], **out}
+
+
 @router.post("/settings/janus/update")
 async def janus_update(user: User = Depends(deps.owner)):
-    """Ask Coolify to rebuild the Janus service from its latest main branch."""
+    """Built in: restart the gateway, which pulls the latest Janus on its way back up.
+    Elsewhere: ask the deploy hook to rebuild the Janus service."""
     import httpx
 
     from spark.services import agent as agent_svc
+    from spark.services import janus_setup
+    from spark.services.janus import JanusError
 
     s = get_settings()
+    if s.janus_managed:
+        try:
+            await janus_setup.restart_for_update()
+        except JanusError as e:
+            raise ApiError(502, "update_failed", str(e)) from e
+        return {"message": "Janus is restarting and picks up the latest version on the way back up."}
     if not s.janus_update_webhook:
         raise ApiError(409, "no_webhook", "Add the update webhook under Connectors → Janus first")
     headers = {"Authorization": f"Bearer {s.janus_update_token}"} if s.janus_update_token else {}
