@@ -86,6 +86,7 @@ class PublishPayload:
     link: str | None = None
     first_comment: str | None = None  # posted as the first reply after publishing, if supported
     thread: list[str] = field(default_factory=list)  # follow-up items; `text` is the root
+    post_type: str = "post"  # post | carousel | reel | story | document; shapes the media checks
 
     def media_path(self, m: Media) -> Path:
         return get_settings().media_dir / m.path
@@ -105,6 +106,7 @@ class PlatformAdapter(abc.ABC):
     # What this adapter actually sends: the composer only offers what the adapter can deliver
     supports_first_comment: ClassVar[bool] = False  # a reply posted right after publishing
     supports_thread: ClassVar[bool] = False  # follow-up items as a thread of replies
+    post_types: ClassVar[tuple[str, ...]] = ("post",)  # formats the composer may offer
 
     def __init__(self, http: httpx.AsyncClient | None = None):
         self._http = http
@@ -149,11 +151,34 @@ class PlatformAdapter(abc.ABC):
             problems.append(f"{self.label}: requires an image or video")
         for m in payload.media:
             allowed = lim.image_types + (lim.video_types if lim.supports_video else ())
+            if m.content_type == "application/pdf" and "document" in self.post_types:
+                continue
             if m.content_type not in allowed:
                 problems.append(f"{self.label}: {m.content_type} not supported")
         if sum(1 for m in payload.media if m.is_video) > 1:
             problems.append(f"{self.label}: only one video per post")
+        problems += self.validate_format(payload)
         return problems
+
+    def validate_format(self, payload: PublishPayload) -> list[str]:
+        """What a chosen post format needs from the media. Networks infer the format from it."""
+        kind = payload.post_type or "post"
+        if kind == "post":
+            return []
+        if kind not in self.post_types:
+            return [f"{self.label}: {kind} posts are not available here"]
+        images = [m for m in payload.media if m.content_type.startswith("image/")]
+        videos = [m for m in payload.media if m.is_video]
+        docs = [m for m in payload.media if m.content_type == "application/pdf"]
+        if kind == "carousel" and (len(images) < 2 or videos or docs):
+            return [f"{self.label}: a carousel needs two or more images"]
+        if kind in ("reel", "story") and kind == "reel" and (len(videos) != 1 or images or docs):
+            return [f"{self.label}: a reel is one video"]
+        if kind == "story" and len(payload.media) != 1:
+            return [f"{self.label}: a story is one image or one video"]
+        if kind == "document" and (len(docs) != 1 or images or videos):
+            return [f"{self.label}: a document post is one PDF"]
+        return []
 
     @abc.abstractmethod
     async def publish(self, account: SocialAccount, payload: PublishPayload) -> PublishResult: ...

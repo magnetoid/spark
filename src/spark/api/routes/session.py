@@ -34,7 +34,8 @@ async def _session(request: Request, db: AsyncSession, user: User | None) -> Ses
         user=UserOut.of(user) if user else None, csrf_token=deps.new_csrf(request),
         brands=[BrandOut.of(b, role) for b, role in brands], needs_setup=needs_setup,
         features={"ai": bool(s.anthropic_api_key), "zernio": bool(s.zernio_api_key),
-                  "email": s.email_backend != "console"},
+                  "email": s.email_backend != "console", "images": bool(s.openai_api_key),
+                  "janus": bool(s.janus_base_url and s.janus_api_key)},
     )
 
 

@@ -11,8 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from spark.config import get_settings
 from spark.models import Brand, Media
 from spark.security import token
+from spark.services.images import dimensions
 
-ALLOWED_MEDIA = {"image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/quicktime"}
+ALLOWED_MEDIA = {"image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/quicktime", "application/pdf"}
 
 
 @dataclass
@@ -43,7 +44,9 @@ async def save_uploads(db: AsyncSession, brand: Brand, uploads: list[Upload]) ->
         dest = s.media_dir / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(u.data)
-        m = Media(brand_id=brand.id, filename=u.name or rel, path=rel, content_type=u.content_type, size=len(u.data))
+        w, h = dimensions(u.data, u.content_type)
+        m = Media(brand_id=brand.id, filename=u.name or rel, path=rel, content_type=u.content_type, size=len(u.data), width=w, height=h,
+                  source="upload", tags=[])
         db.add(m)
         saved.append(m)
     await db.commit()

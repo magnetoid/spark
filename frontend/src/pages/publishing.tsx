@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReviewLinksBar } from "@/features/collab/panels";
 import { PlanView } from "@/features/agent/panels";
+import { ChannelGrid } from "@/features/media/panels";
 import { ImportCsvButton } from "@/features/planning/panels";
 import { useComposer } from "@/features/composer/composer-host";
 import { useAccounts, useCampaigns, usePostActions, usePosts, useQueue, type AccountOut, type PostOut, type QueueOut } from "@/features/posts/api";
@@ -59,6 +60,7 @@ function QueueView({ accounts, accountParam, onAccount }: { accounts: AccountOut
   const current = accounts.find((a) => String(a.id) === accountParam) ?? accounts[0];
   const { data, isPending, error } = useQueue(brand.id, current.id);
   const actions = usePostActions(brand.id);
+  const [grid, setGrid] = useState(false);
   const composer = useComposer();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const tz = brand.timezone;
@@ -99,7 +101,9 @@ function QueueView({ accounts, accountParam, onAccount }: { accounts: AccountOut
           <PlatformMark platform={current.platform} size={18} />
           <span className="font-medium text-ink">{current.handle}</span><span>{platformLabel(current.platform)}</span>
           {data && <span className="ml-auto tnum">{data.counts.queue} queued · {data.counts.drafts} drafts{data.counts.approvals ? ` · ${data.counts.approvals} awaiting approval` : ""}</span>}
+          <button type="button" onClick={() => setGrid((g) => !g)} aria-pressed={grid} className={cn("rounded-control border px-2 py-0.5 text-xs", grid ? "border-brand bg-brand-soft text-ink" : "border-line hover:text-ink")}>Grid</button>
         </div>
+        {grid && <ChannelGrid accountId={current.id} />}
         {error && <p className="text-sm text-st-failed">{error.message}</p>}
         {isPending ? <Skeleton className="h-64" /> : days.length === 0 ? (
           <EmptyState icon={CalendarDays} title="No posting times set" body="The queue fills your weekly slots. Add some under Settings → Brand & team."

@@ -90,6 +90,7 @@ class ZernioAdapter(PlatformAdapter):
             self.video_only = False
         z = to_zernio(platform)
         self.supports_first_comment = z in self.FIRST_COMMENT_PLATFORMS
+        self.post_types = self.FORMATS_BY_PLATFORM.get(z, ("post",))
         self.supports_thread = z in self.THREAD_PLATFORMS
 
     @classmethod
@@ -242,6 +243,9 @@ class ZernioAdapter(PlatformAdapter):
     # Zernio has `platformSpecificData.firstComment` and `threadItems` only for these
     FIRST_COMMENT_PLATFORMS = {"threads", "facebook", "instagram", "linkedin", "youtube"}
     THREAD_PLATFORMS = {"twitter", "threads", "bluesky"}
+    # Formats Zernio infers from the media: one video = Reel, several images = carousel, a PDF = LinkedIn
+    # document. Stories have no documented selector yet, so they are not offered.
+    FORMATS_BY_PLATFORM = {"instagram": ("post", "carousel", "reel"), "facebook": ("post", "carousel", "reel"), "linkedin": ("post", "document")}
 
     def _platform_data(self, account, payload: PublishPayload) -> dict:
         z = to_zernio(account.platform)

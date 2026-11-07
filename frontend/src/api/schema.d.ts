@@ -351,6 +351,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/brands/{brand_id}/ai/repurpose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Repurpose Source
+         * @description A page, pasted text or a transcript becomes a series of drafts: through Janus when it is
+         *     connected, otherwise with a direct Claude call.
+         */
+        post: operations["repurpose_source_brands__brand_id__ai_repurpose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/brands/{brand_id}/ai/rewrite": {
         parameters: {
             query?: never;
@@ -454,6 +475,26 @@ export interface paths {
         head?: never;
         /** Update Campaign */
         patch: operations["update_campaign_brands__brand_id__campaigns__campaign_id__patch"];
+        trace?: never;
+    };
+    "/brands/{brand_id}/channels/{account_id}/grid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Channel Grid
+         * @description The channel as a profile grid: newest first, scheduled posts ahead of published ones, each with its first image.
+         */
+        get: operations["channel_grid_brands__brand_id__channels__account_id__grid_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/brands/{brand_id}/contacts": {
@@ -911,6 +952,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/brands/{brand_id}/media/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate Media */
+        post: operations["generate_media_brands__brand_id__media_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/media/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Media Tags */
+        get: operations["media_tags_brands__brand_id__media_tags_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/brands/{brand_id}/media/{media_id}": {
         parameters: {
             query?: never;
@@ -927,6 +1002,40 @@ export interface paths {
         head?: never;
         /** Update Media */
         patch: operations["update_media_brands__brand_id__media__media_id__patch"];
+        trace?: never;
+    };
+    "/brands/{brand_id}/media/{media_id}/alt-text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write Alt Text */
+        post: operations["write_alt_text_brands__brand_id__media__media_id__alt_text_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/media/{media_id}/crop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Crop Media */
+        post: operations["crop_media_brands__brand_id__media__media_id__crop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/brands/{brand_id}/members": {
@@ -2178,6 +2287,13 @@ export interface components {
             label: string;
             /** Max */
             max: number;
+            /**
+             * Post Types
+             * @default [
+             *       "post"
+             *     ]
+             */
+            post_types: string[];
             /** Requires Media */
             requires_media: boolean;
             /** Threadable */
@@ -2478,6 +2594,27 @@ export interface components {
              */
             variants: number;
         };
+        /** GridItem */
+        GridItem: {
+            /** Content */
+            content: string;
+            /** Image */
+            image: string | null;
+            /** Is Video */
+            is_video: boolean;
+            /** Post Id */
+            post_id: number;
+            /** Status */
+            status: string;
+            /** When */
+            when: string | null;
+        };
+        /** GridOut */
+        GridOut: {
+            account: components["schemas"]["AccountOut"];
+            /** Items */
+            items: components["schemas"]["GridItem"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2735,6 +2872,35 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** MediaCropIn */
+        MediaCropIn: {
+            /**
+             * Ratio
+             * @enum {string}
+             */
+            ratio: "1:1" | "4:5" | "9:16" | "16:9" | "2:3" | "1.91:1";
+            /**
+             * X
+             * @default 0.5
+             */
+            x: number;
+            /**
+             * Y
+             * @default 0.5
+             */
+            y: number;
+        };
+        /** MediaGenerateIn */
+        MediaGenerateIn: {
+            /** Prompt */
+            prompt: string;
+            /**
+             * Size
+             * @default square
+             * @enum {string}
+             */
+            size: "square" | "portrait" | "landscape";
+        };
         /** MediaOut */
         MediaOut: {
             /** Alt Text */
@@ -2743,6 +2909,8 @@ export interface components {
             content_type: string;
             /** Created At */
             created_at: string | null;
+            /** Height */
+            height?: number | null;
             /** Id */
             id: number;
             /** Is Video */
@@ -2751,8 +2919,20 @@ export interface components {
             name: string;
             /** Size */
             size: number;
+            /**
+             * Source
+             * @default upload
+             */
+            source: string;
+            /**
+             * Tags
+             * @default []
+             */
+            tags: string[];
             /** Url */
             url: string;
+            /** Width */
+            width?: number | null;
         };
         /** MediaPage */
         MediaPage: {
@@ -2763,6 +2943,8 @@ export interface components {
         MediaUpdate: {
             /** Alt Text */
             alt_text?: string | null;
+            /** Tags */
+            tags?: string[] | null;
         };
         /** MediaUploadOut */
         MediaUploadOut: {
@@ -3136,6 +3318,44 @@ export interface components {
             /** Root Uri */
             root_uri?: string | null;
         };
+        /** RepurposeIn */
+        RepurposeIn: {
+            /**
+             * Account Ids
+             * @default []
+             */
+            account_ids: number[];
+            /** Notes */
+            notes?: string | null;
+            /** Source Name */
+            source_name?: string | null;
+            /** Source Text */
+            source_text?: string | null;
+            /** Source Url */
+            source_url?: string | null;
+        };
+        /** RepurposeOut */
+        RepurposeOut: {
+            /**
+             * Created
+             * @default 0
+             */
+            created: number;
+            /** Message */
+            message: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "janus" | "claude";
+            /**
+             * Post Ids
+             * @default []
+             */
+            post_ids: number[];
+            /** Run Id */
+            run_id?: number | null;
+        };
         /** RetryResult */
         RetryResult: {
             /** Message */
@@ -3307,6 +3527,13 @@ export interface components {
             /** Weekday */
             weekday: number;
         };
+        /** TagCount */
+        TagCount: {
+            /** Count */
+            count: number;
+            /** Tag */
+            tag: string;
+        };
         /** TargetIn */
         TargetIn: {
             /** Account Id */
@@ -3315,6 +3542,11 @@ export interface components {
             first_comment?: string | null;
             /** Override */
             override?: string | null;
+            /**
+             * Post Type
+             * @default post
+             */
+            post_type: string;
             /**
              * Thread
              * @default []
@@ -3337,6 +3569,11 @@ export interface components {
             id: number;
             /** Platform */
             platform: string;
+            /**
+             * Post Type
+             * @default post
+             */
+            post_type: string;
             /** Published At */
             published_at: string | null;
             /** Remote Url */
@@ -3541,6 +3778,13 @@ export interface components {
              * @default []
              */
             media_ids: number[];
+            /**
+             * Post Types
+             * @default {}
+             */
+            post_types: {
+                [key: string]: string;
+            };
             /** Targets */
             targets: {
                 [key: string]: string;
@@ -4374,6 +4618,41 @@ export interface operations {
             };
         };
     };
+    repurpose_source_brands__brand_id__ai_repurpose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepurposeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepurposeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rewrite_brands__brand_id__ai_rewrite_post: {
         parameters: {
             query?: never;
@@ -4658,6 +4937,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CampaignFull"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    channel_grid_brands__brand_id__channels__account_id__grid_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                account_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GridOut"];
                 };
             };
             /** @description Validation Error */
@@ -5905,7 +6218,10 @@ export interface operations {
     };
     list_media_brands__brand_id__media_get: {
         parameters: {
-            query?: never;
+            query?: {
+                tag?: string | null;
+                q?: string | null;
+            };
             header?: never;
             path: {
                 brand_id: number;
@@ -5969,6 +6285,72 @@ export interface operations {
             };
         };
     };
+    generate_media_brands__brand_id__media_generate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaGenerateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    media_tags_brands__brand_id__media_tags_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagCount"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     delete_media_brands__brand_id__media__media_id__delete: {
         parameters: {
             query?: never;
@@ -6017,6 +6399,74 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    write_alt_text_brands__brand_id__media__media_id__alt_text_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    crop_media_brands__brand_id__media__media_id__crop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaCropIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

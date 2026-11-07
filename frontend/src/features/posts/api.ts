@@ -151,8 +151,8 @@ export function usePostActions(brandId: number) {
   };
 }
 
-export async function validateTargets(brandId: number, targets: Record<string, string>, media_ids: number[], link: string | null) {
-  return unwrap(await api.POST("/brands/{brand_id}/posts/validate", { ...path(brandId), body: { targets, media_ids, link } }));
+export async function validateTargets(brandId: number, targets: Record<string, string>, media_ids: number[], link: string | null, post_types: Record<string, string> = {}) {
+  return unwrap(await api.POST("/brands/{brand_id}/posts/validate", { ...path(brandId), body: { targets, media_ids, link, post_types } }));
 }
 
 export async function autosavePost(brandId: number, body: components["schemas"]["AutosaveIn"]) {

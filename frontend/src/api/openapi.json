@@ -1527,6 +1527,16 @@
             "title": "Max",
             "type": "integer"
           },
+          "post_types": {
+            "default": [
+              "post"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Post Types",
+            "type": "array"
+          },
           "requires_media": {
             "title": "Requires Media",
             "type": "boolean"
@@ -2418,6 +2428,79 @@
         "title": "GenerateIn",
         "type": "object"
       },
+      "GridItem": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "is_video": {
+            "title": "Is Video",
+            "type": "boolean"
+          },
+          "post_id": {
+            "title": "Post Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "when": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "When"
+          }
+        },
+        "required": [
+          "post_id",
+          "status",
+          "when",
+          "image",
+          "is_video",
+          "content"
+        ],
+        "title": "GridItem",
+        "type": "object"
+      },
+      "GridOut": {
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/AccountOut"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GridItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "account",
+          "items"
+        ],
+        "title": "GridOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3284,6 +3367,66 @@
         "title": "MeUpdate",
         "type": "object"
       },
+      "MediaCropIn": {
+        "properties": {
+          "ratio": {
+            "enum": [
+              "1:1",
+              "4:5",
+              "9:16",
+              "16:9",
+              "2:3",
+              "1.91:1"
+            ],
+            "title": "Ratio",
+            "type": "string"
+          },
+          "x": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "ratio"
+        ],
+        "title": "MediaCropIn",
+        "type": "object"
+      },
+      "MediaGenerateIn": {
+        "properties": {
+          "prompt": {
+            "maxLength": 4000,
+            "minLength": 3,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "size": {
+            "default": "square",
+            "enum": [
+              "square",
+              "portrait",
+              "landscape"
+            ],
+            "title": "Size",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "MediaGenerateIn",
+        "type": "object"
+      },
       "MediaOut": {
         "properties": {
           "alt_text": {
@@ -3313,6 +3456,17 @@
             ],
             "title": "Created At"
           },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -3329,9 +3483,33 @@
             "title": "Size",
             "type": "integer"
           },
+          "source": {
+            "default": "upload",
+            "title": "Source",
+            "type": "string"
+          },
+          "tags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
           "url": {
             "title": "Url",
             "type": "string"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
           }
         },
         "required": [
@@ -3375,6 +3553,20 @@
               }
             ],
             "title": "Alt Text"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
           }
         },
         "title": "MediaUpdate",
@@ -4538,6 +4730,112 @@
         "title": "ReplyIn",
         "type": "object"
       },
+      "RepurposeIn": {
+        "properties": {
+          "account_ids": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Account Ids",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name"
+          },
+          "source_text": {
+            "anyOf": [
+              {
+                "maxLength": 400000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Text"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          }
+        },
+        "title": "RepurposeIn",
+        "type": "object"
+      },
+      "RepurposeOut": {
+        "properties": {
+          "created": {
+            "default": 0,
+            "title": "Created",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "janus",
+              "claude"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "post_ids": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Post Ids",
+            "type": "array"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          }
+        },
+        "required": [
+          "mode",
+          "message"
+        ],
+        "title": "RepurposeOut",
+        "type": "object"
+      },
       "RetryResult": {
         "properties": {
           "message": {
@@ -5100,6 +5398,24 @@
         "title": "SlotRow",
         "type": "object"
       },
+      "TagCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "tag": {
+            "title": "Tag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag",
+          "count"
+        ],
+        "title": "TagCount",
+        "type": "object"
+      },
       "TargetIn": {
         "properties": {
           "account_id": {
@@ -5127,6 +5443,11 @@
               }
             ],
             "title": "Override"
+          },
+          "post_type": {
+            "default": "post",
+            "title": "Post Type",
+            "type": "string"
           },
           "thread": {
             "default": [],
@@ -5192,6 +5513,11 @@
           },
           "platform": {
             "title": "Platform",
+            "type": "string"
+          },
+          "post_type": {
+            "default": "post",
+            "title": "Post Type",
             "type": "string"
           },
           "published_at": {
@@ -5816,6 +6142,14 @@
             },
             "title": "Media Ids",
             "type": "array"
+          },
+          "post_types": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "title": "Post Types",
+            "type": "object"
           },
           "targets": {
             "additionalProperties": {
@@ -7109,6 +7443,59 @@
         ]
       }
     },
+    "/brands/{brand_id}/ai/repurpose": {
+      "post": {
+        "description": "A page, pasted text or a transcript becomes a series of drafts: through Janus when it is\nconnected, otherwise with a direct Claude call.",
+        "operationId": "repurpose_source_brands__brand_id__ai_repurpose_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepurposeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepurposeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Repurpose Source",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
     "/brands/{brand_id}/ai/rewrite": {
       "post": {
         "operationId": "rewrite_brands__brand_id__ai_rewrite_post",
@@ -7541,6 +7928,68 @@
         "summary": "Update Campaign",
         "tags": [
           "campaigns"
+        ]
+      }
+    },
+    "/brands/{brand_id}/channels/{account_id}/grid": {
+      "get": {
+        "description": "The channel as a profile grid: newest first, scheduled posts ahead of published ones, each with its first image.",
+        "operationId": "channel_grid_brands__brand_id__channels__account_id__grid_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 18,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GridOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Channel Grid",
+        "tags": [
+          "channels"
         ]
       }
     },
@@ -9498,6 +9947,38 @@
               "title": "Brand Id",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
           }
         ],
         "responses": {
@@ -9573,6 +10054,104 @@
           }
         },
         "summary": "Upload Media",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/brands/{brand_id}/media/generate": {
+      "post": {
+        "operationId": "generate_media_brands__brand_id__media_generate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaGenerateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Media",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/brands/{brand_id}/media/tags": {
+      "get": {
+        "operationId": "media_tags_brands__brand_id__media_tags_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TagCount"
+                  },
+                  "title": "Response Media Tags Brands  Brand Id  Media Tags Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Media Tags",
         "tags": [
           "library"
         ]
@@ -9676,6 +10255,118 @@
           }
         },
         "summary": "Update Media",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/brands/{brand_id}/media/{media_id}/alt-text": {
+      "post": {
+        "operationId": "write_alt_text_brands__brand_id__media__media_id__alt_text_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Write Alt Text",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/brands/{brand_id}/media/{media_id}/crop": {
+      "post": {
+        "operationId": "crop_media_brands__brand_id__media__media_id__crop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaCropIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Crop Media",
         "tags": [
           "library"
         ]

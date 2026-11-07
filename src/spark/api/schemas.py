@@ -120,6 +120,7 @@ class Capabilities(BaseModel):
     requires_media: bool
     first_comment: bool
     threadable: bool
+    post_types: list[str] = ["post"]
 
 
 class AccountOut(Out):
@@ -159,13 +160,14 @@ class TargetOut(Out):
     content_override: str | None
     first_comment: str | None
     thread: list[str]
+    post_type: str = "post"
 
     @classmethod
     def of(cls, t: PostTarget) -> TargetOut:
         return cls(id=t.id, account_id=t.account_id, platform=t.account.platform, handle=t.account.handle,
                    status=t.status.value, scheduled_at=_dt(t.scheduled_at), published_at=_dt(t.published_at),
                    remote_url=t.remote_url, error=t.error, content_override=t.content_override,
-                   first_comment=t.first_comment, thread=list(t.thread or []))
+                   first_comment=t.first_comment, thread=list(t.thread or []), post_type=t.post_type or "post")
 
 
 class PostOut(Out):
@@ -268,6 +270,7 @@ class TargetIn(BaseModel):
     override: str | None = None
     first_comment: str | None = None
     thread: list[str] = []
+    post_type: str = "post"
 
 
 class PostWrite(BaseModel):
@@ -323,6 +326,7 @@ class ValidateIn(BaseModel):
     targets: dict[str, str]
     media_ids: list[int] = []
     link: str | None = None
+    post_types: dict[str, str] = {}
 
 
 class ValidateOut(BaseModel):
@@ -402,11 +406,16 @@ class MediaOut(Out):
     size: int
     alt_text: str | None
     created_at: datetime | None
+    width: int | None = None
+    height: int | None = None
+    tags: list[str] = []
+    source: str = "upload"
 
     @classmethod
     def of(cls, m) -> MediaOut:
         return cls(id=m.id, name=m.filename, url=m.url, content_type=m.content_type, is_video=m.is_video, size=m.size,
-                   alt_text=m.alt_text, created_at=_dt(m.created_at))
+                   alt_text=m.alt_text, created_at=_dt(m.created_at), width=m.width, height=m.height, tags=list(m.tags or []),
+                   source=m.source or "upload")
 
 
 class MediaUploadOut(BaseModel):
@@ -420,6 +429,23 @@ class MediaPage(BaseModel):
 
 class MediaUpdate(BaseModel):
     alt_text: str | None = None
+    tags: list[str] | None = None
+
+
+class MediaGenerateIn(BaseModel):
+    prompt: str = Field(min_length=3, max_length=4000)
+    size: Literal["square", "portrait", "landscape"] = "square"
+
+
+class MediaCropIn(BaseModel):
+    ratio: Literal["1:1", "4:5", "9:16", "16:9", "2:3", "1.91:1"]
+    x: float = Field(0.5, ge=0, le=1)
+    y: float = Field(0.5, ge=0, le=1)
+
+
+class TagCount(BaseModel):
+    tag: str
+    count: int
 
 
 class HashtagGroupIn(BaseModel):
@@ -1073,3 +1099,34 @@ class PlanScheduleOut(BaseModel):
     scheduled: int
     problems: list[str]
     message: str
+
+
+# ---- phase 8: repurpose, grid -----------------------------------------------------------------
+class RepurposeIn(BaseModel):
+    source_text: str | None = Field(default=None, max_length=400_000)
+    source_url: str | None = None
+    source_name: str | None = None
+    account_ids: list[int] = []
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class RepurposeOut(BaseModel):
+    mode: Literal["janus", "claude"]
+    run_id: int | None = None
+    created: int = 0
+    post_ids: list[int] = []
+    message: str
+
+
+class GridItem(BaseModel):
+    post_id: int
+    status: str
+    when: datetime | None
+    image: str | None
+    is_video: bool
+    content: str
+
+
+class GridOut(BaseModel):
+    account: AccountOut
+    items: list[GridItem]

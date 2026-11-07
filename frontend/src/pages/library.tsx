@@ -2,9 +2,9 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { Hash, Images, LayoutTemplate, Rss, Trash2, Upload } from "lucide-react";
+import { Crop, Hash, Images, LayoutTemplate, Rss, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { useBrand, useSession } from "@/app/session";
+import { useBrand, usePerms, useSession } from "@/app/session";
 import { EmptyState, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,6 +17,8 @@ import { useCreateFeed, useDeleteFeed, useFeeds, useUpdateFeed } from "@/feature
 import { PlatformMark } from "@/lib/platforms";
 import { Switch } from "@/components/ui/switch";
 import { api, unwrap } from "@/lib/api";
+import { AltTextButton, CropDialog, GenerateImageButton, RepurposeButton, TagEditor } from "@/features/media/panels";
+import { useMediaTags } from "@/features/media/api";
 import { cn } from "@/lib/utils";
 
 const TABS = [["media", "Media", Images], ["templates", "Templates", LayoutTemplate], ["hashtags", "Hashtag groups", Hash], ["sources", "RSS sources", Rss]] as const;
@@ -42,13 +44,16 @@ export function LibraryPage() {
 function MediaTab() {
   const brand = useBrand();
   const { data, isPending } = useMedia(brand.id);
+  const { data: tags = [] } = useMediaTags(brand.id);
   const qc = useQueryClient();
-  const { data: session } = useSession();
-  const canEdit = session?.user?.role !== "viewer";
+  const { canEdit } = usePerms();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploads, setUploads] = useState<{ key: string; name: string; pct: number }[]>([]);
   const [dragging, setDragging] = useState(false);
-  const invalidate = () => qc.invalidateQueries({ queryKey: keys.media(brand.id) });
+  const [tag, setTag] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [cropping, setCropping] = useState<MediaOut | null>(null);
+  const invalidate = () => { void qc.invalidateQueries({ queryKey: keys.media(brand.id) }); void qc.invalidateQueries({ queryKey: ["media-tags", brand.id] }); };
 
   const files = (list: FileList | null) => {
     for (const f of Array.from(list ?? [])) {
@@ -67,38 +72,60 @@ function MediaTab() {
     mutationFn: async (id: number) => unwrap(await api.DELETE("/brands/{brand_id}/media/{media_id}", { params: { path: { brand_id: brand.id, media_id: id } } })),
     onSuccess: () => { void invalidate(); toast.success("File deleted"); }, onError: (e) => toast.error(e.message),
   });
+  const needle = q.trim().toLowerCase();
+  const items = (data?.items ?? []).filter((m) => (!tag || m.tags.includes(tag)) && (!needle || m.name.toLowerCase().includes(needle) || (m.alt_text ?? "").toLowerCase().includes(needle)));
 
   return (
     <div onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={(e) => { if (e.currentTarget === e.target) setDragging(false); }}
          onDrop={(e) => { e.preventDefault(); setDragging(false); if (canEdit) files(e.dataTransfer.files); }} onPaste={(e) => { if (canEdit && e.clipboardData.files.length) files(e.clipboardData.files); }}
          className={cn("rounded-card", dragging && "ring-2 ring-brand")}>
-      {canEdit && (
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <Button size="sm" onClick={() => fileRef.current?.click()}><Upload className="size-4" />Upload</Button>
-          <input ref={fileRef} type="file" className="sr-only" multiple accept="image/*,video/mp4,video/quicktime" onChange={(e) => { files(e.target.files); e.target.value = ""; }} />
-          <span className="text-sm text-ink-2">or drop files anywhere here, or paste an image.</span>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        {canEdit && (
+          <>
+            <Button size="sm" onClick={() => fileRef.current?.click()}><Upload className="size-4" />Upload</Button>
+            <input ref={fileRef} type="file" className="sr-only" multiple accept="image/*,video/mp4,video/quicktime,application/pdf" onChange={(e) => { files(e.target.files); e.target.value = ""; }} />
+            <GenerateImageButton />
+            <span className="hidden text-sm text-ink-2 md:inline">or drop files anywhere here, or paste an image. PDFs become LinkedIn documents.</span>
+          </>
+        )}
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or alt text" className="ml-auto h-8 w-56" aria-label="Search media" />
+      </div>
+      {tags.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-1.5 text-xs">
+          <button type="button" onClick={() => setTag(null)} className={cn("rounded-full border px-2 py-0.5", tag === null ? "border-brand bg-brand-soft" : "border-line text-ink-2")}>All</button>
+          {tags.map((t) => <button key={t.tag} type="button" onClick={() => setTag(tag === t.tag ? null : t.tag)} className={cn("rounded-full border px-2 py-0.5", tag === t.tag ? "border-brand bg-brand-soft" : "border-line text-ink-2")}>{t.tag} <span className="tnum">{t.count}</span></button>)}
         </div>
       )}
       {isPending ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">{Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} className="aspect-square" />)}</div>
        : !data?.items.length && !uploads.length ? (
-        <EmptyState icon={Images} title="No media yet" body="Images and videos you upload here are one click away in the composer." />
+        <EmptyState icon={Images} title="No media yet" body="Images, videos and PDFs you upload here are one click away in the composer. With an image connector you can also generate pictures." />
+      ) : items.length === 0 && !uploads.length ? (
+        <p className="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-2">Nothing matches{tag ? ` the tag “${tag}”` : ""}{needle ? ` “${q}”` : ""}.</p>
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
           {uploads.map((u) => <li key={u.key} className="relative grid aspect-square place-items-center rounded-card border border-line bg-hover text-xs text-ink-2 tnum">{u.pct}%<div className="absolute inset-x-0 bottom-0 h-1 bg-line"><div className="h-full bg-brand" style={{ width: `${u.pct}%` }} /></div></li>)}
-          {data?.items.map((m) => <MediaTile key={m.id} m={m} canEdit={canEdit} onAlt={(t) => alt.mutate({ id: m.id, alt_text: t })} onDelete={() => confirm(`Delete ${m.name}?`) && remove.mutate(m.id)} />)}
+          {items.map((m) => <MediaTile key={m.id} m={m} canEdit={canEdit} onAlt={(t) => alt.mutate({ id: m.id, alt_text: t })} onCrop={() => setCropping(m)} onDelete={() => confirm(`Delete ${m.name}?`) && remove.mutate(m.id)} />)}
         </ul>
       )}
+      {cropping && <CropDialog media={cropping} open onOpenChange={(o) => !o && setCropping(null)} />}
     </div>
   );
 }
 
-function MediaTile({ m, canEdit, onAlt, onDelete }: { m: MediaOut; canEdit: boolean; onAlt: (t: string) => void; onDelete: () => void }) {
+function MediaTile({ m, canEdit, onAlt, onCrop, onDelete }: { m: MediaOut; canEdit: boolean; onAlt: (t: string) => void; onCrop: () => void; onDelete: () => void }) {
   const [editing, setEditing] = useState(false);
+  const isPdf = m.content_type === "application/pdf";
   return (
     <li className="group overflow-hidden rounded-card border border-line bg-surface">
       <div className="relative aspect-square bg-hover">
-        {m.is_video ? <video src={m.url} className="h-full w-full object-cover" muted /> : <img src={m.url} alt={m.alt_text ?? ""} className="h-full w-full object-cover" loading="lazy" />}
-        {canEdit && <button onClick={onDelete} aria-label={`Delete ${m.name}`} className="absolute right-1 top-1 grid size-7 place-items-center rounded-control bg-surface/90 text-ink-2 opacity-0 hover:text-st-failed group-hover:opacity-100 focus:opacity-100"><Trash2 className="size-4" /></button>}
+        {m.is_video ? <video src={m.url} className="h-full w-full object-cover" muted /> : isPdf ? <div className="grid h-full place-items-center text-xs text-ink-2">PDF</div> : <img src={m.url} alt={m.alt_text ?? ""} className="h-full w-full object-cover" loading="lazy" />}
+        {canEdit && (
+          <div className="absolute right-1 top-1 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+            {!m.is_video && !isPdf && <button type="button" onClick={onCrop} aria-label={`Crop ${m.name}`} className="grid size-7 place-items-center rounded-control bg-surface/90 text-ink-2 hover:text-ink"><Crop className="size-4" /></button>}
+            <button onClick={onDelete} aria-label={`Delete ${m.name}`} className="grid size-7 place-items-center rounded-control bg-surface/90 text-ink-2 hover:text-st-failed"><Trash2 className="size-4" /></button>
+          </div>
+        )}
+        {m.width && m.height && <span className="absolute bottom-1 left-1 rounded bg-surface/90 px-1 text-[10px] tnum text-ink-2">{m.width}×{m.height}{m.source !== "upload" ? ` · ${m.source}` : ""}</span>}
       </div>
       <div className="p-2 text-xs">
         <div className="truncate font-medium" title={m.name}>{m.name}</div>
@@ -107,10 +134,14 @@ function MediaTile({ m, canEdit, onAlt, onDelete }: { m: MediaOut; canEdit: bool
             <Input name="alt" defaultValue={m.alt_text ?? ""} placeholder="Describe the image" className="h-7 text-xs" autoFocus /><Button size="sm" className="h-7 px-2">Save</Button>
           </form>
         ) : (
-          <button type="button" disabled={!canEdit} onClick={() => setEditing(true)} className={cn("mt-0.5 block w-full truncate text-left", m.alt_text ? "text-ink-2" : "text-st-pending")} title="Alt text">
-            {m.alt_text || (canEdit ? "Add alt text" : "No alt text")}
-          </button>
+          <div className="mt-0.5 flex items-center gap-1">
+            <button type="button" disabled={!canEdit} onClick={() => setEditing(true)} className={cn("block min-w-0 flex-1 truncate text-left", m.alt_text ? "text-ink-2" : isPdf || m.is_video ? "text-ink-2" : "text-st-pending")} title="Alt text">
+              {m.alt_text || (isPdf || m.is_video ? "—" : canEdit ? "Add alt text" : "No alt text")}
+            </button>
+            {canEdit && <AltTextButton media={m} />}
+          </div>
         )}
+        <TagEditor media={m} canEdit={canEdit} />
       </div>
     </li>
   );
@@ -234,6 +265,7 @@ function SourcesTab() {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2">
+        <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-ink-2"><RepurposeButton /><span>Turn a page, pasted text or a transcript into drafts for every channel.</span></div>
         {isPending ? <Skeleton className="h-40" /> : data.length === 0 ? (
           <EmptyState icon={Rss} title="No RSS sources yet" body="Every new item in a feed becomes a draft (optionally written by AI for each channel), or goes straight into the queue." />
         ) : (

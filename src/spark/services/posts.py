@@ -43,6 +43,7 @@ class TargetInput:
     override: str | None = None
     first_comment: str | None = None
     thread: list[str] = field(default_factory=list)
+    post_type: str = "post"
 
 
 async def active_accounts(db: AsyncSession, brand: Brand) -> list[SocialAccount]:
@@ -59,7 +60,7 @@ def channel_capabilities(account: SocialAccount) -> dict:
             "handle": account.handle, "requires_media": ad.limits.requires_media,
             "provider": account.provider, "avatar": account.avatar_url,
             "display_name": account.display_name or account.handle,
-            "first_comment": ad.supports_first_comment, "threadable": ad.supports_thread}
+            "first_comment": ad.supports_first_comment, "threadable": ad.supports_thread, "post_types": list(ad.post_types)}
 
 
 async def save_post(
@@ -91,7 +92,8 @@ async def save_post(
         post.evergreen = evergreen
         post.recycle_every_days = (recycle_every_days or 30) if evergreen else None
 
-    valid = {a.id for a in await active_accounts(db, brand)}
+    valid_accounts = {a.id: a for a in await active_accounts(db, brand)}
+    valid = set(valid_accounts)
     existing = {t.account_id: t for t in post.targets}
     keep: list[PostTarget] = []
     for ti in targets:
@@ -103,6 +105,7 @@ async def save_post(
         t.first_comment = await short((ti.first_comment or "").strip() or None)
         items = [str(x).strip() for x in (ti.thread or []) if str(x).strip()][:25]
         t.thread = [await short(x) for x in items]
+        t.post_type = ti.post_type if ti.post_type in adapter_for(valid_accounts[t.account_id]).post_types else "post"
         if t.status == PostStatus.failed:
             t.status = PostStatus.draft
         keep.append(t)
@@ -249,7 +252,7 @@ async def latest_autosave(db: AsyncSession, brand: Brand, user: User, max_age: t
 
 
 async def validate_targets(db: AsyncSession, brand: Brand, targets: dict[str, str], media_ids: list[int],
-                           link: str | None) -> dict[str, dict[str, list[str]]]:
+                           link: str | None, post_types: dict[str, str] | None = None) -> dict[str, dict[str, list[str]]]:
     """Live validation while typing: per-channel problems (block placing) and warnings (shown only)."""
     media = []
     if media_ids:
@@ -260,6 +263,7 @@ async def validate_targets(db: AsyncSession, brand: Brand, targets: dict[str, st
         acc = await db.get(SocialAccount, int(aid)) if str(aid).isdigit() else None
         if acc and acc.brand_id == brand.id:
             gp, gw = guardrails.check(brand, text or "")
-            problems[str(aid)] = adapter_for(acc).validate(PublishPayload(text=text or "", media=list(media), link=link)) + gp
+            kind = (post_types or {}).get(str(aid), "post")
+            problems[str(aid)] = adapter_for(acc).validate(PublishPayload(text=text or "", media=list(media), link=link, post_type=kind)) + gp
             warnings[str(aid)] = gw
     return {"problems": problems, "warnings": warnings}

@@ -6,6 +6,7 @@ import { GripVertical, Lightbulb, MoreHorizontal, Plus, Sparkles } from "lucide-
 import { toast } from "sonner";
 import { useBrand, usePerms, useSession } from "@/app/session";
 import { EmptyState, PageHeader } from "@/components/page";
+import { RepurposeButton } from "@/features/media/panels";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -70,7 +71,7 @@ export function IdeasPage() {
   return (
     <>
       <PageHeader title="Ideas" description="A scratchpad for what you might post. Drag cards as they ripen."
-                  actions={canEdit && <Button size="sm" onClick={() => setEditing("new")}><Plus className="size-4" />New idea</Button>} />
+                  actions={canEdit && <><RepurposeButton /><Button size="sm" onClick={() => setEditing("new")}><Plus className="size-4" />New idea</Button></>} />
       {data && data.tags.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-1.5">
           <TagChip label="All" active={!tag} onClick={() => setTag(undefined)} />

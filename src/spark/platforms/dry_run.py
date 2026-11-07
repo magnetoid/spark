@@ -29,6 +29,7 @@ class DryRunAdapter(PlatformAdapter):
     connect_mode = "credentials"
     credential_fields = (("handle", "Handle to display"),)
     supports_first_comment = True
+    post_types = ("post", "carousel", "reel", "story", "document")
     supports_thread = True
 
     def __init__(self, http: httpx.AsyncClient | None = None, impersonate=None):

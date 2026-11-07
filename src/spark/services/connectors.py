@@ -101,6 +101,17 @@ CONNECTORS: tuple[Connector, ...] = (
         required=("anthropic_api_key",), tags=("AI",),
     ),
     Connector(
+        key="images", name="Image generation", tagline="Pictures for posts from a prompt",
+        description="Claude writes but does not draw. With an OpenAI key Spark generates images from the composer and the "
+                    "Library (gpt-image-1), in square, portrait or landscape. Alt text comes from Claude vision through the Claude AI connector.",
+        docs="https://platform.openai.com/docs/guides/image-generation",
+        fields=(
+            Field("openai_api_key", "OpenAI API key", "secret", placeholder="sk-…"),
+            Field("image_model", "Model", help="gpt-image-1 unless OpenAI tells you otherwise."),
+        ),
+        required=("openai_api_key",), tags=("Images", "Composer", "Library"),
+    ),
+    Connector(
         key="email", name="Email delivery", tagline="Notifications, digests and email campaigns",
         description="Console mode only logs emails. Pick SMTP or Resend to actually deliver failure "
                     "alerts, approval requests, the weekly digest and your email campaigns.",
@@ -278,6 +289,10 @@ async def test(connector: Connector, user_email: str | None = None) -> tuple[boo
             client = anthropic.AsyncAnthropic(api_key=s.anthropic_api_key)
             m = await client.models.retrieve(s.ai_model)
             return True, f"Anthropic answered: {getattr(m, 'display_name', None) or s.ai_model} is available"
+        if connector.key == "images":
+            from spark.services.images import test_connection
+
+            return await test_connection()
         if connector.key == "email":
             from spark.services.email import get_sender
             from spark.services.notify import layout

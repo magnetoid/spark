@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     janus_api_key: str | None = None
     janus_update_webhook: str | None = None  # Coolify deploy webhook that rebuilds Janus from its main branch
     janus_update_token: str | None = None
+    # Image generation (Claude makes no images): OpenAI's image model behind the "Image generation" connector
+    openai_api_key: str | None = None
+    image_model: str = "gpt-image-1"
     ai_model: str = "claude-opus-5-5"
     ai_effort: str = "medium"
 

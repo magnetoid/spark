@@ -43,6 +43,7 @@ async def validate_post(db: AsyncSession, post: Post) -> list[str]:
         account = await db.get(SocialAccount, t.account_id)
         adapter = adapter_for(account)
         payload = await build_payload(db, t)
+        payload.post_type = t.post_type or "post"
         problems += adapter.validate(payload)
         for i, item in enumerate(payload.thread, start=2):
             if len(item) > adapter.limits.max_chars:

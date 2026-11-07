@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { GenerateImageButton } from "@/features/media/panels";
 import { usePillars } from "@/features/planning/api";
 import { StatusBadge } from "@/components/page";
 import { PlatformMark } from "@/lib/platforms";
@@ -27,6 +28,7 @@ import { PostPreview } from "@/features/composer/previews";
 import { CommentsPanel } from "@/features/collab/panels";
 import { useComposerState, type Action, type ComposerDraft } from "@/features/composer/use-composer-state";
 
+const FORMAT_LABEL: Record<string, string> = { post: "Post", carousel: "Carousel", reel: "Reel", story: "Story", document: "Document" };
 const ACTIONS: { key: Action; label: string; button: string }[] = [
   { key: "queue", label: "Next free slot", button: "Add to queue" },
   { key: "next", label: "Share next", button: "Share next" },
@@ -210,6 +212,7 @@ export function Composer({ initial, existing, onSaved, onCancel, compact }: {
                 {u.pct}%<div className="absolute inset-x-0 bottom-0 h-1 bg-line"><div className="h-full bg-brand" style={{ width: `${u.pct}%` }} /></div>
               </div>
             ))}
+            <GenerateImageButton compact onDone={(m) => s.addMedia([m])} />
             <label className="grid size-20 cursor-pointer place-items-center rounded-control border border-dashed border-line-strong text-ink-2 hover:border-brand hover:text-ink" title="Upload">
               <input type="file" className="sr-only" multiple accept="image/*,video/mp4,video/quicktime" onChange={(e) => { files(e.target.files); e.target.value = ""; }} />
               <ImagePlus className="size-5" aria-hidden /><span className="sr-only">Upload media</span>
@@ -278,7 +281,13 @@ export function Composer({ initial, existing, onSaved, onCancel, compact }: {
                     <div className="mt-2 h-1 overflow-hidden rounded bg-hover"><div className={cn("h-full", isOver ? "bg-st-failed" : len > max * 0.9 ? "bg-st-pending" : "bg-brand")} style={{ width: `${Math.min(100, (len / max) * 100)}%` }} /></div>
                     {sel && (
                       <div className="mt-2 space-y-2 text-xs">
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
+                          {a.capabilities.post_types.length > 1 && (
+                            <Select value={draft.postTypes[a.id] ?? "post"} onValueChange={(v) => s.setPostType(a.id, v)}>
+                              <SelectTrigger className="h-6 w-28 text-xs" aria-label={`Format for ${a.handle}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>{a.capabilities.post_types.map((t) => <SelectItem key={t} value={t}>{FORMAT_LABEL[t] ?? t}</SelectItem>)}</SelectContent>
+                            </Select>
+                          )}
                           <button type="button" className="text-ink-2 underline-offset-2 hover:text-ink hover:underline" onClick={() => setEditing(editing === a.id ? null : a.id)}>
                             {draft.overrides[a.id] ? "Custom text" : "Same as main text"}{editing === a.id ? " · close" : " · edit"}
                           </button>

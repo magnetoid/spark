@@ -5,21 +5,27 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spark.api import deps
-from spark.api.errors import not_found
+from spark.api.errors import ApiError, not_found
 from spark.api.schemas import (
     HashtagGroupIn,
     HashtagGroupOut,
     HashtagGroupUpdate,
+    MediaCropIn,
+    MediaGenerateIn,
     MediaOut,
     MediaPage,
     MediaUpdate,
     MediaUploadOut,
+    TagCount,
     TemplateIn,
     TemplateOut,
     TemplateUpdate,
 )
+from spark.config import get_settings
 from spark.db import get_db
 from spark.models import HashtagGroup, Media, PostTemplate
+from spark.services import activity, images
+from spark.services import ai as ai_svc
 from spark.services import media as media_svc
 from spark.services.text import parse_hashtags
 
@@ -29,8 +35,36 @@ B = "/brands/{brand_id}"
 
 # ---- media ---------------------------------------------------------------------------------
 @router.get(B + "/media", response_model=MediaPage)
-async def list_media(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)):
-    return MediaPage(items=[MediaOut.of(m) for m in await media_svc.list_media(db, ctx.brand)])
+async def list_media(tag: str | None = None, q: str | None = None, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)):
+    rows = await media_svc.list_media(db, ctx.brand)
+    if tag:
+        rows = [m for m in rows if tag.lower() in [t.lower() for t in (m.tags or [])]]
+    if q:
+        needle = q.lower()
+        rows = [m for m in rows if needle in m.filename.lower() or needle in (m.alt_text or "").lower()]
+    return MediaPage(items=[MediaOut.of(m) for m in rows])
+
+
+@router.get(B + "/media/tags", response_model=list[TagCount])
+async def media_tags(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)):
+    counts: dict[str, int] = {}
+    for m in await media_svc.list_media(db, ctx.brand):
+        for t in m.tags or []:
+            counts[t] = counts.get(t, 0) + 1
+    return [TagCount(tag=t, count=n) for t, n in sorted(counts.items())]
+
+
+@router.post(B + "/media/generate", response_model=MediaOut, status_code=201)
+async def generate_media(body: MediaGenerateIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+    if not images.configured():
+        raise ApiError(409, "images_not_configured", "Image generation is not set up. Add a key under Settings → Connectors → Image generation.")
+    try:
+        m = await images.generate(db, ctx.brand, body.prompt, body.size)
+    except images.ImagesUnavailable as e:
+        raise ApiError(502, "images_failed", str(e)) from e
+    activity.record(db, ctx.brand.id, ctx.user, "generated", "media", m.id, body.prompt[:120])
+    await db.commit()
+    return MediaOut.of(m)
 
 
 @router.post(B + "/media", response_model=MediaUploadOut, status_code=201)
@@ -51,9 +85,43 @@ async def _media(db: AsyncSession, ctx: deps.BrandCtx, media_id: int) -> Media:
 @router.patch(B + "/media/{media_id}", response_model=MediaOut)
 async def update_media(media_id: int, body: MediaUpdate, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
     m = await _media(db, ctx, media_id)
-    m.alt_text = (body.alt_text or "").strip() or None
+    if "alt_text" in body.model_fields_set:
+        m.alt_text = (body.alt_text or "").strip() or None
+    if body.tags is not None:
+        seen: list[str] = []
+        for t in body.tags:
+            t = t.strip().lower()[:40]
+            if t and t not in seen:
+                seen.append(t)
+        m.tags = seen[:30]
     await db.commit()
     return MediaOut.of(m)
+
+
+@router.post(B + "/media/{media_id}/alt-text", response_model=MediaOut)
+async def write_alt_text(media_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+    m = await _media(db, ctx, media_id)
+    if not m.content_type.startswith("image/"):
+        raise ApiError(422, "not_an_image", "Alt text is for images")
+    try:
+        ai = ai_svc.ContentAI()
+    except ai_svc.AIUnavailable as e:
+        raise ApiError(400, "ai_unavailable", str(e)) from e
+    data = (get_settings().media_dir / m.path).read_bytes()
+    try:
+        m.alt_text = await ai.describe_image(ctx.brand, data, m.content_type)
+    except ai_svc.AIUnavailable as e:
+        raise ApiError(400, "ai_unavailable", str(e)) from e
+    await db.commit()
+    return MediaOut.of(m)
+
+
+@router.post(B + "/media/{media_id}/crop", response_model=MediaOut, status_code=201)
+async def crop_media(media_id: int, body: MediaCropIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+    m = await _media(db, ctx, media_id)
+    if not m.content_type.startswith("image/"):
+        raise ApiError(422, "not_an_image", "Only images can be cropped")
+    return MediaOut.of(await images.crop(db, ctx.brand, m, body.ratio, body.x, body.y))
 
 
 @router.delete(B + "/media/{media_id}", status_code=204)

@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from spark.db import Base, TimestampMixin
@@ -89,6 +89,11 @@ class Media(TimestampMixin, Base):
     content_type: Mapped[str] = mapped_column(String(100))
     size: Mapped[int] = mapped_column(default=0)
     alt_text: Mapped[str | None] = mapped_column(Text)
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    duration_s: Mapped[float | None] = mapped_column(Float)
+    tags: Mapped[list] = mapped_column(JSON, default=list)
+    source: Mapped[str] = mapped_column(String(16), default="upload")  # upload | generated | crop | import
 
     @property
     def is_video(self) -> bool:

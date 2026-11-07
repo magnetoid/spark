@@ -148,6 +148,30 @@ class ContentAI:
         )
         return (await self._parse(brand, "\n".join(prompt), Drafts)).drafts
 
+    async def describe_image(self, brand: Brand, data: bytes, content_type: str) -> str:
+        """Alt text for an image: what is in it, in one or two plain sentences, under 125 characters."""
+        import base64
+
+        try:
+            resp = await self.client.messages.create(
+                model=self.model, max_tokens=200, system=self._system(brand),
+                messages=[{"role": "user", "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": content_type, "data": base64.b64encode(data).decode()}},
+                    {"type": "text", "text": "Write alt text for this image for a social post: what is shown, who or what matters, "
+                                             "no 'image of', no hashtags, under 125 characters. Answer with the alt text only."},
+                ]}],
+            )
+        except anthropic.RateLimitError as e:
+            raise AIUnavailable("AI rate limit reached, try again in a minute") from e
+        except anthropic.APIConnectionError as e:
+            raise AIUnavailable("Could not reach the AI service") from e
+        except anthropic.APIStatusError as e:
+            raise AIUnavailable(f"AI request failed ({e.status_code})") from e
+        text = "".join(getattr(b, "text", "") for b in resp.content).strip().strip('"')
+        if not text:
+            raise AIUnavailable("The AI returned no description")
+        return text[:300]
+
     async def rewrite(self, brand: Brand, text: str, instruction: str, platform: str | None = None):
         limits = _limits_text([platform]) if platform else ""
         prompt = (

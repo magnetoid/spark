@@ -3,7 +3,9 @@ OAuth connects stay on the server routes (/accounts/connect/{platform}) because 
 redirect back there."""
 
 from fastapi import APIRouter, Depends, Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from spark.api import deps
 from spark.api.errors import ApiError, not_found
@@ -11,16 +13,19 @@ from spark.api.schemas import (
     AccountOut,
     ConnectResult,
     CredentialField,
+    GridItem,
+    GridOut,
     ImportResult,
     PlatformOut,
     PlatformsOut,
 )
 from spark.config import get_settings
 from spark.db import get_db
-from spark.models import SocialAccount
+from spark.models import Media, Post, PostStatus, PostTarget, SocialAccount
 from spark.platforms import PlatformError, adapter_for, get_adapter, registry
 from spark.platforms.zernio import ZERNIO_PLATFORMS, ZernioAdapter
 from spark.services import accounts as svc
+from spark.services.publisher import as_utc
 
 router = APIRouter(tags=["channels"])
 B = "/brands/{brand_id}"
@@ -75,6 +80,27 @@ async def _account(db: AsyncSession, ctx: deps.BrandCtx, account_id: int) -> Soc
     if not acc or acc.brand_id != ctx.brand.id:
         raise not_found("No such channel")
     return acc
+
+
+@router.get(B + "/channels/{account_id}/grid", response_model=GridOut)
+async def channel_grid(account_id: int, limit: int = 18, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)):
+    """The channel as a profile grid: newest first, scheduled posts ahead of published ones, each with its first image."""
+    acc = await db.get(SocialAccount, account_id)
+    if acc is None or acc.brand_id != ctx.brand.id:
+        raise not_found("No such channel")
+    rows = (await db.execute(
+        select(PostTarget).options(selectinload(PostTarget.post)).join(Post, Post.id == PostTarget.post_id)
+        .where(PostTarget.account_id == acc.id, Post.is_autosave.is_(False),
+               PostTarget.status.in_([PostStatus.scheduled, PostStatus.pending_approval, PostStatus.publishing, PostStatus.published]))
+        .order_by(PostTarget.scheduled_at.desc().nulls_last()).limit(min(limit, 60)))).scalars().all()
+    media_ids = {(t.post.media_ids or [None])[0] for t in rows if t.post.media_ids}
+    media = {m.id: m for m in (await db.execute(select(Media).where(Media.id.in_(media_ids)))).scalars()} if media_ids else {}
+    items = []
+    for t in rows:
+        first = media.get((t.post.media_ids or [None])[0]) if t.post.media_ids else None
+        items.append(GridItem(post_id=t.post_id, status=t.status.value, when=as_utc(t.scheduled_at), image=first.url if first else None,
+                              is_video=bool(first and first.is_video), content=t.post.content[:160]))
+    return GridOut(account=AccountOut.of(acc), items=items)
 
 
 @router.post(B + "/accounts/{account_id}/toggle", response_model=AccountOut)

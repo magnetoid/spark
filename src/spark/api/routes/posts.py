@@ -54,7 +54,7 @@ async def _reload(db: AsyncSession, post: Post) -> Post:
 
 def _targets(items) -> list[svc.TargetInput]:
     return [svc.TargetInput(account_id=t.account_id, override=t.override, first_comment=t.first_comment,
-                            thread=list(t.thread or [])) for t in items]
+                            thread=list(t.thread or []), post_type=t.post_type or "post") for t in items]
 
 
 def _cannot_place(e: svc.PlaceError, post: Post) -> JSONResponse:
@@ -84,7 +84,7 @@ async def put_autosave(body: AutosaveIn, db: AsyncSession = Depends(get_db), ctx
 
 @router.post(B + "/posts/validate", response_model=ValidateOut)
 async def validate(body: ValidateIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
-    out = await svc.validate_targets(db, ctx.brand, body.targets, body.media_ids, body.link)
+    out = await svc.validate_targets(db, ctx.brand, body.targets, body.media_ids, body.link, body.post_types)
     return ValidateOut(**out)
 
 

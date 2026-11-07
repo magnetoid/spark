@@ -110,8 +110,12 @@ async def _context(
     return accounts, pillars, "\n".join(lines)
 
 
-async def _task(db: AsyncSession, brand: Brand, kind: str, prompt: str | None) -> str:
+async def _task(db: AsyncSession, brand: Brand, kind: str, prompt: str | None, extra: dict | None = None) -> str:
     cfg = guardrails.config(brand)
+    if kind == "repurpose" and extra:
+        from spark.services import repurpose
+
+        return repurpose.task_text(extra["text"], extra.get("link"), extra.get("accounts") or [], prompt)
     if kind == "weekly_plan":
         wp = cfg.get("weekly_plan") or {}
         n = int(wp.get("posts") or 5)
@@ -151,9 +155,8 @@ async def _task(db: AsyncSession, brand: Brand, kind: str, prompt: str | None) -
 
 
 # ---- starting ------------------------------------------------------------------------------------
-async def start(
-    db: AsyncSession, brand: Brand, user: User | None, kind: str, prompt: str | None = None
-) -> AgentRun:
+async def start(db: AsyncSession, brand: Brand, user: User | None, kind: str, prompt: str | None = None,
+                extra: dict | None = None) -> AgentRun:
     if kind not in AgentRun.KINDS:
         raise ValueError(f"Unknown run kind {kind!r}")
     if not configured():
@@ -171,7 +174,7 @@ async def start(
     db.add(run)
     await db.flush()
     _accounts, _pillars, instructions = await _context(db, brand)
-    task = await _task(db, brand, kind, prompt)
+    task = await _task(db, brand, kind, prompt, extra)
     try:
         run.janus_run_id = await Janus().start_run(
             input=task,
