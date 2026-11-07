@@ -11,7 +11,7 @@ from sqlalchemy import select
 from spark.config import get_settings
 from spark.db import SessionLocal
 from spark.models import EmailCampaign, RssFeed
-from spark.services import analytics, email, evergreen, notify, publisher, rss
+from spark.services import agent, analytics, email, evergreen, notify, publisher, rss
 from spark.services.ai import AIUnavailable, ContentAI
 
 log = logging.getLogger("spark.worker")
@@ -32,6 +32,16 @@ async def publish_now(ctx, target_id: int) -> None:
 async def recover_stuck(ctx) -> None:
     async with SessionLocal() as db:
         await publisher.recover_stuck(db)
+
+
+async def follow_agent_run(ctx, run_id: int) -> str:
+    async with SessionLocal() as db:
+        return await agent.follow(db, run_id)
+
+
+async def start_weekly_plans(ctx) -> int:
+    async with SessionLocal() as db:
+        return await agent.start_due_weekly_plans(db)
 
 
 async def recycle_evergreen(ctx) -> int:
@@ -111,7 +121,7 @@ class WorkerSettings:
     on_startup = load_connectors
     on_job_start = load_connectors
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
-    functions = [publish_now, send_email_campaign]
+    functions = [publish_now, send_email_campaign, follow_agent_run]
     cron_jobs = [
         cron(publish_due, second={0, 30}, run_at_startup=True),
         cron(send_scheduled_emails, second=15),
@@ -119,6 +129,7 @@ class WorkerSettings:
         cron(poll_feeds, minute={5, 35}),
         cron(collect_metrics, hour={0, 6, 12, 18}, minute=20),
         cron(recycle_evergreen, hour={6}, minute=10),
+        cron(start_weekly_plans, hour={7}, minute=5),
         cron(send_notifications, second=50),
         cron(send_weekly_digest, weekday=0, hour=7, minute=0),  # Mondays 07:00 UTC
     ]

@@ -21,6 +21,11 @@ class Settings(BaseSettings):
 
     # AI
     anthropic_api_key: str | None = None
+    # Janus agent (github.com/magnetoid/Janus-Agent), deployed next to Spark; see deploy/janus
+    janus_base_url: str | None = None
+    janus_api_key: str | None = None
+    janus_update_webhook: str | None = None  # Coolify deploy webhook that rebuilds Janus from its main branch
+    janus_update_token: str | None = None
     ai_model: str = "claude-opus-5-5"
     ai_effort: str = "medium"
 

@@ -103,6 +103,8 @@ class Post(TimestampMixin, Base):
     evergreen: Mapped[bool] = mapped_column(Boolean, default=False)  # comes back every recycle_every_days into an empty slot
     recycle_every_days: Mapped[int | None] = mapped_column(Integer)
     recycled_from_id: Mapped[int | None] = mapped_column(ForeignKey("posts.id", ondelete="SET NULL"))
+    agent_run_id: Mapped[int | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"))  # proposed by this run
+    proposed_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # the time the agent suggested
     # When owners were emailed that this post waits for approval (None = not yet)
     approval_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

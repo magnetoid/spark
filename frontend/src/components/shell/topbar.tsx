@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Menu, Plus, Search } from "lucide-react";
+import { Menu, Plus, Search, Sparkles } from "lucide-react";
 import { usePerms, useWorkspace } from "@/app/session";
+import { AskSparkHost, openAskSpark } from "@/features/agent/panels";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -41,7 +42,9 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         <Search className="size-4" /><span className="flex-1 truncate">Jump to anything…</span>
         <kbd className="hidden rounded border border-line px-1 text-[10px] sm:inline">⌘K</kbd>
       </button>
+      {canEdit && <Button size="sm" variant="outline" className="hidden sm:inline-flex" onClick={() => openAskSpark()}><Sparkles className="size-4" />Ask Spark</Button>}
       {canEdit && <Button size="sm" onClick={() => composer.open()}><Plus className="size-4" />New post</Button>}
+      <AskSparkHost />
       <JumpDialog open={open} onOpenChange={setOpen} brands={brands} onBrand={setBrand} brandId={brand?.id ?? null} />
     </header>
   );
@@ -76,6 +79,11 @@ function JumpDialog({ open, onOpenChange, brands, onBrand, brandId }: {
         <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Page, channel, campaign, recent post, brand…"
                className="h-11 rounded-none border-0 border-b border-line shadow-none focus-visible:ring-0" />
         <ul className="max-h-80 overflow-y-auto p-1 text-sm">
+          {needle.length >= 3 && (
+            <li><button type="button" className="nav-item w-full" onClick={() => { close(false); openAskSpark(q.trim()); }}>
+              <Sparkles className="size-4 text-brand" aria-hidden /><span className="flex-1 truncate">Ask Spark: “{q.trim()}”</span><span className="text-xs text-ink-2">agent</span>
+            </button></li>
+          )}
           {groups.map((g) => (
             <li key={g}><div className="px-2.5 pb-1 pt-2 text-[11px] text-ink-2">{g}</div>
               <ul>{matches.filter((i) => i.group === g).slice(0, 8).map((i, idx) => <li key={`${g}-${idx}`}><button type="button" className="nav-item w-full" onClick={() => run(i)}><span className="flex-1 truncate">{i.label}</span>{i.hint && <span className="text-xs text-ink-2">{i.hint}</span>}</button></li>)}</ul>
@@ -87,7 +95,7 @@ function JumpDialog({ open, onOpenChange, brands, onBrand, brandId }: {
               <span className="size-3 rounded-full" style={{ background: b.color }} aria-hidden />{b.name}
             </button></li>
           ))}
-          {matches.length === 0 && brandMatches.length === 0 && <li className="px-2.5 py-6 text-center text-ink-2">Nothing matches “{q}”</li>}
+          {matches.length === 0 && brandMatches.length === 0 && needle.length < 3 && <li className="px-2.5 py-6 text-center text-ink-2">Nothing matches “{q}”</li>}
         </ul>
       </DialogContent>
     </Dialog>

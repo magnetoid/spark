@@ -1,3 +1,4 @@
+from spark.models.agent import AgentRun
 from spark.models.collab import ActivityLog, BrandMember, PostComment, ShareLink
 from spark.models.core import ApiToken, Brand, ConnectorSetting, Media, Role, User
 from spark.models.marketing import (
@@ -27,6 +28,7 @@ from spark.models.social import (
 
 __all__ = [
     "ActivityLog",
+    "AgentRun",
     "ApiToken",
     "BrandMember",
     "PostComment",

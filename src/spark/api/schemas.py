@@ -187,11 +187,14 @@ class PostOut(Out):
     evergreen: bool = False
     recycle_every_days: int | None = None
     recycled_from_id: int | None = None
+    agent_run_id: int | None = None
+    proposed_for: datetime | None = None
 
     @classmethod
     def of(cls, p: Post) -> PostOut:
         return cls(id=p.id, content=p.content, link=p.link, media_ids=list(p.media_ids or []), status=p.status.value,
                    pillar_id=p.pillar_id, evergreen=bool(p.evergreen), recycle_every_days=p.recycle_every_days, recycled_from_id=p.recycled_from_id,
+                   agent_run_id=p.agent_run_id, proposed_for=_dt(p.proposed_for),
                    scheduled_at=_dt(p.scheduled_at), source=p.source, campaign_id=p.campaign_id, author_id=p.author_id,
                    notes=p.notes, created_at=_dt(p.created_at), updated_at=_dt(p.updated_at),
                    targets=[TargetOut.of(t) for t in p.targets])
@@ -223,6 +226,7 @@ class NeedsYou(BaseModel):
     approvals: int
     failed: int
     drafts: int
+    plan_ready: int = 0  # drafts the agent proposed, waiting in the plan tray
 
 
 class WeekPoint(BaseModel):
@@ -1005,3 +1009,67 @@ class ImportRowError(BaseModel):
 class PostImportOut(BaseModel):
     created: int
     errors: list[ImportRowError]
+
+
+# ---- phase 7: the agent ------------------------------------------------------------------------
+RunKind = Literal["ask", "weekly_plan", "voice", "repurpose", "report"]
+
+
+class AgentRunIn(BaseModel):
+    kind: RunKind = "ask"
+    prompt: str | None = Field(default=None, max_length=4000)
+
+
+class AgentRunOut(BaseModel):
+    id: int
+    kind: str
+    status: str
+    prompt: str
+    janus_run_id: str | None
+    output: str | None
+    proposal: dict[str, Any]
+    events: list[dict[str, Any]]
+    usage: dict[str, Any]
+    error: str | None
+    summary: str
+    posts: int
+    applied_at: datetime | None
+    finished_at: datetime | None
+    created_at: datetime | None
+    updated_at: datetime | None
+    user: Actor | None
+
+
+class AgentStatusOut(BaseModel):
+    configured: bool
+    healthy: bool
+    version: str | None
+    base_url: str | None
+    checked_at: datetime
+    can_update: bool
+
+
+class AgentApplyIn(BaseModel):
+    post_indexes: list[int] | None = None
+    schedule: bool | None = None
+
+
+class AgentApplyOut(BaseModel):
+    created: int
+    post_ids: list[int]
+    voice_applied: bool
+
+
+class PlanOut(BaseModel):
+    run: AgentRunOut | None
+    posts: list[PostOut]
+
+
+class PlanScheduleIn(BaseModel):
+    post_ids: list[int] | None = None
+
+
+class PlanScheduleOut(BaseModel):
+    scheduled: int
+    problems: list[str]
+    message: str

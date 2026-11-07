@@ -54,13 +54,17 @@ async def test_review_link_flow(page, server_url, seeded_brand):
     await client.get_by_text(re.compile(r"2 posts wait for your approval")).wait_for()
     await client.fill("#reviewer", "Dana (client)")
     cards = client.get_by_role("listitem").filter(has_text="Client, please approve this one")
-    await cards.get_by_role("button", name="Approve").click()
-    await client.get_by_text("Approved").first.wait_for()
+    async with client.expect_response(lambda r: r.url.endswith("/approve")) as resp:
+        await cards.get_by_role("button", name="Approve").click()
+    assert (await resp.value).status == 200, await (await resp.value).text()
+    await cards.get_by_text("approved").first.wait_for(timeout=30_000)
     cards2 = client.get_by_role("listitem").filter(has_text="Client, this one needs your eye")
     await cards2.get_by_role("button", name="Request changes").click()
     await cards2.get_by_placeholder("What should change?").fill("Shorter, and mention the webinar")
-    await cards2.get_by_role("button", name="Send").click()
-    await client.get_by_text("asked for changes").wait_for()
+    async with client.expect_response(lambda r: "request-changes" in r.url) as resp:
+        await cards2.get_by_role("button", name="Send").click()
+    assert (await resp.value).status == 200, await (await resp.value).text()
+    await client.get_by_text("asked for changes").wait_for(timeout=30_000)
     await ctx.close()
 
     # back in the team's app: the second post is a draft with the client's note as a comment, the first is scheduled

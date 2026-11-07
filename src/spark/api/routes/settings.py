@@ -128,6 +128,11 @@ async def _connector_out(db: AsyncSession, c: conn.Connector, user: User) -> Con
     extra: dict = {}
     if c.key == "mcp":
         extra = {"mcp_url": get_settings().base_url.rstrip("/") + "/mcp"}
+    elif c.key == "janus":
+        from spark.services import agent as agent_svc
+
+        st = await agent_svc.status()
+        extra = {"janus": {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in st.items()}}
         from spark.mcp_server import TOOLS_FOR_UI
 
         extra["tools"] = [{"name": n, "summary": s} for n, s in TOOLS_FOR_UI]
@@ -202,6 +207,28 @@ async def connector_test(key: str, user: User = Depends(deps.owner)):
     if not ok:
         raise ApiError(400, "test_failed", msg)
     return {"message": msg}
+
+
+@router.post("/settings/janus/update")
+async def janus_update(user: User = Depends(deps.owner)):
+    """Ask Coolify to rebuild the Janus service from its latest main branch."""
+    import httpx
+
+    from spark.services import agent as agent_svc
+
+    s = get_settings()
+    if not s.janus_update_webhook:
+        raise ApiError(409, "no_webhook", "Add the update webhook under Connectors → Janus first")
+    headers = {"Authorization": f"Bearer {s.janus_update_token}"} if s.janus_update_token else {}
+    try:
+        async with httpx.AsyncClient(timeout=20) as c:
+            r = await c.get(s.janus_update_webhook, headers=headers)
+        if r.status_code >= 400:
+            raise ApiError(502, "update_failed", f"The webhook answered {r.status_code}: {r.text[:200]}")
+    except httpx.HTTPError as e:
+        raise ApiError(502, "update_failed", f"Could not reach the webhook: {e}") from e
+    agent_svc.forget_status()
+    return {"message": "Update started. Janus restarts with the latest build in a few minutes."}
 
 
 @router.post("/settings/zernio/webhook")

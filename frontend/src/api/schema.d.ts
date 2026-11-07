@@ -197,6 +197,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/brands/{brand_id}/agent/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plan */
+        get: operations["plan_brands__brand_id__agent_plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/agent/plan/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Schedule Plan */
+        post: operations["schedule_plan_brands__brand_id__agent_plan_schedule_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/agent/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: operations["list_runs_brands__brand_id__agent_runs_get"];
+        put?: never;
+        /** Start Run */
+        post: operations["start_run_brands__brand_id__agent_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/agent/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_brands__brand_id__agent_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/agent/runs/{run_id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply Run */
+        post: operations["apply_run_brands__brand_id__agent_runs__run_id__apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/agent/runs/{run_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop Run */
+        post: operations["stop_run_brands__brand_id__agent_runs__run_id__stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/agent/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Agent Status */
+        get: operations["agent_status_brands__brand_id__agent_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/brands/{brand_id}/ai/generate": {
         parameters: {
             query?: never;
@@ -1478,6 +1598,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/janus/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Janus Update
+         * @description Ask Coolify to rebuild the Janus service from its latest main branch.
+         */
+        post: operations["janus_update_settings_janus_update_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings/zernio/webhook": {
         parameters: {
             query?: never;
@@ -1607,6 +1747,93 @@ export interface components {
             id: number | null;
             /** Name */
             name: string;
+        };
+        /** AgentApplyIn */
+        AgentApplyIn: {
+            /** Post Indexes */
+            post_indexes?: number[] | null;
+            /** Schedule */
+            schedule?: boolean | null;
+        };
+        /** AgentApplyOut */
+        AgentApplyOut: {
+            /** Created */
+            created: number;
+            /** Post Ids */
+            post_ids: number[];
+            /** Voice Applied */
+            voice_applied: boolean;
+        };
+        /** AgentRunIn */
+        AgentRunIn: {
+            /**
+             * Kind
+             * @default ask
+             * @enum {string}
+             */
+            kind: "ask" | "weekly_plan" | "voice" | "repurpose" | "report";
+            /** Prompt */
+            prompt?: string | null;
+        };
+        /** AgentRunOut */
+        AgentRunOut: {
+            /** Applied At */
+            applied_at: string | null;
+            /** Created At */
+            created_at: string | null;
+            /** Error */
+            error: string | null;
+            /** Events */
+            events: {
+                [key: string]: unknown;
+            }[];
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: number;
+            /** Janus Run Id */
+            janus_run_id: string | null;
+            /** Kind */
+            kind: string;
+            /** Output */
+            output: string | null;
+            /** Posts */
+            posts: number;
+            /** Prompt */
+            prompt: string;
+            /** Proposal */
+            proposal: {
+                [key: string]: unknown;
+            };
+            /** Status */
+            status: string;
+            /** Summary */
+            summary: string;
+            /** Updated At */
+            updated_at: string | null;
+            /** Usage */
+            usage: {
+                [key: string]: unknown;
+            };
+            user: components["schemas"]["Actor"] | null;
+        };
+        /** AgentStatusOut */
+        AgentStatusOut: {
+            /** Base Url */
+            base_url: string | null;
+            /** Can Update */
+            can_update: boolean;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            /** Configured */
+            configured: boolean;
+            /** Healthy */
+            healthy: boolean;
+            /** Version */
+            version: string | null;
         };
         /** AiPlanIn */
         AiPlanIn: {
@@ -2607,6 +2834,11 @@ export interface components {
             drafts: number;
             /** Failed */
             failed: number;
+            /**
+             * Plan Ready
+             * @default 0
+             */
+            plan_ready: number;
         };
         /** PaletteItem */
         PaletteItem: {
@@ -2695,6 +2927,26 @@ export interface components {
             /** Scheduled At */
             scheduled_at?: string | null;
         };
+        /** PlanOut */
+        PlanOut: {
+            /** Posts */
+            posts: components["schemas"]["PostOut"][];
+            run: components["schemas"]["AgentRunOut"] | null;
+        };
+        /** PlanScheduleIn */
+        PlanScheduleIn: {
+            /** Post Ids */
+            post_ids?: number[] | null;
+        };
+        /** PlanScheduleOut */
+        PlanScheduleOut: {
+            /** Message */
+            message: string;
+            /** Problems */
+            problems: string[];
+            /** Scheduled */
+            scheduled: number;
+        };
         /** PlatformOut */
         PlatformOut: {
             /** Configured */
@@ -2737,6 +2989,8 @@ export interface components {
         };
         /** PostOut */
         PostOut: {
+            /** Agent Run Id */
+            agent_run_id?: number | null;
             /** Author Id */
             author_id: number | null;
             /** Campaign Id */
@@ -2765,6 +3019,8 @@ export interface components {
             notes: string | null;
             /** Pillar Id */
             pillar_id?: number | null;
+            /** Proposed For */
+            proposed_for?: string | null;
             /** Recycle Every Days */
             recycle_every_days?: number | null;
             /** Recycled From Id */
@@ -3768,6 +4024,273 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActivityPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plan_brands__brand_id__agent_plan_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    schedule_plan_brands__brand_id__agent_plan_schedule_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanScheduleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanScheduleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_brands__brand_id__agent_runs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_run_brands__brand_id__agent_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentRunIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_brands__brand_id__agent_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_run_brands__brand_id__agent_runs__run_id__apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentApplyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentApplyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_run_brands__brand_id__agent_runs__run_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    agent_status_brands__brand_id__agent_status_get: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentStatusOut"];
                 };
             };
             /** @description Validation Error */
@@ -7229,6 +7752,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    janus_update_settings_janus_update_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

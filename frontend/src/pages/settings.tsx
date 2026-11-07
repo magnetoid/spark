@@ -5,6 +5,7 @@ import { Check, Copy, KeyRound, Plug, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { readTheme, setTheme, useBrand, usePerms, useWorkspace, type ThemeMode } from "@/app/session";
 import { MembersSection } from "@/features/collab/panels";
+import { AgentSection, JanusSection } from "@/features/agent/panels";
 import { GuardrailsSection, PillarsSection } from "@/features/planning/panels";
 import { useAccounts } from "@/features/posts/api";
 import { PlatformMark, platformLabel } from "@/lib/platforms";
@@ -96,6 +97,7 @@ function BrandTab() {
           {isOwner && <Button type="submit" disabled={update.isPending}>Save brand settings</Button>}
           {!isOwner && <p className="text-xs text-ink-2">Only owners change brand settings.</p>}
         </form>
+        <AgentSection />
         <PillarsSection />
         <GuardrailsSection />
         {isOwner && <MembersSection />}
@@ -246,7 +248,7 @@ function ConnectorDetail({ connectorKey, onBack }: { connectorKey: string; onBac
     }
     save.mutate({ key: data.key, body: { values, clear } }, { onSuccess: () => setClear([]) });
   };
-  const extra = data.extra as { mcp_url?: string; tools?: { name: string; summary: string }[]; apps?: { label: string; configured: boolean; env: string }[]; redirect_base?: string; accounts?: number; webhook?: Record<string, unknown> | null };
+  const extra = data.extra as { mcp_url?: string; tools?: { name: string; summary: string }[]; apps?: { label: string; configured: boolean; env: string }[]; redirect_base?: string; accounts?: number; webhook?: Record<string, unknown> | null; janus?: Record<string, unknown> | null };
   return (
     <div>
       <button type="button" onClick={onBack} className="text-sm text-ink-2 hover:underline">← All connectors</button>
@@ -294,6 +296,7 @@ function ConnectorDetail({ connectorKey, onBack }: { connectorKey: string; onBac
               )}
             </section>
           )}
+          {data.key === "janus" && <JanusSection info={extra.janus} />}
           {data.key === "mcp" && <McpSection mcpUrl={extra.mcp_url ?? ""} tools={extra.tools ?? []} />}
           {data.key === "direct" && (
             <section className="rounded-card border border-line bg-surface">

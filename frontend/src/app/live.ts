@@ -7,7 +7,8 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const KINDS: Record<string, string[][]> = {
-  posts: [["posts"], ["post"], ["queue"], ["today"], ["campaigns"], ["ideas"]],
+  posts: [["posts"], ["post"], ["queue"], ["today"], ["campaigns"], ["ideas"], ["plan"]],
+  agent: [["agent-runs"], ["agent-run"], ["plan"], ["today"], ["activity"], ["session"]],
   accounts: [["accounts"], ["queue"], ["session"], ["platforms"]],
   inbox: [["inbox"], ["comments"]],
 };

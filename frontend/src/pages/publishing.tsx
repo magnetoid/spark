@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReviewLinksBar } from "@/features/collab/panels";
+import { PlanView } from "@/features/agent/panels";
 import { ImportCsvButton } from "@/features/planning/panels";
 import { useComposer } from "@/features/composer/composer-host";
 import { useAccounts, useCampaigns, usePostActions, usePosts, useQueue, type AccountOut, type PostOut, type QueueOut } from "@/features/posts/api";
@@ -19,7 +20,7 @@ import { PlatformMark, platformLabel } from "@/lib/platforms";
 import { addDays, fmtDateTime, fmtDay, fmtTime, fromLocalInput, startOfWeek, toLocalInput, todayKey, zonedDateKey } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-const VIEWS = [["queue", "Queue"], ["calendar", "Calendar"], ["drafts", "Drafts"], ["approvals", "Approvals"], ["sent", "Sent"], ["failed", "Failed"]] as const;
+const VIEWS = [["queue", "Queue"], ["calendar", "Calendar"], ["plan", "Plan"], ["drafts", "Drafts"], ["approvals", "Approvals"], ["sent", "Sent"], ["failed", "Failed"]] as const;
 type View = (typeof VIEWS)[number][0];
 
 export function PublishingPage() {
@@ -45,6 +46,7 @@ export function PublishingPage() {
         <EmptyState icon={CalendarDays} title="No channels connected yet" body="Connect a social account and the queue fills with your posting slots."
                     action={<Button asChild size="sm"><Link to="/channels" search={(p) => p}>Connect a channel</Link></Button>} />
       ) : view === "queue" ? <QueueView accounts={accounts} accountParam={search.account} onAccount={(id) => setSearch({ account: String(id) })} />
+        : view === "plan" ? <PlanView />
         : view === "calendar" ? <CalendarView accounts={accounts} mode={search.cal === "week" ? "week" : "month"} monthKey={search.month} campaign={search.campaign} onChange={setSearch} />
         : <ListView status={view === "drafts" ? "draft" : view === "approvals" ? "pending_approval" : view === "failed" ? "failed" : "published"} />}
     </>

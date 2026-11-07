@@ -68,6 +68,21 @@ CONNECTORS: tuple[Connector, ...] = (
         required=("zernio_api_key",), tags=("Publishing", "Inbox", "Analytics"),
     ),
     Connector(
+        key="janus", name="Janus agent", tagline="Plans the week, learns the voice, answers “Ask Spark”",
+        description="Your Janus Agent (github.com/magnetoid/Janus-Agent) runs as its own service next to Spark and "
+                    "reads Spark through MCP. It proposes; people approve. Point Spark at its address and API key. "
+                    "The update webhook lets Spark rebuild Janus from its latest main branch.",
+        docs="https://github.com/magnetoid/Janus-Agent",
+        fields=(
+            Field("janus_base_url", "Address", placeholder="http://janus:8642", help="Where Spark reaches Janus; inside Coolify use the service name."),
+            Field("janus_api_key", "API key", "secret", help="The API_SERVER_KEY the Janus service was started with."),
+            Field("janus_update_webhook", "Update webhook", "secret", placeholder="https://coolify…/api/v1/deploy?uuid=…&force=true",
+                  help="Coolify → Janus app → Webhooks. “Update now” and the weekly GitHub Action call it."),
+            Field("janus_update_token", "Update token", "secret", help="Coolify API token sent as a Bearer with the webhook, if it needs one."),
+        ),
+        required=("janus_base_url", "janus_api_key"), tags=("Agent", "Planning", "Voice"),
+    ),
+    Connector(
         key="anthropic", name="Claude AI", tagline="Writes, rewrites and plans posts in your brand voice",
         description="Powers Generate, Rewrite, hashtags, campaign plans and email drafts. Uses your "
                     "Anthropic API key; nothing is sent until someone presses an AI button.",
@@ -247,6 +262,14 @@ async def test(connector: Connector, user_email: str | None = None) -> tuple[boo
             profiles = (await z._req("GET", "/profiles")).json().get("profiles", [])
             accounts = await z.list_accounts()
             return True, f"Zernio answered: {len(profiles)} profile(s), {len(accounts)} connected account(s)"
+        if connector.key == "janus":
+            from spark.services.janus import Janus
+
+            j = Janus()
+            if not await j.health():
+                return False, f"Janus at {j.base_url} did not answer /health"
+            v = await j.version()
+            return True, f"Janus answered: healthy{', version ' + v if v else ''}"
         if connector.key == "anthropic":
             import anthropic
 

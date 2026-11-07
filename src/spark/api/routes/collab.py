@@ -379,10 +379,14 @@ async def _review_posts(db: AsyncSession, link: ShareLink) -> list[Post]:
     if ids:
         q = q.where(Post.id.in_(ids))
     else:
-        # everything that waits for approval, plus what is already scheduled ahead, so the client sees the plan
+        # everything that waits for approval, what is already scheduled ahead (so the client sees the
+        # plan), and the posts this link sent back for changes, so the reviewer sees their note landed
         now = datetime.now(UTC)
+        asked = select(PostComment.post_id).where(PostComment.share_link_id == link.id)
         q = q.where(
-            (Post.status == PostStatus.pending_approval) | ((Post.status == PostStatus.scheduled) & (Post.scheduled_at >= now))
+            (Post.status == PostStatus.pending_approval)
+            | ((Post.status == PostStatus.scheduled) & (Post.scheduled_at >= now))
+            | Post.id.in_(asked)
         )
     rows = (await db.execute(q)).scalars().all()
     order = {PostStatus.pending_approval: 0, PostStatus.scheduled: 1, PostStatus.draft: 2}

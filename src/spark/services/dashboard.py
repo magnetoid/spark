@@ -42,7 +42,10 @@ async def today(db: AsyncSession, brand: Brand) -> dict:
             Post.brand_id == brand.id, Post.is_autosave.is_(False), Post.status == status)) or 0
 
     needs_you = {"approvals": await count(PostStatus.pending_approval), "failed": await count(PostStatus.failed),
-                 "drafts": await count(PostStatus.draft)}
+                 "drafts": await count(PostStatus.draft),
+                 "plan_ready": await db.scalar(select(func.count(Post.id)).where(
+                     Post.brand_id == brand.id, Post.is_autosave.is_(False), Post.status == PostStatus.draft,
+                     Post.agent_run_id.is_not(None))) or 0}
 
     data = await analytics.overview(db, brand.id, days=7)
     prev = await analytics.compare(db, brand.id, days=7)
