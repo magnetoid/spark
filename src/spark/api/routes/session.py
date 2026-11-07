@@ -17,8 +17,9 @@ from spark.api.schemas import (
 )
 from spark.config import get_settings
 from spark.db import get_db
-from spark.models import Brand, Role, User
+from spark.models import Role, User
 from spark.security import hash_password, verify_password
+from spark.services import access
 
 router = APIRouter(tags=["session"])
 ALLOWED_PREFS = {"onboarding_dismissed", "default_action", "shortcuts", "notify_failed", "notify_approvals",
@@ -26,12 +27,12 @@ ALLOWED_PREFS = {"onboarding_dismissed", "default_action", "shortcuts", "notify_
 
 
 async def _session(request: Request, db: AsyncSession, user: User | None) -> SessionOut:
-    brands = (await db.execute(select(Brand).order_by(Brand.name))).scalars().all() if user else []
+    brands = await access.visible_brands(db, user) if user else []
     needs_setup = not await db.scalar(select(func.count(User.id)))
     s = get_settings()
     return SessionOut(
         user=UserOut.of(user) if user else None, csrf_token=deps.new_csrf(request),
-        brands=[BrandOut.of(b, user.role.value) for b in brands], needs_setup=needs_setup,
+        brands=[BrandOut.of(b, role) for b, role in brands], needs_setup=needs_setup,
         features={"ai": bool(s.anthropic_api_key), "zernio": bool(s.zernio_api_key),
                   "email": s.email_backend != "console"},
     )

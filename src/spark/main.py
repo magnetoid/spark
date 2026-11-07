@@ -23,7 +23,7 @@ SPA_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inli
 RATE_LIMITS = {  # path prefix -> (methods, requests, per_seconds)
     "/l/": ({"GET"}, 120, 60), "/b/": ({"GET", "POST"}, 60, 60), "/e/": ({"GET", "POST"}, 120, 60),
     "/webhooks/": ({"POST"}, 600, 60), "/mcp": ({"GET", "POST", "DELETE"}, 240, 60),
-    "/api/v1/auth/": ({"POST"}, 10, 60),
+    "/api/v1/auth/": ({"POST"}, 10, 60), "/api/v1/public/": ({"GET", "POST"}, 120, 60),
 }
 _buckets: dict[tuple[str, str], list] = {}
 _clock = __import__("time").monotonic  # tests freeze this so refills don't depend on machine speed

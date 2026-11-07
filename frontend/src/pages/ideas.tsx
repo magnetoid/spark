@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { GripVertical, Lightbulb, MoreHorizontal, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { useBrand, useSession } from "@/app/session";
+import { useBrand, usePerms, useSession } from "@/app/session";
 import { EmptyState, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -30,7 +30,7 @@ export function IdeasPage() {
   const qc = useQueryClient();
   const composer = useComposer();
   const { data: session } = useSession();
-  const canEdit = session?.user?.role !== "viewer";
+  const { canEdit } = usePerms();
   const invalidate = () => qc.invalidateQueries({ queryKey: keys.ideas(brand.id) });
   const bp = (idea_id: number) => ({ params: { path: { brand_id: brand.id, idea_id } } });
 

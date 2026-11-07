@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Copy, ExternalLink, GripVertical, Link2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useBrand, useSession } from "@/app/session";
+import { useBrand, usePerms } from "@/app/session";
 import { EmptyState, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,8 +41,7 @@ function ShortLinks() {
   const { data: campaigns = [] } = useCampaigns(brand.id);
   const create = useCreateLink(brand.id);
   const remove = useDeleteLink(brand.id);
-  const { data: session } = useSession();
-  const canEdit = session?.user?.role !== "viewer";
+  const { canEdit } = usePerms();
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -113,8 +112,7 @@ function BioForm({ data }: { data: BioOut }) {
   const { data: lists = [] } = useLists(brand.id);
   const { data: media } = useMedia(brand.id);
   const save = useSaveBio(brand.id);
-  const { data: session } = useSession();
-  const canEdit = session?.user?.role !== "viewer";
+  const { canEdit } = usePerms();
   const [links, setLinks] = useState<BioLinkRow[]>(() => data.links);
   const images = media?.items.filter((m) => !m.is_video) ?? [];
   const submit = (e: FormEvent<HTMLFormElement>) => {

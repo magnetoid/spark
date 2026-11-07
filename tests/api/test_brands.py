@@ -1,6 +1,6 @@
 from sqlalchemy import select
 
-from spark.models import QueueSlot, Role, User
+from spark.models import BrandMember, QueueSlot, Role, User
 from tests.api.conftest import API
 
 
@@ -20,9 +20,10 @@ async def test_list_create_and_update_brands(api, db):
     assert (await api.get(f"{API}/brands/999")).status_code == 404
 
 
-async def test_viewers_cannot_change_brands(api, db):
+async def test_viewers_cannot_change_brands(api, db, brand):
     user = await db.scalar(select(User))
     user.role = Role.viewer
+    db.add(BrandMember(brand_id=brand.id, user_id=user.id, role="viewer"))  # non-owners see only the brands they belong to
     await db.commit()
     brand_id = (await api.get(f"{API}/brands")).json()[0]["id"]
     assert (await api.get(f"{API}/brands/{brand_id}/accounts")).status_code == 200

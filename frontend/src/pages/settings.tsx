@@ -3,7 +3,8 @@ import { useState, type FormEvent } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Check, Copy, KeyRound, Plug, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { readTheme, setTheme, useBrand, useWorkspace, type ThemeMode } from "@/app/session";
+import { readTheme, setTheme, useBrand, usePerms, useWorkspace, type ThemeMode } from "@/app/session";
+import { MembersSection } from "@/features/collab/panels";
 import { PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -49,8 +50,8 @@ function BrandTab() {
   const { user, brands } = useWorkspace();
   const update = useUpdateBrand(brand.id);
   const remove = useDeleteBrand();
-  const isOwner = user.role === "owner";
-  const canEdit = user.role !== "viewer";
+  const { canManage: isOwner, canEdit } = usePerms();
+  const isWorkspaceOwner = user.role === "owner";
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -92,7 +93,8 @@ function BrandTab() {
           {isOwner && <Button type="submit" disabled={update.isPending}>Save brand settings</Button>}
           {!isOwner && <p className="text-xs text-ink-2">Only owners change brand settings.</p>}
         </form>
-        {isOwner && <TeamSection />}
+        {isOwner && <MembersSection />}
+        {isWorkspaceOwner && <TeamSection />}
         {isOwner && brands.length > 1 && (
           <section className="rounded-card border border-st-failed/40 bg-surface p-5">
             <h3 className="font-semibold">Delete this brand</h3>
@@ -102,7 +104,7 @@ function BrandTab() {
         )}
       </div>
       <aside className="space-y-4 text-sm">
-        <div className="space-y-2 rounded-card border border-line bg-surface p-4"><h3 className="font-semibold">Roles</h3><p className="text-ink-2"><b>Owners</b> approve posts, manage the team and connectors. <b>Editors</b> write and schedule. <b>Viewers</b> read.</p>{canEdit && <p className="text-ink-2">Everyone sees every brand for now; per-brand access is on the way.</p>}</div>
+        <div className="space-y-2 rounded-card border border-line bg-surface p-4"><h3 className="font-semibold">Roles</h3><p className="text-ink-2">Roles are per brand. <b>Owners</b> approve posts, manage members and connectors. <b>Editors</b> write and schedule. <b>Viewers</b> read. <b>Clients</b> see only their brand and approve posts.</p>{canEdit && <p className="text-ink-2">Workspace owners see every brand without being added.</p>}</div>
       </aside>
     </div>
   );
@@ -160,8 +162,7 @@ function TimesTab() {
   const { data = [], isPending } = useSlots(brand.id);
   const add = useAddSlots(brand.id);
   const remove = useDeleteSlot(brand.id);
-  const { user } = useWorkspace();
-  const canEdit = user.role !== "viewer";
+  const { canEdit } = usePerms();
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <section className="rounded-card border border-line bg-surface p-5 lg:col-span-2">

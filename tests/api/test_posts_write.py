@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
-from spark.models import Post, PostStatus, QueueSlot, Role, SocialAccount, User
+from spark.models import BrandMember, Post, PostStatus, QueueSlot, Role, SocialAccount, User
 from tests.api.conftest import API
 
 
@@ -61,6 +61,8 @@ async def test_approve_retry_move_and_roles(api, db, brand):
     user = await db.scalar(select(User))
     brand.require_approval = True
     user.role = Role.editor
+    member = BrandMember(brand_id=bid, user_id=user.id, role="editor")  # non-owners act through their membership
+    db.add(member)
     await db.commit()
     r = await api.post(f"{API}/brands/{bid}/posts", json=_body(acc, action="now"))
     pid = r.json()["post"]["id"]
@@ -89,6 +91,7 @@ async def test_approve_retry_move_and_roles(api, db, brand):
     assert r.status_code == 422 and "past" in r.json()["detail"]
 
     user.role = Role.viewer
+    member.role = "viewer"
     await db.commit()
     assert (await api.post(f"{API}/brands/{bid}/posts", json=_body(acc))).status_code == 403
 

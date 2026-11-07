@@ -176,6 +176,7 @@ class PostOut(Out):
     created_at: datetime | None
     updated_at: datetime | None
     targets: list[TargetOut]
+    comment_count: int = 0
 
     @classmethod
     def of(cls, p: Post) -> PostOut:
@@ -836,3 +837,110 @@ class PaletteItem(BaseModel):
     to: str | None = None
     action: str | None = None
     params: dict[str, Any] = {}
+
+
+
+# ---- phase 6: collaboration ----------------------------------------------------------------
+MemberRole = Literal["owner", "editor", "viewer", "client"]
+
+
+class MemberIn(BaseModel):
+    email: EmailStr
+    role: MemberRole = "editor"
+    name: str | None = None  # with password: create the user when the email is unknown
+    password: str | None = Field(default=None, min_length=8)
+
+
+class MemberUpdate(BaseModel):
+    role: MemberRole
+
+
+class MemberOut(BaseModel):
+    id: int | None  # None for workspace owners, who are members of every brand without a row
+    user_id: int
+    name: str
+    email: str
+    role: str
+    is_active: bool
+    workspace_owner: bool = False
+
+
+class Actor(BaseModel):
+    id: int | None
+    name: str
+
+
+class ActivityOut(BaseModel):
+    id: int
+    actor: Actor
+    verb: str
+    object_type: str
+    object_id: int | None
+    summary: str
+    data: dict[str, Any]
+    created_at: datetime
+
+
+class ActivityPage(BaseModel):
+    items: list[ActivityOut]
+
+
+class CommentIn(BaseModel):
+    body: str
+
+
+class CommentOut(BaseModel):
+    id: int
+    author: Actor
+    body: str
+    kind: str
+    created_at: datetime | None
+
+
+class ShareLinkIn(BaseModel):
+    days: int = Field(14, ge=1, le=90)
+    post_ids: list[int] | None = None
+
+
+class ShareLinkOut(BaseModel):
+    id: int
+    kind: str
+    prefix: str
+    url_hint: str
+    expires_at: datetime | None
+    created_at: datetime | None
+    last_used_at: datetime | None
+    posts: int | None
+
+
+class ShareLinkCreated(ShareLinkOut):
+    token: str
+    url: str
+
+
+class ReviewChannel(BaseModel):
+    platform: str
+    handle: str
+
+
+class ReviewPost(BaseModel):
+    id: int
+    content: str
+    link: str | None
+    status: str
+    scheduled_at: datetime | None
+    media: list[str]
+    channels: list[ReviewChannel]
+    comments: list[CommentOut]
+
+
+class ReviewPage(BaseModel):
+    brand: dict[str, str]
+    timezone: str
+    expires_at: datetime | None
+    posts: list[ReviewPost]
+
+
+class ReviewAction(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    body: str | None = None

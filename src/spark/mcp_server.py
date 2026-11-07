@@ -75,17 +75,22 @@ class _Session:
         await self.db.__aexit__(*exc)
 
 
-def _need(user: User, level: Literal["edit", "approve"]) -> None:
-    if level == "edit" and not user.can_edit():
-        raise ToolError("Your role is viewer: you can read but not change posts.")
-    if level == "approve" and not user.can_approve():
-        raise ToolError("Only owners can approve posts.")
+async def _need(db: AsyncSession, user: User, brand: Brand, level: Literal["edit", "approve"]) -> None:
+    from spark.services import access
+
+    role = await access.role_for(db, user, brand.id)
+    if level == "edit" and not access.can_edit(role):
+        raise ToolError(f"Your role on {brand.name} is {role or 'none'}: you can read but not change posts.")
+    if level == "approve" and not access.can_approve(role):
+        raise ToolError("Only owners and clients approve posts.")
 
 
-async def _brand(db: AsyncSession, ref: str | None) -> Brand:
-    brands = (await db.execute(select(Brand).order_by(Brand.id))).scalars().all()
+async def _brand(db: AsyncSession, ref: str | None, user: User) -> Brand:
+    from spark.services.access import visible_brands
+
+    brands = [b for b, _role in await visible_brands(db, user)]
     if not brands:
-        raise ToolError("No brands yet. Create one in Spark first.")
+        raise ToolError("No brands you can see. Ask an owner to add you to one in Spark.")
     if not ref:
         if len(brands) == 1:
             return brands[0]
@@ -168,9 +173,11 @@ async def _pick_channels(db: AsyncSession, brand: Brand, refs: list[str] | None)
     return picked
 
 
-async def _get_post(db: AsyncSession, post_id: int) -> tuple[Post, Brand]:
+async def _get_post(db: AsyncSession, post_id: int, user: User) -> tuple[Post, Brand]:
+    from spark.services.access import role_for
+
     p = await db.get(Post, post_id)
-    if not p or p.is_autosave:
+    if not p or p.is_autosave or await role_for(db, user, p.brand_id) is None:
         raise ToolError(f"No post #{post_id}")
     return p, await db.get(Brand, p.brand_id)
 
@@ -207,8 +214,8 @@ async def list_brands(ctx: Context) -> dict:
 @server.tool(annotations=READ)
 async def list_channels(ctx: Context, brand: BrandArg = None) -> dict:
     """List a brand's social channels (accounts): id, platform, handle and whether they can post."""
-    async with _Session(ctx) as (db, _user):
-        b = await _brand(db, brand)
+    async with _Session(ctx) as (db, user):
+        b = await _brand(db, brand, user)
         return {"brand": b.slug, "channels": [_account(a) for a in await _accounts(db, b)]}
 
 
@@ -222,8 +229,8 @@ async def list_posts(
     limit: Annotated[int, Field(ge=1, le=100)] = 20,
 ) -> dict:
     """List a brand's posts, newest first; scheduled posts are ordered by their time."""
-    async with _Session(ctx) as (db, _user):
-        b = await _brand(db, brand)
+    async with _Session(ctx) as (db, user):
+        b = await _brand(db, brand, user)
         q = select(Post).where(Post.brand_id == b.id, Post.is_autosave.is_(False))
         if status:
             q = q.where(Post.status == PostStatus(status))
@@ -240,8 +247,8 @@ async def list_posts(
 @server.tool(annotations=READ)
 async def get_post(ctx: Context, post_id: int) -> dict:
     """Get one post with its per-channel status, published links and errors."""
-    async with _Session(ctx) as (db, _user):
-        p, b = await _get_post(db, post_id)
+    async with _Session(ctx) as (db, user):
+        p, b = await _get_post(db, post_id, user)
         return _post(p, b)
 
 
@@ -260,8 +267,8 @@ async def create_post(
 ) -> dict:
     """Create a post for one or more channels and draft, queue, schedule or publish it."""
     async with _Session(ctx) as (db, user):
-        _need(user, "edit")
-        b = await _brand(db, brand)
+        b = await _brand(db, brand, user)
+        await _need(db, user, b, "edit")
         accounts = await _pick_channels(db, b, channels)
         post = await post_svc.save_post(
             db, b, user, None, content=content, link=(link or "").strip() or None, media_ids=[],
@@ -287,8 +294,8 @@ async def reschedule_post(
 ) -> dict:
     """Move a draft or scheduled post: back into the queue, to the front, to a time, or publish now."""
     async with _Session(ctx) as (db, user):
-        _need(user, "edit")
-        p, b = await _get_post(db, post_id)
+        p, b = await _get_post(db, post_id, user)
+        await _need(db, user, b, "edit")
         if p.status in (PostStatus.publishing, PostStatus.published):
             raise ToolError(f"Post #{p.id} is {p.status.value} and can't be rescheduled")
         msg = await _place(db, p, b, user, action, scheduled_at)
@@ -301,8 +308,8 @@ async def reschedule_post(
 async def move_to_drafts(ctx: Context, post_id: int) -> dict:
     """Take a scheduled or pending post out of the queue and keep it as a draft."""
     async with _Session(ctx) as (db, user):
-        _need(user, "edit")
-        p, b = await _get_post(db, post_id)
+        p, b = await _get_post(db, post_id, user)
+        await _need(db, user, b, "edit")
         if p.status in (PostStatus.publishing, PostStatus.published):
             raise ToolError(f"Post #{p.id} is {p.status.value}")
         scheduler.unschedule(p)
@@ -314,8 +321,8 @@ async def move_to_drafts(ctx: Context, post_id: int) -> dict:
 async def approve_post(ctx: Context, post_id: int) -> dict:
     """Approve a post that waits for approval (owners only). It then publishes at its scheduled time."""
     async with _Session(ctx) as (db, user):
-        _need(user, "approve")
-        p, b = await _get_post(db, post_id)
+        p, b = await _get_post(db, post_id, user)
+        await _need(db, user, b, "approve")
         if p.status != PostStatus.pending_approval:
             raise ToolError(f"Post #{p.id} is {p.status.value}, not waiting for approval")
         scheduler.approve(p)
@@ -328,8 +335,8 @@ async def approve_post(ctx: Context, post_id: int) -> dict:
 async def retry_post(ctx: Context, post_id: int) -> dict:
     """Retry the channels of a post that failed to publish."""
     async with _Session(ctx) as (db, user):
-        _need(user, "edit")
-        p, b = await _get_post(db, post_id)
+        p, b = await _get_post(db, post_id, user)
+        await _need(db, user, b, "edit")
         n = post_svc.retry_failed(p)
         if not n:
             raise ToolError(f"Post #{p.id} has no failed channels")
@@ -344,8 +351,8 @@ async def list_ideas(
     status: Annotated[Literal["idea", "drafting", "ready", "done"] | None, Field(description="Board column")] = None,
 ) -> dict:
     """List the brand's content ideas (the Ideas board)."""
-    async with _Session(ctx) as (db, _user):
-        b = await _brand(db, brand)
+    async with _Session(ctx) as (db, user):
+        b = await _brand(db, brand, user)
         q = select(Idea).where(Idea.brand_id == b.id)
         if status:
             q = q.where(Idea.status == status)
@@ -366,8 +373,8 @@ async def add_idea(
 ) -> dict:
     """Add an idea to the brand's Ideas board (first column)."""
     async with _Session(ctx) as (db, user):
-        _need(user, "edit")
-        b = await _brand(db, brand)
+        b = await _brand(db, brand, user)
+        await _need(db, user, b, "edit")
         top = await db.scalar(select(func.min(Idea.position)).where(Idea.brand_id == b.id, Idea.status == "idea"))
         idea = Idea(brand_id=b.id, author_id=user.id, title=title.strip(), body=(body or "").strip() or None,
                     tags=[t.strip().lstrip("#") for t in (tags or []) if t.strip()][:20],
@@ -385,8 +392,8 @@ async def get_analytics(
     """Totals for the last N days (impressions, engagements, clicks, followers), change vs the period before, and top posts."""
     from spark.services import analytics
 
-    async with _Session(ctx) as (db, _user):
-        b = await _brand(db, brand)
+    async with _Session(ctx) as (db, user):
+        b = await _brand(db, brand, user)
         data = await analytics.overview(db, b.id, days)
         prev = await analytics.compare(db, b.id, days)
         return {
@@ -407,8 +414,8 @@ async def get_analytics(
 async def best_posting_times(ctx: Context, brand: BrandArg = None) -> dict:
     """The weekday/hour slots (brand timezone) where past posts got the best engagement rate."""
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    async with _Session(ctx) as (db, _user):
-        b = await _brand(db, brand)
+    async with _Session(ctx) as (db, user):
+        b = await _brand(db, brand, user)
         ranked = await scheduler.best_times(db, b.id)
         return {"brand": b.slug, "timezone": b.timezone,
                 "slots": [{"day": days[r["weekday"]], "hour": f"{r['hour']:02d}:00", "posts": r["posts"],
@@ -428,8 +435,8 @@ async def write_posts(
     from spark.services.ai import AIUnavailable, ContentAI
 
     async with _Session(ctx) as (db, user):
-        _need(user, "edit")
-        b = await _brand(db, brand)
+        b = await _brand(db, brand, user)
+        await _need(db, user, b, "edit")
         plats = platforms or sorted({a.platform for a in await _accounts(db, b) if a.is_active}) or ["x"]
         try:
             drafts = await ContentAI().generate(b, brief, plats, variants=variants)

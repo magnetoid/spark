@@ -11,6 +11,7 @@ class Role(enum.StrEnum):
     owner = "owner"
     editor = "editor"
     viewer = "viewer"
+    client = "client"  # per-brand only: reads and approves
 
 
 class User(TimestampMixin, Base):

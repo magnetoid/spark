@@ -16,8 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spark.api.errors import ApiError, forbidden, login_required, not_found
 from spark.db import get_db
-from spark.models import Brand, Role, User
-from spark.services import tokens
+from spark.models import Brand, User
+from spark.services import access, tokens
 from spark.web.deps import (  # the session cookie's CSRF token, shared with the public bio form
     CSRF_KEY,
     csrf_token,
@@ -81,20 +81,24 @@ async def owner(user: User = Depends(current_user)) -> User:
 class BrandCtx:
     brand: Brand
     user: User
-    role: Role  # the user's role within this brand (global today; per-brand membership later)
+    role: str  # the user's role within this brand: owner, editor, viewer or client
 
     def can_edit(self) -> bool:
-        return self.role in (Role.owner, Role.editor)
+        return access.can_edit(self.role)
 
     def can_approve(self) -> bool:
-        return self.role == Role.owner
+        return access.can_approve(self.role)
+
+    def can_manage(self) -> bool:
+        return access.can_manage(self.role)
 
 
 async def brand_ctx(brand_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(current_user)) -> BrandCtx:
     brand = await db.get(Brand, brand_id)
-    if brand is None:
-        raise not_found("No such brand")
-    return BrandCtx(brand=brand, user=user, role=user.role)
+    role = await access.role_for(db, user, brand_id) if brand else None
+    if brand is None or role is None:
+        raise not_found("No such brand")  # not a member: the brand does not exist for this user
+    return BrandCtx(brand=brand, user=user, role=role)
 
 
 async def editor_brand(ctx: BrandCtx = Depends(brand_ctx)) -> BrandCtx:
@@ -103,8 +107,14 @@ async def editor_brand(ctx: BrandCtx = Depends(brand_ctx)) -> BrandCtx:
     return ctx
 
 
-async def owner_brand(ctx: BrandCtx = Depends(brand_ctx)) -> BrandCtx:
+async def approver_brand(ctx: BrandCtx = Depends(brand_ctx)) -> BrandCtx:
     if not ctx.can_approve():
+        raise forbidden("Owners and clients approve")
+    return ctx
+
+
+async def owner_brand(ctx: BrandCtx = Depends(brand_ctx)) -> BrandCtx:
+    if not ctx.can_manage():
         raise forbidden("Owners only")
     return ctx
 

@@ -28,7 +28,7 @@ from spark.api.schemas import (
 )
 from spark.db import get_db
 from spark.models import Idea, Post, PostStatus, PostTarget
-from spark.services import events, scheduler
+from spark.services import activity, events, scheduler
 from spark.services import posts as svc
 from spark.services.publisher import as_utc
 
@@ -110,13 +110,19 @@ async def list_posts(
 
 @router.get(B + "/posts/{post_id}", response_model=PostOut)
 async def get_post(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)):
-    return PostOut.of(await _post(db, ctx, post_id, allow_autosave=True))
+    from spark.models import PostComment
+
+    post = await _post(db, ctx, post_id, allow_autosave=True)
+    out = PostOut.of(post)
+    out.comment_count = await db.scalar(select(func.count(PostComment.id)).where(PostComment.post_id == post.id)) or 0
+    return out
 
 
 # ---- write ----------------------------------------------------------------------------------
 async def _save_and_place(db: AsyncSession, ctx: deps.BrandCtx, post: Post | None, body: PostWrite, status_code: int):
     if post is not None and post.status == PostStatus.publishing:
         raise ApiError(409, "publishing", "This post is publishing right now and can't be edited")
+    creating = post is None
     post = await svc.save_post(db, ctx.brand, ctx.user, post, content=body.content, link=body.link,
                                media_ids=body.media_ids, campaign_id=body.campaign_id, notes=body.notes,
                                source=body.source, targets=_targets(body.targets))
@@ -132,6 +138,8 @@ async def _save_and_place(db: AsyncSession, ctx: deps.BrandCtx, post: Post | Non
             idea.post_id = post.id
             if idea.status in ("idea", "drafting"):
                 idea.status = "ready"
+    activity.record(db, ctx.brand.id, ctx.user, "created" if creating else "updated", "post", post.id, post.content[:120],
+                    {"action": body.action, "status": post.status.value})
     await db.commit()
     await svc.enqueue_due(post)
     await events.publish("posts", ctx.brand.id, ids=[post.id])
@@ -155,6 +163,7 @@ async def update_post(post_id: int, body: PostWrite, db: AsyncSession = Depends(
 @router.delete(B + "/posts/{post_id}", status_code=204)
 async def delete_post(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
     post = await _post(db, ctx, post_id, allow_autosave=True)
+    activity.record(db, ctx.brand.id, ctx.user, "deleted", "post", post.id, post.content[:120])
     await db.delete(post)
     await db.commit()
     return Response(status_code=204)
@@ -170,6 +179,7 @@ async def place(post_id: int, body: PlaceIn, db: AsyncSession = Depends(get_db),
     except svc.PlaceError as e:
         await db.commit()
         return _cannot_place(e, post)
+    activity.record(db, ctx.brand.id, ctx.user, "placed", "post", post.id, post.content[:120], {"action": body.action, "status": post.status.value})
     await db.commit()
     await svc.enqueue_due(post)
     await events.publish("posts", ctx.brand.id, ids=[post.id])
@@ -187,13 +197,15 @@ async def unschedule(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps
 
 
 @router.post(B + "/posts/{post_id}/approve", response_model=PostResult)
-async def approve(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.owner_brand)):
+async def approve(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.approver_brand)):
     post = await _post(db, ctx, post_id)
     if post.status != PostStatus.pending_approval:
         raise ApiError(409, "not_pending", f"This post is {post.status.value}, not waiting for approval")
     scheduler.approve(post)
+    activity.record(db, ctx.brand.id, ctx.user, "approved", "post", post.id, post.content[:120])
     await db.commit()
     await svc.enqueue_due(post)
+    await events.publish("posts", ctx.brand.id, ids=[post.id])
     return PostResult(message="Approved and scheduled", post=PostOut.of(post))
 
 
@@ -201,6 +213,8 @@ async def approve(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.Br
 async def retry(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
     post = await _post(db, ctx, post_id)
     n = svc.retry_failed(post)
+    if n:
+        activity.record(db, ctx.brand.id, ctx.user, "retried", "post", post.id, post.content[:120])
     await db.commit()
     await svc.enqueue_due(post)
     return RetryResult(message=f"Retrying {n} channel(s)" if n else "Nothing failed on this post", post=PostOut.of(post), retried=n)

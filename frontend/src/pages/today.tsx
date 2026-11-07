@@ -8,6 +8,7 @@ import { EmptyState, PageHeader, StatusBadge, statusColorVar } from "@/component
 import { PlatformMark } from "@/lib/platforms";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ActivitySection } from "@/features/collab/panels";
 import { useComposer } from "@/features/composer/composer-host";
 
 type Today = components["schemas"]["TodayOut"];
@@ -109,6 +110,7 @@ function TodayBody({ data, tz }: { data: Today; tz: string }) {
           <Link to="/analytics" search={(p) => p} className="mt-3 inline-block text-sm text-ink-2 hover:text-ink hover:underline">Open analytics</Link>
         </section>
       </div>
+      <ActivitySection />
     </div>
   );
 }

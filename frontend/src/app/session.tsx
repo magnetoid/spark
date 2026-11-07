@@ -114,6 +114,16 @@ export function useWorkspace(): WorkspaceValue {
   return v;
 }
 
+export type BrandRole = "owner" | "editor" | "viewer" | "client";
+
+/** What the signed-in user may do in the active brand. Roles are per brand since phase 6;
+ *  a client sees their brand and approves posts, nothing else. */
+export function usePerms() {
+  const { brand } = useWorkspace();
+  const role = (brand?.role ?? "viewer") as BrandRole;
+  return { role, canEdit: role === "owner" || role === "editor", canApprove: role === "owner" || role === "client", canManage: role === "owner" };
+}
+
 /** The active brand, or throws: pages under the shell always have one (the shell redirects otherwise). */
 export function useBrand(): Brand {
   const { brand } = useWorkspace();

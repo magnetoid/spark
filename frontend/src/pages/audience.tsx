@@ -3,7 +3,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Download, Mail, Plus, Sparkles, Trash2, Upload, Users } from "lucide-react";
 import { toast } from "sonner";
-import { useBrand, useSession } from "@/app/session";
+import { useBrand, usePerms, useSession } from "@/app/session";
 import { EmptyState, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -49,8 +49,7 @@ function ContactsTab() {
   const remove = useDeleteContact(brand.id);
   const [adding, setAdding] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const { data: session } = useSession();
-  const canEdit = session?.user?.role !== "viewer";
+  const { canEdit } = usePerms();
 
   const onImport = async (file: File | undefined) => {
     if (!file) return;
@@ -120,8 +119,7 @@ function ListsTab() {
   const { data = [], isPending } = useLists(brand.id);
   const create = useCreateList(brand.id);
   const remove = useDeleteList(brand.id);
-  const { data: session } = useSession();
-  const canEdit = session?.user?.role !== "viewer";
+  const { canEdit } = usePerms();
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="lg:col-span-2">
@@ -151,7 +149,7 @@ function EmailTab() {
   const remove = useDeleteEmail(brand.id);
   const [open, setOpen] = useState<number | null>(null);
   const { data: session } = useSession();
-  const canEdit = session?.user?.role !== "viewer";
+  const { canEdit } = usePerms();
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-3">

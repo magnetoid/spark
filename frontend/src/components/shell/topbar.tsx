@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Menu, Plus, Search } from "lucide-react";
-import { useWorkspace } from "@/app/session";
+import { usePerms, useWorkspace } from "@/app/session";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ const PAGES = [
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { brand, brands, setBrand } = useWorkspace();
+  const { canEdit } = usePerms();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const page = PAGES.find(([, to]) => to === pathname)?.[0] ?? "Spark";
   const [open, setOpen] = useState(false);
@@ -40,7 +41,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         <Search className="size-4" /><span className="flex-1 truncate">Jump to anything…</span>
         <kbd className="hidden rounded border border-line px-1 text-[10px] sm:inline">⌘K</kbd>
       </button>
-      <Button size="sm" onClick={() => composer.open()}><Plus className="size-4" />New post</Button>
+      {canEdit && <Button size="sm" onClick={() => composer.open()}><Plus className="size-4" />New post</Button>}
       <JumpDialog open={open} onOpenChange={setOpen} brands={brands} onBrand={setBrand} brandId={brand?.id ?? null} />
     </header>
   );

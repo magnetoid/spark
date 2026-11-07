@@ -6,11 +6,12 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { ArrowUpToLine, CalendarDays, ChevronLeft, ChevronRight, Copy, GripVertical, Pencil, Plus, Send, Trash2, X } from "lucide-react";
-import { useBrand, useSession } from "@/app/session";
+import { useBrand, usePerms } from "@/app/session";
 import { EmptyState, PageHeader, StatusBadge, statusColorVar } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ReviewLinksBar } from "@/features/collab/panels";
 import { useComposer } from "@/features/composer/composer-host";
 import { useAccounts, useCampaigns, usePostActions, usePosts, useQueue, type AccountOut, type PostOut, type QueueOut } from "@/features/posts/api";
 import { PlatformMark, platformLabel } from "@/lib/platforms";
@@ -120,9 +121,8 @@ function QueueView({ accounts, accountParam, onAccount }: { accounts: AccountOut
 function Slot({ item, tz, account, actions, onCompose, onEdit }: {
   item: QueueOut["items"][number]; tz: string; account: AccountOut; actions: ReturnType<typeof usePostActions>; onCompose: () => void; onEdit: (id: number) => void;
 }) {
-  const { data: session } = useSession();
-  const canEdit = session?.user?.role !== "viewer";
-  const canApprove = session?.user?.role === "owner";
+  const { canEdit } = usePerms();
+  const { canApprove } = usePerms();
   const { setNodeRef, isOver } = useDroppable({ id: `slot:${item.when}`, disabled: !!item.post });
   const post = item.post;
   const target = post?.targets.find((t) => t.account_id === account.id);
@@ -292,15 +292,16 @@ function ListView({ status }: { status: "draft" | "pending_approval" | "publishe
   const { data, isPending } = usePosts(brand.id, { status, limit: 100 });
   const actions = usePostActions(brand.id);
   const composer = useComposer();
-  const { data: session } = useSession();
-  const canApprove = session?.user?.role === "owner";
+  const { canApprove } = usePerms();
   if (isPending) return <Skeleton className="h-48" />;
   const items = data?.items ?? [];
+  const bar = status === "pending_approval" ? <ReviewLinksBar /> : null;
   if (!items.length) {
     const copy = { draft: ["No drafts", "Start a post and save it as a draft; it waits here."], pending_approval: ["Nothing waits for approval", "Posts from editors show up here when the brand requires approval."], published: ["Nothing sent yet", "Published posts appear here with their links."], failed: ["Nothing failed", "Posts that could not be published after retrying show up here with the platform's error."] }[status];
-    return <EmptyState icon={CalendarDays} title={copy[0]} body={copy[1]} action={status !== "published" ? <Button size="sm" onClick={() => composer.open()}>Write a post</Button> : undefined} />;
+    return <>{bar}<EmptyState icon={CalendarDays} title={copy[0]} body={copy[1]} action={status !== "published" ? <Button size="sm" onClick={() => composer.open()}>Write a post</Button> : undefined} /></>;
   }
   return (
+    <>{bar}
     <ul className="divide-y divide-line rounded-card border border-line bg-surface">
       {items.map((p) => (
         <li key={p.id} className="flex items-start gap-4 px-4 py-3">
@@ -326,5 +327,6 @@ function ListView({ status }: { status: "draft" | "pending_approval" | "publishe
         </li>
       ))}
     </ul>
+    </>
   );
 }

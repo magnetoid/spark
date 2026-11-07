@@ -10,6 +10,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/shell/app-shell";
 import { LoginPage } from "@/pages/login";
 import { SetupPage } from "@/pages/setup";
+import { ReviewPage } from "@/pages/review";
 import { TodayPage } from "@/pages/today";
 import { PublishingPage } from "@/pages/publishing";
 import { IdeasPage } from "@/pages/ideas";
@@ -44,6 +45,7 @@ const loginRoute = createRoute({
 });
 
 const setupRoute = createRoute({ getParentRoute: () => rootRoute, path: "/setup", component: SetupPage });
+const reviewRoute = createRoute({ getParentRoute: () => rootRoute, path: "/review/$token", component: ReviewPage });
 
 const shellRoute = createRoute({
   id: "shell",
@@ -64,6 +66,7 @@ const page = <P extends string>(path: P, component: () => React.JSX.Element) =>
 export const routeTree = rootRoute.addChildren([
   loginRoute,
   setupRoute,
+  reviewRoute,
   shellRoute.addChildren([
     page("/", TodayPage),
     page("/brands/new", NewBrandPage),

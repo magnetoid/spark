@@ -2,7 +2,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { Megaphone, Plus, Sparkles, Trash2 } from "lucide-react";
-import { useBrand, useSession } from "@/app/session";
+import { useBrand, usePerms, useSession } from "@/app/session";
 import { EmptyState, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,8 +20,7 @@ export function CampaignsPage() {
   const { data = [], isPending } = useCampaignsFull(brand.id);
   const [editing, setEditing] = useState<CampaignFull | "new" | null>(null);
   const remove = useDeleteCampaign(brand.id);
-  const { data: session } = useSession();
-  const canEdit = session?.user?.role !== "viewer";
+  const { canEdit } = usePerms();
   return (
     <>
       <PageHeader title="Campaigns" description="Group posts under a goal and a window; the calendar can filter by campaign."

@@ -6,7 +6,7 @@ import pytest
 import respx
 from sqlalchemy import select
 
-from spark.models import Post, PostStatus, PostTarget, Role, SocialAccount, User
+from spark.models import BrandMember, Post, PostStatus, PostTarget, Role, SocialAccount, User
 from spark.platforms import PublishPayload, get_adapter
 from spark.platforms.bluesky import facets
 from spark.platforms.zernio import ZernioAdapter, from_zernio, to_zernio
@@ -613,6 +613,8 @@ async def test_mcp_roles_and_approval(mcp, db, brand):
     user = await db.scalar(select(User))
     brand.require_approval = True
     user.role = Role.editor
+    member = BrandMember(brand_id=brand.id, user_id=user.id, role="editor")  # non-owners act through their membership
+    db.add(member)
     await db.commit()
     err, data = await _tool(mcp, token, "create_post", content="Needs approval", action="now")
     assert not err and data["post"]["status"] == "pending_approval"
@@ -623,6 +625,7 @@ async def test_mcp_roles_and_approval(mcp, db, brand):
     err, ok = await _tool(mcp, token, "approve_post", post_id=data["post"]["id"])
     assert not err and ok["post"]["status"] == "scheduled"
     user.role = Role.viewer
+    member.role = "viewer"
     await db.commit()
     err, msg = await _tool(mcp, token, "add_idea", title="Nope")
     assert err and "viewer" in msg

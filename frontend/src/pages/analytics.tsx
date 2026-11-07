@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BarChart3, RefreshCw } from "lucide-react";
-import { useBrand, useSession } from "@/app/session";
+import { useBrand, usePerms } from "@/app/session";
 import { EmptyState, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,8 +18,7 @@ export function AnalyticsPage() {
   const [days, setDays] = useState(30);
   const { data, isPending } = useAnalytics(brand.id, days);
   const refresh = useRefreshAnalytics(brand.id);
-  const { data: session } = useSession();
-  const canEdit = session?.user?.role !== "viewer";
+  const { canEdit } = usePerms();
 
   return (
     <>

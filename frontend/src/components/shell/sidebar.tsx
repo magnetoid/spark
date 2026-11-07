@@ -34,6 +34,8 @@ const SETUP: NavItem[] = [
 
 export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { brand, brands, setBrand, user, signOut } = useWorkspace();
+  const client = brand?.role === "client";
+  const only = (items: NavItem[]) => client ? items.filter((i) => ["/", "/publishing", "/analytics", "/settings"].includes(i.to)) : items;
   const [theme, setThemeState] = useState<ThemeMode>(readTheme);
   const changeTheme = (m: ThemeMode) => { setTheme(m); setThemeState(m); };
 
@@ -72,9 +74,9 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto px-2">
-        <Group items={WORK} collapsed={collapsed} />
-        <Group items={GROW} collapsed={collapsed} label="Grow" />
-        <Group items={SETUP} collapsed={collapsed} label="Set up" />
+        <Group items={only(WORK)} collapsed={collapsed} />
+        {!client && <Group items={GROW} collapsed={collapsed} label="Grow" />}
+        <Group items={only(SETUP)} collapsed={collapsed} label={client ? undefined : "Set up"} />
       </div>
 
       <div className="border-t border-line p-2">
@@ -82,7 +84,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
           <DropdownMenuTrigger asChild>
             <button type="button" className={cn("flex w-full items-center gap-2.5 rounded-card px-2 py-1.5 text-left hover:bg-hover", collapsed && "justify-center px-0")} aria-label="Account menu">
               <span className="grid size-7 shrink-0 place-items-center rounded-full bg-hover text-xs font-semibold">{initials(user.name)}</span>
-              {!collapsed && <span className="min-w-0 flex-1"><span className="block truncate text-sm">{user.name}</span><span className="block truncate text-xs text-ink-2">{user.role}</span></span>}
+              {!collapsed && <span className="min-w-0 flex-1"><span className="block truncate text-sm">{user.name}</span><span className="block truncate text-xs text-ink-2">{brand?.role ?? user.role}</span></span>}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="top" className="w-56">

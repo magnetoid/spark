@@ -6,7 +6,7 @@ import { useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { ImagePlus, Library, Sparkles, X } from "lucide-react";
-import { useBrand, useSession } from "@/app/session";
+import { useBrand, usePerms, useSession } from "@/app/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,7 @@ import {
 } from "@/features/posts/api";
 import { MediaPicker } from "@/features/composer/media-picker";
 import { PostPreview } from "@/features/composer/previews";
+import { CommentsPanel } from "@/features/collab/panels";
 import { useComposerState, type Action, type ComposerDraft } from "@/features/composer/use-composer-state";
 
 const ACTIONS: { key: Action; label: string; button: string }[] = [
@@ -54,7 +55,7 @@ export function Composer({ initial, existing, onSaved, onCancel, compact }: {
   const [briefUrl, setBriefUrl] = useState("");
   const dragFrom = useRef<number | null>(null);
   const ai = session?.features.ai ?? false;
-  const canApprove = session?.user?.role === "owner";
+  const { canApprove } = usePerms();
 
   async function submit() {
     try {
@@ -305,6 +306,8 @@ export function Composer({ initial, existing, onSaved, onCancel, compact }: {
             ) : null; })}
           </section>
         )}
+
+        {existing && <CommentsPanel postId={existing.id} />}
 
         {ai && (
           <section className="space-y-2 rounded-card border border-line bg-surface p-4">
