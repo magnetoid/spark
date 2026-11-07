@@ -22,32 +22,11 @@ log = logging.getLogger(__name__)
 
 async def _save(db: AsyncSession, brand: Brand, platform: str, found: list[ConnectedAccount],
                 provider: str = "direct") -> int:
-    n = 0
-    for c in found:
-        acc = await db.scalar(
-            select(SocialAccount).where(
-                SocialAccount.brand_id == brand.id,
-                SocialAccount.platform == platform,
-                SocialAccount.external_id == c.external_id,
-            )
-        )
-        if acc is None:
-            acc = SocialAccount(brand_id=brand.id, platform=platform, external_id=c.external_id,
-                                provider=provider)
-            db.add(acc)
-        acc.handle = c.handle
-        acc.display_name = c.display_name
-        acc.avatar_url = c.avatar_url
-        acc.access_token = c.access_token
-        acc.refresh_token = c.refresh_token
-        acc.token_expires_at = c.expires_at
-        acc.extra = {**(acc.extra or {}), **c.extra}
-        acc.followers = c.followers
-        acc.is_active = True
-        acc.last_error = None
-        n += 1
+    from spark.services.accounts import save_connected
+
+    rows = await save_connected(db, brand, platform, found, provider)
     await db.commit()
-    return n
+    return len(rows)
 
 
 @router.get("/accounts")

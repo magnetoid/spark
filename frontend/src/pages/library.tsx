@@ -2,7 +2,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { Hash, Images, LayoutTemplate, Trash2, Upload } from "lucide-react";
+import { Hash, Images, LayoutTemplate, Rss, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useBrand, useSession } from "@/app/session";
 import { EmptyState, PageHeader } from "@/components/page";
@@ -12,11 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { keys, uploadMedia, useHashtagGroups, useMedia, useTemplates, type HashtagGroupOut, type MediaOut, type TemplateOut } from "@/features/posts/api";
+import { keys, uploadMedia, useAccounts, useHashtagGroups, useMedia, useTemplates, type HashtagGroupOut, type MediaOut, type TemplateOut } from "@/features/posts/api";
+import { useCreateFeed, useDeleteFeed, useFeeds, useUpdateFeed } from "@/features/api4";
+import { PlatformMark } from "@/lib/platforms";
+import { Switch } from "@/components/ui/switch";
 import { api, unwrap } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-const TABS = [["media", "Media", Images], ["templates", "Templates", LayoutTemplate], ["hashtags", "Hashtag groups", Hash]] as const;
+const TABS = [["media", "Media", Images], ["templates", "Templates", LayoutTemplate], ["hashtags", "Hashtag groups", Hash], ["sources", "RSS sources", Rss]] as const;
 
 export function LibraryPage() {
   const search = useSearch({ strict: false }) as { tab?: string };
@@ -31,7 +34,7 @@ export function LibraryPage() {
                   className={cn("-mb-px border-b-2 px-3 py-2 text-sm", tab === k ? "border-brand font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink")}>{label}</button>
         ))}
       </div>
-      {tab === "media" ? <MediaTab /> : tab === "templates" ? <TemplatesTab /> : <HashtagsTab />}
+      {tab === "media" ? <MediaTab /> : tab === "templates" ? <TemplatesTab /> : tab === "hashtags" ? <HashtagsTab /> : <SourcesTab />}
     </>
   );
 }
@@ -215,5 +218,51 @@ function HashtagsTab() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+
+function SourcesTab() {
+  const brand = useBrand();
+  const { data = [], isPending } = useFeeds(brand.id);
+  const { data: accounts = [] } = useAccounts(brand.id);
+  const create = useCreateFeed(brand.id);
+  const update = useUpdateFeed(brand.id);
+  const remove = useDeleteFeed(brand.id);
+  const { data: session } = useSession();
+  const canEdit = session?.user?.role !== "viewer";
+  return (
+    <div className="grid gap-6 lg:grid-cols-3">
+      <div className="lg:col-span-2">
+        {isPending ? <Skeleton className="h-40" /> : data.length === 0 ? (
+          <EmptyState icon={Rss} title="No RSS sources yet" body="Every new item in a feed becomes a draft (optionally written by AI for each channel), or goes straight into the queue." />
+        ) : (
+          <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+            {data.map((f) => (
+              <li key={f.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+                <div className="min-w-0 flex-1"><div className="font-medium">{f.name || f.url}</div><div className="truncate text-xs text-ink-2">{f.url}{f.last_checked_at && ` · checked ${new Date(f.last_checked_at).toLocaleString()}`}</div>
+                  <div className="mt-1 flex gap-1">{f.account_ids.map((id) => { const a = accounts.find((x) => x.id === id); return a ? <PlatformMark key={id} platform={a.platform} size={12} /> : null; })}</div></div>
+                {canEdit && <><label className="flex items-center gap-1.5 text-xs"><Switch checked={f.use_ai} onCheckedChange={(v) => update.mutate({ id: f.id, body: { use_ai: v } })} />AI text</label>
+                  <label className="flex items-center gap-1.5 text-xs"><Switch checked={f.auto_queue} onCheckedChange={(v) => update.mutate({ id: f.id, body: { auto_queue: v } })} />Auto-queue</label>
+                  <label className="flex items-center gap-1.5 text-xs"><Switch checked={f.is_active} onCheckedChange={(v) => update.mutate({ id: f.id, body: { is_active: v } })} />Active</label>
+                  <Button variant="ghost" size="icon" className="size-8 text-ink-2" aria-label="Remove feed" onClick={() => confirm("Remove this feed?") && remove.mutate(f.id)}><Trash2 className="size-4" /></Button></>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {canEdit && (
+        <form className="space-y-3 self-start rounded-card border border-line bg-surface p-4" onSubmit={(e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget); const form = e.currentTarget;
+          create.mutate({ url: String(fd.get("url")), name: String(fd.get("name")) || null, use_ai: fd.get("use_ai") === "on", auto_queue: fd.get("auto_queue") === "on", account_ids: fd.getAll("account_ids").map(Number) }, { onSuccess: () => form.reset() }); }}>
+          <h2 className="font-semibold">Add a feed</h2>
+          <div className="space-y-1.5"><Label htmlFor="f-url">Feed URL</Label><Input id="f-url" name="url" type="url" required placeholder="https://blog.example.com/rss.xml" /></div>
+          <div className="space-y-1.5"><Label htmlFor="f-name">Name</Label><Input id="f-name" name="name" placeholder="Company blog" /></div>
+          <div className="space-y-1.5"><Label>Post to</Label><div className="flex flex-wrap gap-1.5">{accounts.filter((a) => a.is_active).map((a) => <label key={a.id} className="flex items-center gap-1 rounded-control border border-line px-2 py-1 text-xs"><input type="checkbox" name="account_ids" value={a.id} defaultChecked className="accent-[var(--brand)]" /><PlatformMark platform={a.platform} size={12} />{a.handle}</label>)}</div></div>
+          <label className="flex items-center gap-2 text-sm"><Switch name="use_ai" defaultChecked />Write the post with AI per channel</label>
+          <label className="flex items-center gap-2 text-sm"><Switch name="auto_queue" />Queue automatically (otherwise drafts)</label>
+          <Button type="submit" className="w-full" disabled={create.isPending}>Add feed</Button>
+        </form>
+      )}
+    </div>
   );
 }

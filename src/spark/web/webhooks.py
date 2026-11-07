@@ -36,5 +36,9 @@ async def zernio_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         result = "error"
     else:
         await db.commit()
+        if result in ("updated", "disconnected", "connected", "flagged"):
+            from spark.services import events
+
+            await events.publish("accounts" if result != "updated" else "posts", None)
     log.info("Zernio webhook %s -> %s", event, result)
     return {"ok": True, "result": result}

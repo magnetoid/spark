@@ -12,7 +12,7 @@ export type QueueOut = components["schemas"]["QueueOut"];
 export type MediaOut = components["schemas"]["MediaOut"];
 export type TemplateOut = components["schemas"]["TemplateOut"];
 export type HashtagGroupOut = components["schemas"]["HashtagGroupOut"];
-export type CampaignOut = components["schemas"]["CampaignOut"];
+export type CampaignOut = components["schemas"]["CampaignFull"];
 export type IdeaOut = components["schemas"]["IdeaOut"];
 export type PostStatus = PostOut["status"];
 

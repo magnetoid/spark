@@ -6,6 +6,7 @@ import { Topbar } from "@/components/shell/topbar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ComposerHost } from "@/features/composer/composer-host";
+import { useLiveUpdates } from "@/app/live";
 
 const COLLAPSE_KEY = "spark.sidebar";
 
@@ -15,6 +16,7 @@ export function AppShell() {
     try { return localStorage.getItem(COLLAPSE_KEY) === "1"; } catch { return false; }
   });
   const [mobileOpen, setMobileOpen] = useState(false);
+  useLiveUpdates(Boolean(session?.user));
 
   useEffect(() => {
     try { localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0"); } catch { /* ignore */ }

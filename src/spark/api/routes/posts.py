@@ -28,8 +28,8 @@ from spark.api.schemas import (
 )
 from spark.db import get_db
 from spark.models import Idea, Post, PostStatus, PostTarget
+from spark.services import events, scheduler
 from spark.services import posts as svc
-from spark.services import scheduler
 from spark.services.publisher import as_utc
 
 router = APIRouter(tags=["posts"])
@@ -134,6 +134,7 @@ async def _save_and_place(db: AsyncSession, ctx: deps.BrandCtx, post: Post | Non
                 idea.status = "ready"
     await db.commit()
     await svc.enqueue_due(post)
+    await events.publish("posts", ctx.brand.id, ids=[post.id])
     await db.refresh(post, ["targets"])
     return JSONResponse(PostResult(message=msg, post=PostOut.of(post)).model_dump(mode="json"), status_code)
 
@@ -171,6 +172,7 @@ async def place(post_id: int, body: PlaceIn, db: AsyncSession = Depends(get_db),
         return _cannot_place(e, post)
     await db.commit()
     await svc.enqueue_due(post)
+    await events.publish("posts", ctx.brand.id, ids=[post.id])
     return PostResult(message=msg, post=PostOut.of(post))
 
 

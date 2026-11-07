@@ -101,7 +101,7 @@ Schema changes go through Alembic: `uv run alembic revision --autogenerate -m ".
 
 ## v3: the React app (in progress)
 
-A new React interface is being built next to the server-rendered one. It is served from `/app` (Vite + React 19 + TanStack Router/Query + Tailwind v4 + shadcn/ui) and talks to a JSON API at `/api/v1` (`src/spark/api/`, its own OpenAPI document at `/api/v1/openapi.json`). The whole app takes its accent colour from the active brand. Pages move over phase by phase; a page that has not moved yet links to the current UI. When every page is across, the React app takes `/` and the Jinja templates go.
+A new React interface is being built next to the server-rendered one. It is served from `/app` (Vite + React 19 + TanStack Router/Query + Tailwind v4 + shadcn/ui) and talks to a JSON API at `/api/v1` (`src/spark/api/`, its own OpenAPI document at `/api/v1/openapi.json`). The whole app takes its accent colour from the active brand. Every page is now in the React app (Today, Publishing with queue/calendar, composer, Ideas, Library, Inbox, Analytics, Campaigns, Links and bio, Audience, Channels, Settings with connectors). Live updates arrive over `GET /api/v1/events` (SSE; hints only, fanned out through Redis). The next step is the cutover: the React app takes `/` and the Jinja templates go.
 
 ```bash
 cd frontend && npm install && npm run dev      # dev server on :5173, proxies /api to :8000

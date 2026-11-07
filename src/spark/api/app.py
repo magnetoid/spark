@@ -14,13 +14,34 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from spark.api.errors import ApiError
-from spark.api.routes import ai, brands, ideas, library, posts, queue, session, today
+from spark.api.routes import (
+    ai,
+    audience,
+    bio,
+    brands,
+    campaigns,
+    channels,
+    events,
+    ideas,
+    inbox,
+    insights,
+    library,
+    links,
+    palette,
+    posts,
+    queue,
+    session,
+    settings,
+    today,
+)
 
 log = logging.getLogger("spark.api")
 
 api = FastAPI(title="Spark API", version="1.0", docs_url="/docs", openapi_url="/openapi.json",
               redoc_url=None)
-for r in (session.router, brands.router, posts.router, queue.router, ideas.router, library.router, ai.router, today.router):
+for r in (session.router, brands.router, posts.router, queue.router, ideas.router, library.router, ai.router, today.router,
+          insights.router, campaigns.router, links.router, audience.router, bio.router, channels.router, settings.router,
+          inbox.router, palette.router, events.router):
     api.include_router(r)
 
 

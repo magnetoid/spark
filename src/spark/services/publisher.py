@@ -115,6 +115,9 @@ async def publish_target(db: AsyncSession, target_id: int) -> PostTarget:
         _retry_or_fail(target, f"{type(e).__name__}: {e}", True)
     target.post.refresh_status()
     await db.commit()
+    from spark.services import events
+
+    await events.publish("posts", account.brand_id, ids=[target.post_id])
     return target
 
 

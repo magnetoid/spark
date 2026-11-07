@@ -11,11 +11,17 @@ import { AppShell } from "@/components/shell/app-shell";
 import { LoginPage } from "@/pages/login";
 import { SetupPage } from "@/pages/setup";
 import { TodayPage } from "@/pages/today";
-import { ClassicPage } from "@/pages/classic";
 import { PublishingPage } from "@/pages/publishing";
 import { IdeasPage } from "@/pages/ideas";
 import { LibraryPage } from "@/pages/library";
 import { ComposePage, EditPostPage } from "@/pages/compose";
+import { AnalyticsPage } from "@/pages/analytics";
+import { CampaignsPage } from "@/pages/campaigns";
+import { LinksPage } from "@/pages/links";
+import { AudiencePage } from "@/pages/audience";
+import { ChannelsPage } from "@/pages/channels";
+import { SettingsPage } from "@/pages/settings";
+import { InboxPage } from "@/pages/inbox";
 import { sessionQuery } from "@/app/session";
 
 interface RouterContext {
@@ -24,8 +30,8 @@ interface RouterContext {
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: () => <Outlet />,
-  validateSearch: (s: Record<string, unknown>): { brand?: string; view?: string; account?: string; cal?: string; month?: string; campaign?: string; tab?: string; at?: string } =>
-    Object.fromEntries(Object.entries(s).filter(([k, v]) => ["brand", "view", "account", "cal", "month", "campaign", "tab", "at"].includes(k) && typeof v === "string" && v)) as { brand?: string },
+  validateSearch: (s: Record<string, unknown>): { brand?: string; view?: string; account?: string; cal?: string; month?: string; campaign?: string; tab?: string; at?: string; connector?: string } =>
+    Object.fromEntries(Object.entries(s).filter(([k, v]) => ["brand", "view", "account", "cal", "month", "campaign", "tab", "at", "connector"].includes(k) && typeof v === "string" && v)) as { brand?: string },
 });
 
 const loginRoute = createRoute({
@@ -53,14 +59,6 @@ const shellRoute = createRoute({
 const page = <P extends string>(path: P, component: () => React.JSX.Element) =>
   createRoute({ getParentRoute: () => shellRoute, path, component });
 
-/** Pages that still live in the server-rendered app, one card each until their phase lands. */
-const classic = <P extends string>(path: P, title: string, href: string, blurb: string) =>
-  createRoute({
-    getParentRoute: () => shellRoute,
-    path,
-    component: () => <ClassicPage title={title} href={href} blurb={blurb} />,
-  });
-
 export const routeTree = rootRoute.addChildren([
   loginRoute,
   setupRoute,
@@ -69,15 +67,15 @@ export const routeTree = rootRoute.addChildren([
     page("/publishing", PublishingPage),
     page("/compose", ComposePage),
     page("/posts/$postId/edit", EditPostPage),
-    classic("/inbox", "Inbox", "/inbox", "Comments and replies across your channels."),
+    page("/inbox", InboxPage),
     page("/ideas", IdeasPage),
     page("/library", LibraryPage),
-    classic("/analytics", "Analytics", "/analytics", "Impressions, engagement, best times and link clicks."),
-    classic("/campaigns", "Campaigns", "/campaigns", "Group posts under a goal and track them together."),
-    classic("/links", "Links", "/links", "Tracked short links, UTM tags and your bio page."),
-    classic("/audience", "Audience", "/contacts", "Contacts, lists and email campaigns."),
-    classic("/channels", "Channels", "/accounts", "Connected social accounts."),
-    classic("/settings", "Settings", "/settings", "Brand, team, connectors and your preferences."),
+    page("/analytics", AnalyticsPage),
+    page("/campaigns", CampaignsPage),
+    page("/links", LinksPage),
+    page("/audience", AudiencePage),
+    page("/channels", ChannelsPage),
+    page("/settings", SettingsPage),
   ]),
 ]);
 

@@ -86,6 +86,150 @@
         "title": "AccountOut",
         "type": "object"
       },
+      "AiPlanIn": {
+        "properties": {
+          "account_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Account Ids",
+            "type": "array"
+          },
+          "per_week": {
+            "default": 3,
+            "maximum": 14.0,
+            "minimum": 1.0,
+            "title": "Per Week",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "account_ids"
+        ],
+        "title": "AiPlanIn",
+        "type": "object"
+      },
+      "AnalyticsOut": {
+        "properties": {
+          "best_times": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Best Times",
+            "type": "array"
+          },
+          "by_platform": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "title": "By Platform",
+            "type": "object"
+          },
+          "change_pct": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Change Pct",
+            "type": "object"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "engagement_rate_pct": {
+            "title": "Engagement Rate Pct",
+            "type": "number"
+          },
+          "engagements": {
+            "title": "Engagements",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "followers": {
+            "title": "Followers",
+            "type": "integer"
+          },
+          "impressions": {
+            "title": "Impressions",
+            "type": "integer"
+          },
+          "link_clicks": {
+            "title": "Link Clicks",
+            "type": "integer"
+          },
+          "link_clicks_series": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Link Clicks Series",
+            "type": "array"
+          },
+          "published": {
+            "title": "Published",
+            "type": "integer"
+          },
+          "scheduled": {
+            "title": "Scheduled",
+            "type": "integer"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/WeekPoint"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "top": {
+            "items": {
+              "$ref": "#/components/schemas/TopPost"
+            },
+            "title": "Top",
+            "type": "array"
+          },
+          "totals": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Totals",
+            "type": "object"
+          }
+        },
+        "required": [
+          "days",
+          "published",
+          "scheduled",
+          "failed",
+          "followers",
+          "impressions",
+          "engagements",
+          "engagement_rate_pct",
+          "link_clicks",
+          "totals",
+          "change_pct",
+          "by_platform",
+          "series",
+          "link_clicks_series",
+          "top",
+          "best_times"
+        ],
+        "title": "AnalyticsOut",
+        "type": "object"
+      },
       "AutosaveIn": {
         "properties": {
           "content": {
@@ -166,6 +310,216 @@
         "title": "AutosaveOut",
         "type": "object"
       },
+      "BioIn": {
+        "properties": {
+          "avatar_media_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Media Id"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "capture_email": {
+            "default": true,
+            "title": "Capture Email",
+            "type": "boolean"
+          },
+          "capture_list_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capture List Id"
+          },
+          "is_published": {
+            "default": true,
+            "title": "Is Published",
+            "type": "boolean"
+          },
+          "links": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BioLink"
+            },
+            "title": "Links",
+            "type": "array"
+          },
+          "theme": {
+            "default": "light",
+            "title": "Theme",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "BioIn",
+        "type": "object"
+      },
+      "BioLink": {
+        "properties": {
+          "clicks": {
+            "default": 0,
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "title": "BioLink",
+        "type": "object"
+      },
+      "BioOut": {
+        "properties": {
+          "avatar_media_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Media Id"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "capture_email": {
+            "title": "Capture Email",
+            "type": "boolean"
+          },
+          "capture_list_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capture List Id"
+          },
+          "is_published": {
+            "title": "Is Published",
+            "type": "boolean"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/BioLink"
+            },
+            "title": "Links",
+            "type": "array"
+          },
+          "public_url": {
+            "title": "Public Url",
+            "type": "string"
+          },
+          "theme": {
+            "title": "Theme",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "total_clicks": {
+            "title": "Total Clicks",
+            "type": "integer"
+          },
+          "views": {
+            "title": "Views",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "title",
+          "bio",
+          "theme",
+          "capture_email",
+          "capture_list_id",
+          "avatar_media_id",
+          "is_published",
+          "views",
+          "links",
+          "total_clicks",
+          "public_url"
+        ],
+        "title": "BioOut",
+        "type": "object"
+      },
+      "Body_import_contacts_brands__brand_id__contacts_import_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "list_ids": {
+            "default": "",
+            "title": "List Ids",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_contacts_brands__brand_id__contacts_import_post",
+        "type": "object"
+      },
       "Body_upload_media_brands__brand_id__media_post": {
         "properties": {
           "files": {
@@ -236,6 +590,17 @@
             "title": "Color",
             "type": "string"
           },
+          "default_hashtags": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Hashtags"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -259,6 +624,61 @@
           "timezone": {
             "title": "Timezone",
             "type": "string"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          },
+          "voice_audience": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Audience"
+          },
+          "voice_examples": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Examples"
+          },
+          "voice_rules": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Rules"
+          },
+          "voice_tone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Tone"
           },
           "website": {
             "anyOf": [
@@ -356,6 +776,17 @@
             ],
             "title": "Timezone"
           },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          },
           "voice_audience": {
             "anyOf": [
               {
@@ -415,11 +846,18 @@
         "title": "BrandUpdate",
         "type": "object"
       },
-      "CampaignOut": {
+      "CampaignFull": {
         "properties": {
           "color": {
             "title": "Color",
             "type": "string"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
           },
           "ends_on": {
             "anyOf": [
@@ -452,6 +890,11 @@
             "title": "Name",
             "type": "string"
           },
+          "planned": {
+            "default": 0,
+            "title": "Planned",
+            "type": "integer"
+          },
           "starts_on": {
             "anyOf": [
               {
@@ -483,9 +926,160 @@
           "goal",
           "utm_campaign",
           "starts_on",
-          "ends_on"
+          "ends_on",
+          "counts"
         ],
-        "title": "CampaignOut",
+        "title": "CampaignFull",
+        "type": "object"
+      },
+      "CampaignIn": {
+        "properties": {
+          "ai_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiPlanIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "color": {
+            "default": "#6366f1",
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "ends_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "starts_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts On"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CampaignIn",
+        "type": "object"
+      },
+      "CampaignUpdate": {
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "pattern": "^#[0-9a-fA-F]{6}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "ends_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "starts_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts On"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          }
+        },
+        "title": "CampaignUpdate",
         "type": "object"
       },
       "Capabilities": {
@@ -519,6 +1113,777 @@
           "threadable"
         ],
         "title": "Capabilities",
+        "type": "object"
+      },
+      "ConnectResult": {
+        "properties": {
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/AccountOut"
+            },
+            "title": "Accounts",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "accounts"
+        ],
+        "title": "ConnectResult",
+        "type": "object"
+      },
+      "ConnectorCard": {
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tagline": {
+            "title": "Tagline",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "tagline",
+          "kind",
+          "tags",
+          "configured",
+          "status"
+        ],
+        "title": "ConnectorCard",
+        "type": "object"
+      },
+      "ConnectorFieldOut": {
+        "properties": {
+          "has_value": {
+            "title": "Has Value",
+            "type": "boolean"
+          },
+          "help": {
+            "title": "Help",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "masked": {
+            "title": "Masked",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "placeholder": {
+            "title": "Placeholder",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "name",
+          "label",
+          "kind",
+          "options",
+          "help",
+          "placeholder",
+          "value",
+          "masked",
+          "source",
+          "has_value"
+        ],
+        "title": "ConnectorFieldOut",
+        "type": "object"
+      },
+      "ConnectorOut": {
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "docs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Docs"
+          },
+          "extra": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Extra",
+            "type": "object"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectorFieldOut"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "tagline": {
+            "title": "Tagline",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "tagline",
+          "description",
+          "docs",
+          "kind",
+          "configured",
+          "fields"
+        ],
+        "title": "ConnectorOut",
+        "type": "object"
+      },
+      "ConnectorSave": {
+        "properties": {
+          "clear": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Clear",
+            "type": "array"
+          },
+          "values": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "title": "ConnectorSave",
+        "type": "object"
+      },
+      "ContactIn": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "list_ids": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "List Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "ContactIn",
+        "type": "object"
+      },
+      "ContactOut": {
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "lists": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Lists",
+            "type": "array"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "subscribed": {
+            "title": "Subscribed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "first_name",
+          "last_name",
+          "source",
+          "subscribed",
+          "lists",
+          "created_at"
+        ],
+        "title": "ContactOut",
+        "type": "object"
+      },
+      "ContactPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContactOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "subscribed": {
+            "title": "Subscribed",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "subscribed"
+        ],
+        "title": "ContactPage",
+        "type": "object"
+      },
+      "CredentialField": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "label"
+        ],
+        "title": "CredentialField",
+        "type": "object"
+      },
+      "EmailCreate": {
+        "properties": {
+          "list_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Id"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "EmailCreate",
+        "type": "object"
+      },
+      "EmailOut": {
+        "properties": {
+          "body_html": {
+            "title": "Body Html",
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "list_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Id"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "preheader": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preheader"
+          },
+          "recipients": {
+            "default": 0,
+            "title": "Recipients",
+            "type": "integer"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          },
+          "sent_count": {
+            "title": "Sent Count",
+            "type": "integer"
+          },
+          "stats": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "default": {},
+            "title": "Stats",
+            "type": "object"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "subject",
+          "preheader",
+          "body_html",
+          "status",
+          "list_id",
+          "scheduled_at",
+          "sent_at",
+          "sent_count",
+          "created_at"
+        ],
+        "title": "EmailOut",
+        "type": "object"
+      },
+      "EmailUpdate": {
+        "properties": {
+          "action": {
+            "default": "save",
+            "enum": [
+              "save",
+              "send",
+              "schedule",
+              "unschedule"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "body_html": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Html"
+          },
+          "list_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "preheader": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preheader"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          }
+        },
+        "title": "EmailUpdate",
+        "type": "object"
+      },
+      "FeedIn": {
+        "properties": {
+          "account_ids": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Account Ids",
+            "type": "array"
+          },
+          "auto_queue": {
+            "default": false,
+            "title": "Auto Queue",
+            "type": "boolean"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "url": {
+            "minLength": 8,
+            "title": "Url",
+            "type": "string"
+          },
+          "use_ai": {
+            "default": true,
+            "title": "Use Ai",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "FeedIn",
+        "type": "object"
+      },
+      "FeedOut": {
+        "properties": {
+          "account_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Account Ids",
+            "type": "array"
+          },
+          "auto_queue": {
+            "title": "Auto Queue",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "last_checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Checked At"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "use_ai": {
+            "title": "Use Ai",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "name",
+          "use_ai",
+          "auto_queue",
+          "account_ids",
+          "is_active",
+          "last_checked_at"
+        ],
+        "title": "FeedOut",
+        "type": "object"
+      },
+      "FeedUpdate": {
+        "properties": {
+          "account_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Ids"
+          },
+          "auto_queue": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Queue"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "use_ai": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Ai"
+          }
+        },
+        "title": "FeedUpdate",
         "type": "object"
       },
       "GenerateIn": {
@@ -936,6 +2301,426 @@
         "title": "IdeaUpdate",
         "type": "object"
       },
+      "ImportResult": {
+        "properties": {
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/AccountOut"
+            },
+            "title": "Accounts",
+            "type": "array"
+          },
+          "imported": {
+            "title": "Imported",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "imported",
+          "accounts"
+        ],
+        "title": "ImportResult",
+        "type": "object"
+      },
+      "InboxAccount": {
+        "properties": {
+          "external_id": {
+            "title": "External Id",
+            "type": "string"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "external_id",
+          "platform",
+          "handle"
+        ],
+        "title": "InboxAccount",
+        "type": "object"
+      },
+      "InboxItem": {
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/InboxAccount"
+          },
+          "comment_count": {
+            "title": "Comment Count",
+            "type": "integer"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "like_count": {
+            "title": "Like Count",
+            "type": "integer"
+          },
+          "permalink": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permalink"
+          },
+          "picture": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Picture"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "post_id": {
+            "title": "Post Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id",
+          "account",
+          "platform",
+          "content",
+          "picture",
+          "permalink",
+          "created_at",
+          "comment_count",
+          "like_count"
+        ],
+        "title": "InboxItem",
+        "type": "object"
+      },
+      "InboxOut": {
+        "properties": {
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/InboxAccount"
+            },
+            "title": "Accounts",
+            "type": "array"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InboxItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ready",
+          "error",
+          "accounts",
+          "items"
+        ],
+        "title": "InboxOut",
+        "type": "object"
+      },
+      "LikeIn": {
+        "properties": {
+          "account": {
+            "title": "Account",
+            "type": "string"
+          },
+          "comment_id": {
+            "title": "Comment Id",
+            "type": "string"
+          },
+          "liked": {
+            "default": true,
+            "title": "Liked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "account",
+          "comment_id"
+        ],
+        "title": "LikeIn",
+        "type": "object"
+      },
+      "LinkIn": {
+        "properties": {
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          },
+          "destination": {
+            "minLength": 3,
+            "title": "Destination",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          },
+          "utm_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Content"
+          },
+          "utm_medium": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Medium"
+          },
+          "utm_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Source"
+          }
+        },
+        "required": [
+          "destination"
+        ],
+        "title": "LinkIn",
+        "type": "object"
+      },
+      "LinkOut": {
+        "properties": {
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          },
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "destination": {
+            "title": "Destination",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "short_url": {
+            "title": "Short Url",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "destination",
+          "title",
+          "campaign_id",
+          "clicks",
+          "short_url",
+          "created_at"
+        ],
+        "title": "LinkOut",
+        "type": "object"
+      },
+      "LinkPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LinkOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "LinkPage",
+        "type": "object"
+      },
+      "ListIn": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ListIn",
+        "type": "object"
+      },
+      "ListOut": {
+        "properties": {
+          "contacts": {
+            "default": 0,
+            "title": "Contacts",
+            "type": "integer"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "title": "ListOut",
+        "type": "object"
+      },
       "LoginIn": {
         "properties": {
           "email": {
@@ -1172,6 +2957,57 @@
         "title": "NeedsYou",
         "type": "object"
       },
+      "PaletteItem": {
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "hint": {
+            "default": "",
+            "title": "Hint",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Params",
+            "type": "object"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          }
+        },
+        "required": [
+          "label",
+          "group"
+        ],
+        "title": "PaletteItem",
+        "type": "object"
+      },
       "PasswordChange": {
         "properties": {
           "current": {
@@ -1221,6 +3057,81 @@
           "action"
         ],
         "title": "PlaceIn",
+        "type": "object"
+      },
+      "PlatformOut": {
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "connect_mode": {
+            "title": "Connect Mode",
+            "type": "string"
+          },
+          "credential_fields": {
+            "items": {
+              "$ref": "#/components/schemas/CredentialField"
+            },
+            "title": "Credential Fields",
+            "type": "array"
+          },
+          "docs_url": {
+            "title": "Docs Url",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "label",
+          "connect_mode",
+          "credential_fields",
+          "configured",
+          "docs_url"
+        ],
+        "title": "PlatformOut",
+        "type": "object"
+      },
+      "PlatformsOut": {
+        "properties": {
+          "direct": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformOut"
+            },
+            "title": "Direct",
+            "type": "array"
+          },
+          "force_dry_run": {
+            "title": "Force Dry Run",
+            "type": "boolean"
+          },
+          "zernio": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Zernio",
+            "type": "object"
+          },
+          "zernio_ready": {
+            "title": "Zernio Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "direct",
+          "zernio",
+          "zernio_ready",
+          "force_dry_run"
+        ],
+        "title": "PlatformsOut",
         "type": "object"
       },
       "PostOut": {
@@ -1575,6 +3486,69 @@
         "title": "QueueOut",
         "type": "object"
       },
+      "ReplyIn": {
+        "properties": {
+          "account": {
+            "title": "Account",
+            "type": "string"
+          },
+          "comment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment Id"
+          },
+          "message": {
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "parent_cid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Cid"
+          },
+          "root_cid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Root Cid"
+          },
+          "root_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Root Uri"
+          }
+        },
+        "required": [
+          "account",
+          "message"
+        ],
+        "title": "ReplyIn",
+        "type": "object"
+      },
       "RetryResult": {
         "properties": {
           "message": {
@@ -1698,6 +3672,29 @@
         "title": "SetupIn",
         "type": "object"
       },
+      "SlotIn": {
+        "properties": {
+          "time": {
+            "pattern": "^\\d{2}:\\d{2}$",
+            "title": "Time",
+            "type": "string"
+          },
+          "weekdays": {
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 1,
+            "title": "Weekdays",
+            "type": "array"
+          }
+        },
+        "required": [
+          "weekdays",
+          "time"
+        ],
+        "title": "SlotIn",
+        "type": "object"
+      },
       "SlotOut": {
         "properties": {
           "time": {
@@ -1714,6 +3711,29 @@
           "time"
         ],
         "title": "SlotOut",
+        "type": "object"
+      },
+      "SlotRow": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "time": {
+            "title": "Time",
+            "type": "string"
+          },
+          "weekday": {
+            "title": "Weekday",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "weekday",
+          "time"
+        ],
+        "title": "SlotRow",
         "type": "object"
       },
       "TargetIn": {
@@ -1872,6 +3892,122 @@
           "thread"
         ],
         "title": "TargetOut",
+        "type": "object"
+      },
+      "TeamIn": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "password": {
+            "minLength": 8,
+            "title": "Password",
+            "type": "string"
+          },
+          "role": {
+            "default": "editor",
+            "enum": [
+              "owner",
+              "editor",
+              "viewer"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "password"
+        ],
+        "title": "TeamIn",
+        "type": "object"
+      },
+      "TeamOut": {
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "role",
+          "is_active",
+          "created_at"
+        ],
+        "title": "TeamOut",
+        "type": "object"
+      },
+      "TeamUpdate": {
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "owner",
+                  "editor",
+                  "viewer"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "title": "TeamUpdate",
         "type": "object"
       },
       "TemplateIn": {
@@ -2089,6 +4225,177 @@
           "week"
         ],
         "title": "TodayOut",
+        "type": "object"
+      },
+      "TokenCreated": {
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "last_used_at",
+          "created_at",
+          "token"
+        ],
+        "title": "TokenCreated",
+        "type": "object"
+      },
+      "TokenOut": {
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "last_used_at",
+          "created_at"
+        ],
+        "title": "TokenOut",
+        "type": "object"
+      },
+      "TopPost": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "engagements": {
+            "title": "Engagements",
+            "type": "integer"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "impressions": {
+            "title": "Impressions",
+            "type": "integer"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "post_id": {
+            "title": "Post Id",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "post_id",
+          "account_id",
+          "handle",
+          "platform",
+          "engagements",
+          "impressions",
+          "text",
+          "url",
+          "published_at"
+        ],
+        "title": "TopPost",
         "type": "object"
       },
       "UserOut": {
@@ -2451,6 +4758,39 @@
       }
     },
     "/brands/{brand_id}": {
+      "delete": {
+        "operationId": "delete_brand_brands__brand_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Brand",
+        "tags": [
+          "settings"
+        ]
+      },
       "get": {
         "operationId": "get_brand_brands__brand_id__get",
         "parameters": [
@@ -2585,6 +4925,216 @@
         "summary": "List Accounts",
         "tags": [
           "brands"
+        ]
+      }
+    },
+    "/brands/{brand_id}/accounts/connect/{platform}": {
+      "post": {
+        "operationId": "connect_with_credentials_brands__brand_id__accounts_connect__platform__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "platform",
+            "required": true,
+            "schema": {
+              "title": "Platform",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Connect With Credentials",
+        "tags": [
+          "channels"
+        ]
+      }
+    },
+    "/brands/{brand_id}/accounts/zernio/import": {
+      "post": {
+        "operationId": "zernio_import_brands__brand_id__accounts_zernio_import_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Zernio Import",
+        "tags": [
+          "channels"
+        ]
+      }
+    },
+    "/brands/{brand_id}/accounts/{account_id}": {
+      "delete": {
+        "operationId": "remove_brands__brand_id__accounts__account_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "disconnect",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Disconnect",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove",
+        "tags": [
+          "channels"
+        ]
+      }
+    },
+    "/brands/{brand_id}/accounts/{account_id}/toggle": {
+      "post": {
+        "operationId": "toggle_brands__brand_id__accounts__account_id__toggle_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Toggle",
+        "tags": [
+          "channels"
         ]
       }
     },
@@ -2738,9 +5288,195 @@
         ]
       }
     },
+    "/brands/{brand_id}/analytics": {
+      "get": {
+        "operationId": "overview_brands__brand_id__analytics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Overview",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/brands/{brand_id}/analytics/refresh": {
+      "post": {
+        "operationId": "refresh_brands__brand_id__analytics_refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/brands/{brand_id}/bio": {
+      "get": {
+        "operationId": "get_bio_brands__brand_id__bio_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BioOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Bio",
+        "tags": [
+          "bio"
+        ]
+      },
+      "put": {
+        "operationId": "save_bio_brands__brand_id__bio_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BioIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BioOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Bio",
+        "tags": [
+          "bio"
+        ]
+      }
+    },
     "/brands/{brand_id}/campaigns": {
       "get": {
-        "operationId": "campaigns_brands__brand_id__campaigns_get",
+        "operationId": "list_campaigns_brands__brand_id__campaigns_get",
         "parameters": [
           {
             "in": "path",
@@ -2758,9 +5494,9 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/CampaignOut"
+                    "$ref": "#/components/schemas/CampaignFull"
                   },
-                  "title": "Response Campaigns Brands  Brand Id  Campaigns Get",
+                  "title": "Response List Campaigns Brands  Brand Id  Campaigns Get",
                   "type": "array"
                 }
               }
@@ -2778,9 +5514,993 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Campaigns",
+        "summary": "List Campaigns",
         "tags": [
-          "library"
+          "campaigns"
+        ]
+      },
+      "post": {
+        "operationId": "create_campaign_brands__brand_id__campaigns_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignFull"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Campaign",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/brands/{brand_id}/campaigns/{campaign_id}": {
+      "delete": {
+        "operationId": "delete_campaign_brands__brand_id__campaigns__campaign_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Campaign",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "patch": {
+        "operationId": "update_campaign_brands__brand_id__campaigns__campaign_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignFull"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Campaign",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/brands/{brand_id}/contacts": {
+      "get": {
+        "operationId": "list_contacts_brands__brand_id__contacts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "list_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "List Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Contacts",
+        "tags": [
+          "audience"
+        ]
+      },
+      "post": {
+        "operationId": "add_contact_brands__brand_id__contacts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Contact",
+        "tags": [
+          "audience"
+        ]
+      }
+    },
+    "/brands/{brand_id}/contacts/export": {
+      "get": {
+        "operationId": "export_contacts_brands__brand_id__contacts_export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Contacts",
+        "tags": [
+          "audience"
+        ]
+      }
+    },
+    "/brands/{brand_id}/contacts/import": {
+      "post": {
+        "operationId": "import_contacts_brands__brand_id__contacts_import_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_contacts_brands__brand_id__contacts_import_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Contacts",
+        "tags": [
+          "audience"
+        ]
+      }
+    },
+    "/brands/{brand_id}/contacts/{contact_id}": {
+      "delete": {
+        "operationId": "delete_contact_brands__brand_id__contacts__contact_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contact_id",
+            "required": true,
+            "schema": {
+              "title": "Contact Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Contact",
+        "tags": [
+          "audience"
+        ]
+      }
+    },
+    "/brands/{brand_id}/email": {
+      "get": {
+        "operationId": "list_email_brands__brand_id__email_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EmailOut"
+                  },
+                  "title": "Response List Email Brands  Brand Id  Email Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Email",
+        "tags": [
+          "audience"
+        ]
+      },
+      "post": {
+        "operationId": "create_email_brands__brand_id__email_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Email",
+        "tags": [
+          "audience"
+        ]
+      }
+    },
+    "/brands/{brand_id}/email/{cid}": {
+      "delete": {
+        "operationId": "delete_email_brands__brand_id__email__cid__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid",
+            "required": true,
+            "schema": {
+              "title": "Cid",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Email",
+        "tags": [
+          "audience"
+        ]
+      },
+      "get": {
+        "operationId": "get_email_brands__brand_id__email__cid__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid",
+            "required": true,
+            "schema": {
+              "title": "Cid",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Email",
+        "tags": [
+          "audience"
+        ]
+      },
+      "patch": {
+        "operationId": "update_email_brands__brand_id__email__cid__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid",
+            "required": true,
+            "schema": {
+              "title": "Cid",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Email",
+        "tags": [
+          "audience"
+        ]
+      }
+    },
+    "/brands/{brand_id}/email/{cid}/ai": {
+      "post": {
+        "operationId": "email_ai_brands__brand_id__email__cid__ai_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid",
+            "required": true,
+            "schema": {
+              "title": "Cid",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Email Ai",
+        "tags": [
+          "audience"
+        ]
+      }
+    },
+    "/brands/{brand_id}/email/{cid}/test": {
+      "post": {
+        "operationId": "email_test_brands__brand_id__email__cid__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid",
+            "required": true,
+            "schema": {
+              "title": "Cid",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Email Test",
+        "tags": [
+          "audience"
+        ]
+      }
+    },
+    "/brands/{brand_id}/feeds": {
+      "get": {
+        "operationId": "list_feeds_brands__brand_id__feeds_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FeedOut"
+                  },
+                  "title": "Response List Feeds Brands  Brand Id  Feeds Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Feeds",
+        "tags": [
+          "links"
+        ]
+      },
+      "post": {
+        "operationId": "create_feed_brands__brand_id__feeds_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Feed",
+        "tags": [
+          "links"
+        ]
+      }
+    },
+    "/brands/{brand_id}/feeds/{feed_id}": {
+      "delete": {
+        "operationId": "delete_feed_brands__brand_id__feeds__feed_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feed_id",
+            "required": true,
+            "schema": {
+              "title": "Feed Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Feed",
+        "tags": [
+          "links"
+        ]
+      },
+      "patch": {
+        "operationId": "update_feed_brands__brand_id__feeds__feed_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feed_id",
+            "required": true,
+            "schema": {
+              "title": "Feed Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Feed",
+        "tags": [
+          "links"
         ]
       }
     },
@@ -3357,6 +7077,544 @@
         ]
       }
     },
+    "/brands/{brand_id}/inbox": {
+      "get": {
+        "operationId": "inbox_brands__brand_id__inbox_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "account",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inbox",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/{post_id}/comments": {
+      "get": {
+        "operationId": "comments_brands__brand_id__inbox__post_id__comments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "title": "Post Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "account",
+            "required": true,
+            "schema": {
+              "title": "Account",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Comments",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/{post_id}/like": {
+      "post": {
+        "operationId": "like_brands__brand_id__inbox__post_id__like_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "title": "Post Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LikeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Like",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/{post_id}/reply": {
+      "post": {
+        "operationId": "reply_brands__brand_id__inbox__post_id__reply_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "post_id",
+            "required": true,
+            "schema": {
+              "title": "Post Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reply",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/links": {
+      "get": {
+        "operationId": "list_links_brands__brand_id__links_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Links",
+        "tags": [
+          "links"
+        ]
+      },
+      "post": {
+        "operationId": "create_link_brands__brand_id__links_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Link",
+        "tags": [
+          "links"
+        ]
+      }
+    },
+    "/brands/{brand_id}/links/{link_id}": {
+      "delete": {
+        "operationId": "delete_link_brands__brand_id__links__link_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "required": true,
+            "schema": {
+              "title": "Link Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Link",
+        "tags": [
+          "links"
+        ]
+      }
+    },
+    "/brands/{brand_id}/lists": {
+      "get": {
+        "operationId": "lists_brands__brand_id__lists_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ListOut"
+                  },
+                  "title": "Response Lists Brands  Brand Id  Lists Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lists",
+        "tags": [
+          "audience"
+        ]
+      },
+      "post": {
+        "operationId": "create_list_brands__brand_id__lists_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create List",
+        "tags": [
+          "audience"
+        ]
+      }
+    },
+    "/brands/{brand_id}/lists/{list_id}": {
+      "delete": {
+        "operationId": "delete_list_brands__brand_id__lists__list_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "list_id",
+            "required": true,
+            "schema": {
+              "title": "List Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete List",
+        "tags": [
+          "audience"
+        ]
+      }
+    },
     "/brands/{brand_id}/media": {
       "get": {
         "operationId": "list_media_brands__brand_id__media_get",
@@ -3549,6 +7807,94 @@
         "summary": "Update Media",
         "tags": [
           "library"
+        ]
+      }
+    },
+    "/brands/{brand_id}/palette": {
+      "get": {
+        "operationId": "palette_brands__brand_id__palette_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PaletteItem"
+                  },
+                  "title": "Response Palette Brands  Brand Id  Palette Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Palette",
+        "tags": [
+          "palette"
+        ]
+      }
+    },
+    "/brands/{brand_id}/platforms": {
+      "get": {
+        "operationId": "platforms_brands__brand_id__platforms_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Platforms",
+        "tags": [
+          "channels"
         ]
       }
     },
@@ -4474,6 +8820,150 @@
         ]
       }
     },
+    "/brands/{brand_id}/slots": {
+      "get": {
+        "operationId": "slots_brands__brand_id__slots_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SlotRow"
+                  },
+                  "title": "Response Slots Brands  Brand Id  Slots Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Slots",
+        "tags": [
+          "settings"
+        ]
+      },
+      "post": {
+        "operationId": "add_slots_brands__brand_id__slots_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlotIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SlotRow"
+                  },
+                  "title": "Response Add Slots Brands  Brand Id  Slots Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Slots",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/brands/{brand_id}/slots/{slot_id}": {
+      "delete": {
+        "operationId": "delete_slot_brands__brand_id__slots__slot_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "title": "Slot Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Slot",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
     "/brands/{brand_id}/templates": {
       "get": {
         "operationId": "templates_brands__brand_id__templates_get",
@@ -4715,6 +9205,25 @@
         ]
       }
     },
+    "/events": {
+      "get": {
+        "operationId": "stream_events_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stream",
+        "tags": [
+          "events"
+        ]
+      }
+    },
     "/me": {
       "get": {
         "operationId": "me_me_get",
@@ -4816,6 +9325,107 @@
         ]
       }
     },
+    "/me/tokens": {
+      "get": {
+        "operationId": "my_tokens_me_tokens_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TokenOut"
+                  },
+                  "title": "Response My Tokens Me Tokens Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "My Tokens",
+        "tags": [
+          "settings"
+        ]
+      },
+      "post": {
+        "operationId": "create_token_me_tokens_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Token",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/me/tokens/{token_id}": {
+      "delete": {
+        "operationId": "delete_token_me_tokens__token_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token_id",
+            "required": true,
+            "schema": {
+              "title": "Token Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Token",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
     "/session": {
       "get": {
         "operationId": "session_session_get",
@@ -4834,6 +9444,317 @@
         "summary": "Session",
         "tags": [
           "session"
+        ]
+      }
+    },
+    "/settings/connectors": {
+      "get": {
+        "operationId": "connectors_settings_connectors_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectorCard"
+                  },
+                  "title": "Response Connectors Settings Connectors Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Connectors",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/settings/connectors/{key}": {
+      "get": {
+        "operationId": "connector_settings_connectors__key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Connector",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "connector_save_settings_connectors__key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Connector Save",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/settings/connectors/{key}/test": {
+      "post": {
+        "operationId": "connector_test_settings_connectors__key__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Connector Test",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/settings/zernio/webhook": {
+      "post": {
+        "operationId": "zernio_webhook_register_settings_zernio_webhook_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Zernio Webhook Register",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/settings/zernio/webhook/test": {
+      "post": {
+        "operationId": "zernio_webhook_test_settings_zernio_webhook_test_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Zernio Webhook Test",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/team": {
+      "get": {
+        "operationId": "team_team_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TeamOut"
+                  },
+                  "title": "Response Team Team Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Team",
+        "tags": [
+          "settings"
+        ]
+      },
+      "post": {
+        "operationId": "team_add_team_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Team Add",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/team/{user_id}": {
+      "patch": {
+        "operationId": "team_update_team__user_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Team Update",
+        "tags": [
+          "settings"
         ]
       }
     }

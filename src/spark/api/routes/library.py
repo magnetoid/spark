@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from spark.api import deps
 from spark.api.errors import not_found
 from spark.api.schemas import (
-    CampaignOut,
     HashtagGroupIn,
     HashtagGroupOut,
     HashtagGroupUpdate,
@@ -20,7 +19,7 @@ from spark.api.schemas import (
     TemplateUpdate,
 )
 from spark.db import get_db
-from spark.models import Campaign, HashtagGroup, Media, PostTemplate
+from spark.models import HashtagGroup, Media, PostTemplate
 from spark.services import media as media_svc
 from spark.web.brands import _parse_tags as parse_hashtags
 
@@ -142,10 +141,3 @@ async def delete_template(template_id: int, db: AsyncSession = Depends(get_db), 
     await db.delete(t)
     await db.commit()
     return Response(status_code=204)
-
-
-# ---- campaigns (read) -----------------------------------------------------------------------
-@router.get(B + "/campaigns", response_model=list[CampaignOut])
-async def campaigns(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)):
-    rows = (await db.execute(select(Campaign).where(Campaign.brand_id == ctx.brand.id).order_by(Campaign.id.desc()))).scalars().all()
-    return [CampaignOut.model_validate(c) for c in rows]

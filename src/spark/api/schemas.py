@@ -40,12 +40,20 @@ class BrandOut(Out):
     website: str | None = None
     require_approval: bool
     auto_shorten_links: bool
+    voice_tone: str | None = None
+    voice_audience: str | None = None
+    voice_rules: str | None = None
+    voice_examples: str | None = None
+    default_hashtags: str | None = None
+    utm_campaign: str | None = None
     role: str
 
     @classmethod
     def of(cls, b: Brand, role: str) -> BrandOut:
         return cls(id=b.id, slug=b.slug, name=b.name, color=b.color, timezone=b.timezone, website=b.website,
-                   require_approval=b.require_approval, auto_shorten_links=b.auto_shorten_links, role=role)
+                   require_approval=b.require_approval, auto_shorten_links=b.auto_shorten_links, voice_tone=b.voice_tone,
+                   voice_audience=b.voice_audience, voice_rules=b.voice_rules, voice_examples=b.voice_examples,
+                   default_hashtags=b.default_hashtags, utm_campaign=(b.utm_defaults or {}).get("campaign"), role=role)
 
 
 class SessionOut(BaseModel):
@@ -97,6 +105,7 @@ class BrandUpdate(BaseModel):
     voice_rules: str | None = None
     voice_examples: str | None = None
     default_hashtags: str | None = None
+    utm_campaign: str | None = None
 
 
 class Capabilities(BaseModel):
@@ -450,3 +459,380 @@ class RewriteIn(BaseModel):
 
 class HashtagsIn(BaseModel):
     text: str
+
+
+# ---- phase 4 ----------------------------------------------------------------------------
+class TopPost(BaseModel):
+    post_id: int
+    account_id: int
+    handle: str
+    platform: str
+    engagements: int
+    impressions: int
+    text: str
+    url: str | None
+    published_at: datetime | None
+
+
+class AnalyticsOut(BaseModel):
+    days: int
+    published: int
+    scheduled: int
+    failed: int
+    followers: int
+    impressions: int
+    engagements: int
+    engagement_rate_pct: float
+    link_clicks: int
+    totals: dict[str, int]
+    change_pct: dict[str, float | None]
+    by_platform: dict[str, dict[str, int]]
+    series: list[WeekPoint]
+    link_clicks_series: list[dict[str, Any]]
+    top: list[TopPost]
+    best_times: list[dict[str, Any]]
+
+
+class AiPlanIn(BaseModel):
+    account_ids: list[int]
+    per_week: int = Field(3, ge=1, le=14)
+
+
+class CampaignIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    goal: str | None = None
+    starts_on: str | None = None  # YYYY-MM-DD in the brand's zone
+    ends_on: str | None = None
+    utm_campaign: str | None = None
+    color: Color = "#6366f1"
+    ai_plan: AiPlanIn | None = None
+
+
+class CampaignUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    goal: str | None = None
+    starts_on: str | None = None
+    ends_on: str | None = None
+    utm_campaign: str | None = None
+    color: Color | None = None
+
+
+class CampaignFull(CampaignOut):
+    counts: dict[str, int]
+    planned: int = 0
+
+
+class LinkIn(BaseModel):
+    destination: str = Field(min_length=3)
+    title: str | None = None
+    utm_source: str | None = None
+    utm_medium: str | None = None
+    utm_campaign: str | None = None
+    utm_content: str | None = None
+    campaign_id: int | None = None
+
+
+class LinkOut(Out):
+    id: int
+    code: str
+    destination: str
+    title: str | None
+    campaign_id: int | None
+    clicks: int
+    short_url: str
+    created_at: datetime | None
+
+
+class LinkPage(BaseModel):
+    items: list[LinkOut]
+
+
+class FeedIn(BaseModel):
+    url: str = Field(min_length=8)
+    name: str | None = None
+    use_ai: bool = True
+    auto_queue: bool = False
+    account_ids: list[int] = []
+
+
+class FeedUpdate(BaseModel):
+    name: str | None = None
+    use_ai: bool | None = None
+    auto_queue: bool | None = None
+    account_ids: list[int] | None = None
+    is_active: bool | None = None
+
+
+class FeedOut(Out):
+    id: int
+    url: str
+    name: str | None
+    use_ai: bool
+    auto_queue: bool
+    account_ids: list[int]
+    is_active: bool
+    last_checked_at: datetime | None
+
+
+class ListIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = None
+
+
+class ListOut(Out):
+    id: int
+    name: str
+    description: str | None
+    contacts: int = 0
+
+
+class ContactIn(BaseModel):
+    email: str
+    first_name: str | None = None
+    last_name: str | None = None
+    list_ids: list[int] = []
+
+
+class ContactOut(Out):
+    id: int
+    email: str
+    first_name: str | None
+    last_name: str | None
+    source: str
+    subscribed: bool
+    lists: list[int]
+    created_at: datetime | None
+
+
+class ContactPage(BaseModel):
+    items: list[ContactOut]
+    total: int
+    subscribed: int
+
+
+class EmailCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    list_id: int | None = None
+
+
+class EmailUpdate(BaseModel):
+    name: str | None = None
+    subject: str | None = None
+    preheader: str | None = None
+    body_html: str | None = None
+    list_id: int | None = None
+    action: Literal["save", "send", "schedule", "unschedule"] = "save"
+    scheduled_at: datetime | None = None
+
+
+class EmailOut(Out):
+    id: int
+    name: str
+    subject: str
+    preheader: str | None
+    body_html: str
+    status: str
+    list_id: int | None
+    scheduled_at: datetime | None
+    sent_at: datetime | None
+    sent_count: int
+    recipients: int = 0
+    stats: dict[str, int] = {}
+    created_at: datetime | None
+
+
+class BioLink(BaseModel):
+    label: str
+    url: str
+    code: str | None = None
+    clicks: int = 0
+
+
+class BioOut(BaseModel):
+    title: str
+    bio: str | None
+    theme: str
+    capture_email: bool
+    capture_list_id: int | None
+    avatar_media_id: int | None
+    is_published: bool
+    views: int
+    links: list[BioLink]
+    total_clicks: int
+    public_url: str
+
+
+class BioIn(BaseModel):
+    title: str = Field(max_length=200)
+    bio: str | None = None
+    theme: str = "light"
+    capture_email: bool = True
+    capture_list_id: int | None = None
+    avatar_media_id: int | None = None
+    is_published: bool = True
+    links: list[BioLink] = []
+
+
+class CredentialField(BaseModel):
+    name: str
+    label: str
+
+
+class PlatformOut(BaseModel):
+    name: str
+    label: str
+    connect_mode: str
+    credential_fields: list[CredentialField]
+    configured: bool
+    docs_url: str
+
+
+class PlatformsOut(BaseModel):
+    direct: list[PlatformOut]
+    zernio: dict[str, str]
+    zernio_ready: bool
+    force_dry_run: bool
+
+
+class ConnectResult(BaseModel):
+    message: str
+    accounts: list[AccountOut]
+
+
+class ImportResult(BaseModel):
+    imported: int
+    accounts: list[AccountOut]
+
+
+class SlotIn(BaseModel):
+    weekdays: list[int] = Field(min_length=1)
+    time: str = Field(pattern=r"^\d{2}:\d{2}$")
+
+
+class SlotRow(Out):
+    id: int
+    weekday: int
+    time: str
+
+
+class TeamIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8)
+    role: Literal["owner", "editor", "viewer"] = "editor"
+
+
+class TeamUpdate(BaseModel):
+    role: Literal["owner", "editor", "viewer"] | None = None
+    is_active: bool | None = None
+
+
+class TeamOut(Out):
+    id: int
+    name: str
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime | None
+
+
+class ConnectorCard(BaseModel):
+    key: str
+    name: str
+    tagline: str
+    kind: str
+    tags: list[str]
+    configured: bool
+    status: str
+
+
+class ConnectorFieldOut(BaseModel):
+    name: str
+    label: str
+    kind: str
+    options: list[list[str]]
+    help: str
+    placeholder: str
+    value: Any
+    masked: str
+    source: str
+    has_value: bool
+
+
+class ConnectorOut(BaseModel):
+    key: str
+    name: str
+    tagline: str
+    description: str
+    docs: str | None
+    kind: str
+    configured: bool
+    fields: list[ConnectorFieldOut]
+    extra: dict[str, Any] = {}
+
+
+class ConnectorSave(BaseModel):
+    values: dict[str, Any] = {}
+    clear: list[str] = []
+
+
+class TokenOut(Out):
+    id: int
+    name: str
+    prefix: str
+    last_used_at: datetime | None
+    created_at: datetime | None
+
+
+class TokenCreated(TokenOut):
+    token: str
+
+
+class InboxAccount(BaseModel):
+    id: int
+    external_id: str
+    platform: str
+    handle: str
+
+
+class InboxItem(BaseModel):
+    post_id: str
+    account: InboxAccount
+    platform: str
+    content: str | None
+    picture: str | None
+    permalink: str | None
+    created_at: str | None
+    comment_count: int
+    like_count: int
+
+
+class InboxOut(BaseModel):
+    ready: bool
+    error: str | None
+    accounts: list[InboxAccount]
+    items: list[InboxItem]
+
+
+class ReplyIn(BaseModel):
+    account: str
+    message: str = Field(min_length=1)
+    comment_id: str | None = None
+    root_uri: str | None = None
+    root_cid: str | None = None
+    parent_cid: str | None = None
+
+
+class LikeIn(BaseModel):
+    account: str
+    comment_id: str
+    liked: bool = True
+
+
+class PaletteItem(BaseModel):
+    label: str
+    hint: str = ""
+    group: str
+    to: str | None = None
+    action: str | None = None
+    params: dict[str, Any] = {}

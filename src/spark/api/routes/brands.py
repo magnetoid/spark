@@ -52,6 +52,9 @@ async def update_brand(body: BrandUpdate, db: AsyncSession = Depends(get_db), ct
     data = body.model_dump(exclude_unset=True)
     if "timezone" in data and data["timezone"] not in TIMEZONES:
         raise ApiError(422, "bad_timezone", f"Unknown timezone {data['timezone']!r}")
+    utm = data.pop("utm_campaign", None)
+    if utm is not None or "utm_campaign" in body.model_fields_set:
+        ctx.brand.utm_defaults = {"campaign": utm} if utm else {}
     for key, value in data.items():
         setattr(ctx.brand, key, value.strip() if isinstance(value, str) and key == "name" else value)
     await db.commit()
