@@ -4,14 +4,14 @@ JSON API and the MCP tools, so every path validates, shortens links and schedule
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from spark.models import Brand, Campaign, Post, PostStatus, PostTarget, SocialAccount, User
-from spark.platforms import adapter_for
+from spark.models import Brand, Campaign, Media, Post, PostStatus, PostTarget, SocialAccount, User
+from spark.platforms import PublishPayload, adapter_for
 from spark.services import jobs, scheduler
 from spark.services.links import shorten_in_text
 from spark.services.publisher import as_utc, validate_post
@@ -185,3 +185,58 @@ def move_to_day(post: Post, day: date, brand: Brand) -> datetime:
         if t.status != PostStatus.published:
             t.scheduled_at = when
     return when
+
+
+# ---- autosave ---------------------------------------------------------------------------
+async def autosave(db: AsyncSession, brand: Brand, user: User, post_id: int | None, *, content: str,
+                   link: str | None, media_ids: list[int], source: str, targets: list[TargetInput]) -> Post | None:
+    """Keep an unfinished post as a hidden draft. Returns the post, or None when there is nothing to keep."""
+    post = None
+    if post_id:
+        post = await db.get(Post, post_id)
+        if not post or post.brand_id != brand.id or post.status != PostStatus.draft:
+            return post if post and post.brand_id == brand.id else None
+    if post is None:
+        if not content.strip() and not media_ids:
+            return None
+        post = Post(brand_id=brand.id, author_id=user.id, source=source or "manual", is_autosave=True)
+        post.targets = []
+        db.add(post)
+    post.content, post.link = content.strip(), (link or "").strip() or None
+    post.media_ids = [int(m) for m in media_ids]
+    valid = {a.id for a in await active_accounts(db, brand)}
+    existing = {t.account_id: t for t in post.targets}
+    keep = []
+    for ti in targets:
+        if ti.account_id not in valid:
+            continue
+        t = existing.get(ti.account_id) or PostTarget(account_id=ti.account_id)
+        t.content_override = (ti.override or "").strip() or None
+        t.first_comment = (ti.first_comment or "").strip() or None
+        t.thread = [str(x) for x in (ti.thread or [])][:25]
+        keep.append(t)
+    post.targets = keep
+    await db.commit()
+    return post
+
+
+async def latest_autosave(db: AsyncSession, brand: Brand, user: User, max_age: timedelta = timedelta(hours=24)) -> Post | None:
+    """The user's most recent unfinished post, if it is still worth resuming."""
+    since = datetime.now(UTC) - max_age
+    return await db.scalar(select(Post).where(
+        Post.brand_id == brand.id, Post.author_id == user.id, Post.is_autosave.is_(True),
+        Post.status == PostStatus.draft, Post.updated_at >= since).order_by(Post.updated_at.desc()).limit(1))
+
+
+async def validate_targets(db: AsyncSession, brand: Brand, targets: dict[str, str], media_ids: list[int],
+                           link: str | None) -> dict[str, list[str]]:
+    """Live validation while typing: per-channel problems for the given texts."""
+    media = []
+    if media_ids:
+        media = (await db.execute(select(Media).where(Media.id.in_(media_ids), Media.brand_id == brand.id))).scalars().all()
+    out: dict[str, list[str]] = {}
+    for aid, text in targets.items():
+        acc = await db.get(SocialAccount, int(aid)) if str(aid).isdigit() else None
+        if acc and acc.brand_id == brand.id:
+            out[str(aid)] = adapter_for(acc).validate(PublishPayload(text=text or "", media=list(media), link=link))
+    return out

@@ -1,5 +1,4 @@
 import re
-from pathlib import Path
 from zoneinfo import available_timezones
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -7,18 +6,15 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from spark.config import get_settings
 from spark.db import get_db
 from spark.models import Brand, HashtagGroup, Media, PostTemplate, QueueSlot, Role, User
 from spark.security import hash_password, token
+from spark.services import media as media_svc
 from spark.web.deps import current_user, editor, flash, owner, render, require_brand
 
 router = APIRouter()
 TIMEZONES = sorted(available_timezones())
 WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-ALLOWED_MEDIA = {
-    "image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/quicktime",
-}
 
 
 def slugify(value: str) -> str:
@@ -262,26 +258,11 @@ async def media_library(request: Request, db: AsyncSession = Depends(get_db),
 async def media_upload(request: Request, files: list[UploadFile] = File(...),
                        db: AsyncSession = Depends(get_db), user: User = Depends(editor),
                        brand: Brand = Depends(require_brand)):
-    s = get_settings()
-    uploaded = []
-    for f in files:
-        if f.content_type not in ALLOWED_MEDIA:
-            flash(request, f"{f.filename}: unsupported type {f.content_type}", "error")
-            continue
-        data = await f.read()
-        if len(data) > s.max_upload_mb * 1024 * 1024:
-            flash(request, f"{f.filename}: larger than {s.max_upload_mb} MB", "error")
-            continue
-        ext = Path(f.filename or "").suffix.lower()[:8] or ".bin"
-        rel = f"{brand.id}/{token(12)}{ext}"
-        dest = s.media_dir / rel
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(data)
-        m = Media(brand_id=brand.id, filename=f.filename or rel, path=rel,
-                  content_type=f.content_type, size=len(data))
-        db.add(m)
-        uploaded.append(m)
-    await db.commit()
+    uploads = [media_svc.Upload(name=f.filename or "upload", content_type=f.content_type or "", data=await f.read())
+               for f in files]
+    uploaded, rejected = await media_svc.save_uploads(db, brand, uploads)
+    for r in rejected:
+        flash(request, f"{r['name']}: {r['reason']}", "error")
     if "application/json" in request.headers.get("accept", ""):
         from fastapi.responses import JSONResponse
 
@@ -306,7 +287,5 @@ async def media_delete(media_id: int, db: AsyncSession = Depends(get_db),
                        user: User = Depends(editor), brand: Brand = Depends(require_brand)):
     m = await db.get(Media, media_id)
     if m and m.brand_id == brand.id:
-        (get_settings().media_dir / m.path).unlink(missing_ok=True)
-        await db.delete(m)
-        await db.commit()
+        await media_svc.delete_media(db, m)
     return RedirectResponse("/media", 303)

@@ -18,6 +18,10 @@ export function setCsrfToken(token: string) {
   csrfToken = token;
 }
 
+export function getCsrfToken() {
+  return csrfToken;
+}
+
 export function setUnauthorizedHandler(fn: () => void) {
   onUnauthorized = fn;
 }

@@ -54,3 +54,25 @@ async def page():
         pg.set_default_navigation_timeout(45_000)
         yield pg
         await browser.close()
+
+
+@pytest.fixture(scope="session")
+def seeded_brand(server_url):
+    """An owner (e2e@example.com), a brand and a dry-run channel, created once per server. Works whether
+    or not the first-run smoke test already created them."""
+    import httpx
+
+    with httpx.Client(base_url=server_url, follow_redirects=False, timeout=30) as c:
+        s = c.get("/api/v1/session").json()
+        c.headers["X-CSRF-Token"] = s["csrf_token"]
+        creds = {"email": "e2e@example.com", "password": "sparkdev-e2e-1"}
+        r = c.post("/api/v1/auth/setup", json={"name": "E2E Owner", **creds}) if s["needs_setup"] else c.post("/api/v1/auth/login", json=creds)
+        assert r.status_code == 200, r.text
+        c.headers["X-CSRF-Token"] = r.json()["csrf_token"]
+        brands = r.json()["brands"] or [c.post("/api/v1/brands", json={"name": "E2E Brand"}).json()]
+        bid = brands[0]["id"]
+        if not c.get(f"/api/v1/brands/{bid}/accounts").json():
+            # the channel connect API arrives in phase 4; the form route works with the same session + CSRF header
+            r = c.post("/accounts/connect/dry_run", data={"handle": "e2e-handle"})
+            assert r.status_code in (200, 303), r.text
+        return bid

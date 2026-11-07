@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ComposerHost } from "@/features/composer/composer-host";
 
 const COLLAPSE_KEY = "spark.sidebar";
 
@@ -23,6 +24,7 @@ export function AppShell() {
 
   return (
     <WorkspaceProvider session={session}>
+      <ComposerHost>
       <div className="flex min-h-dvh">
         <aside className={`brand-rail hidden md:flex sticky top-0 h-dvh shrink-0 flex-col border-r border-line bg-surface transition-[width] ${collapsed ? "w-[3.75rem]" : "w-60"}`}>
           <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
@@ -43,6 +45,7 @@ export function AppShell() {
           </main>
         </div>
       </div>
+      </ComposerHost>
     </WorkspaceProvider>
   );
 }

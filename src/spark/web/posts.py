@@ -160,36 +160,20 @@ async def compose_autosave(request: Request, db: AsyncSession = Depends(get_db),
                            user: User = Depends(editor), brand: Brand = Depends(require_brand)):
     """Debounced from the composer: keep an unfinished post as a hidden draft."""
     body = await request.json()
-    post = None
-    if body.get("post_id"):
-        post = await db.get(Post, int(body["post_id"]))
-        if not post or post.brand_id != brand.id:
-            post = None
-        elif post.status != PostStatus.draft:
+    pid = int(body["post_id"]) if str(body.get("post_id") or "").isdigit() else None
+    if pid:
+        existing = await db.get(Post, pid)
+        if existing and existing.brand_id == brand.id and existing.status != PostStatus.draft:
             return JSONResponse({"skipped": "not a draft"})
+    targets = [post_svc.TargetInput(
+        account_id=int(aid), override=(body.get("overrides") or {}).get(str(aid)),
+        first_comment=(body.get("first_comments") or {}).get(str(aid)),
+        thread=(body.get("threads") or {}).get(str(aid)) or []) for aid in body.get("account_ids") or []]
+    post = await post_svc.autosave(db, brand, user, pid, content=body.get("content") or "", link=body.get("link"),
+                                   media_ids=[int(m) for m in body.get("media_ids") or [] if str(m).isdigit()],
+                                   source=body.get("source") or "manual", targets=targets)
     if post is None:
-        if not (body.get("content") or "").strip() and not body.get("media_ids"):
-            return JSONResponse({"skipped": "empty"})
-        post = Post(brand_id=brand.id, author_id=user.id, source=body.get("source") or "manual", is_autosave=True)
-        post.targets = []
-        db.add(post)
-    post.content = (body.get("content") or "").strip()
-    post.link = (body.get("link") or "").strip() or None
-    post.media_ids = [int(m) for m in body.get("media_ids") or [] if str(m).isdigit()]
-    valid = {a.id for a in await _accounts(db, brand)}
-    existing = {t.account_id: t for t in post.targets}
-    keep = []
-    for aid in body.get("account_ids") or []:
-        aid = int(aid)
-        if aid not in valid:
-            continue
-        t = existing.get(aid) or PostTarget(account_id=aid)
-        t.content_override = (body.get("overrides") or {}).get(str(aid)) or None
-        t.first_comment = (body.get("first_comments") or {}).get(str(aid)) or None
-        t.thread = [str(x) for x in (body.get("threads") or {}).get(str(aid)) or []][:25]
-        keep.append(t)
-    post.targets = keep
-    await db.commit()
+        return JSONResponse({"skipped": "empty"})
     return JSONResponse({"post_id": post.id, "saved_at": datetime.now(UTC).isoformat()})
 
 

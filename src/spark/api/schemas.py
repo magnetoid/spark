@@ -232,3 +232,221 @@ class TodayOut(BaseModel):
     @classmethod
     def _sorted(cls, v: list[TimelineItem]) -> list[TimelineItem]:
         return sorted(v, key=lambda i: i.at)
+
+
+# ---- writes ---------------------------------------------------------------------------
+ActionName = Literal["draft", "queue", "next", "schedule", "now"]
+
+
+class TargetIn(BaseModel):
+    account_id: int
+    override: str | None = None
+    first_comment: str | None = None
+    thread: list[str] = []
+
+
+class PostWrite(BaseModel):
+    content: str = ""
+    link: str | None = None
+    media_ids: list[int] = []
+    campaign_id: int | None = None
+    notes: str | None = None
+    source: str = "manual"
+    targets: list[TargetIn] = []
+    action: ActionName = "draft"
+    scheduled_at: datetime | None = None
+    idea_id: int | None = None
+
+
+class PlaceIn(BaseModel):
+    action: ActionName
+    scheduled_at: datetime | None = None
+
+
+class MoveIn(BaseModel):
+    day: str | None = None  # ISO date: keep the time of day
+    when: datetime | None = None  # exact slot
+
+
+class PostResult(BaseModel):
+    message: str
+    post: PostOut
+
+
+class RetryResult(PostResult):
+    retried: int
+
+
+class AutosaveIn(BaseModel):
+    post_id: int | None = None
+    content: str = ""
+    link: str | None = None
+    media_ids: list[int] = []
+    source: str = "manual"
+    targets: list[TargetIn] = []
+
+
+class AutosaveOut(BaseModel):
+    post_id: int | None
+    saved_at: datetime
+
+
+class ValidateIn(BaseModel):
+    targets: dict[str, str]
+    media_ids: list[int] = []
+    link: str | None = None
+
+
+class SlotOut(BaseModel):
+    weekday: int
+    time: str
+
+
+class QueueItem(BaseModel):
+    when: datetime
+    post: PostOut | None
+    target_id: int | None
+
+
+class QueueOut(BaseModel):
+    account: AccountOut
+    items: list[QueueItem]
+    slots: list[SlotOut]
+    counts: dict[str, int]
+
+
+class IdeaIn(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    body: str | None = None
+    tags: list[str] = []
+    source_url: str | None = None
+    status: Literal["idea", "drafting", "ready", "done"] = "idea"
+
+
+class IdeaUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    body: str | None = None
+    tags: list[str] | None = None
+    source_url: str | None = None
+
+
+class IdeaMove(BaseModel):
+    status: str
+    position: int = 0
+
+
+class IdeaOut(Out):
+    id: int
+    title: str
+    body: str | None
+    tags: list[str]
+    status: str
+    source_url: str | None
+    position: int
+    post_id: int | None
+    media_ids: list[int]
+    created_at: datetime | None
+    updated_at: datetime | None
+
+    @classmethod
+    def of(cls, i) -> IdeaOut:
+        return cls(id=i.id, title=i.title, body=i.body, tags=list(i.tags or []), status=i.status, source_url=i.source_url,
+                   position=i.position, post_id=i.post_id, media_ids=list(i.media_ids or []),
+                   created_at=_dt(i.created_at), updated_at=_dt(i.updated_at))
+
+
+class IdeaBoard(BaseModel):
+    items: list[IdeaOut]
+    tags: list[str]
+
+
+class MediaOut(Out):
+    id: int
+    name: str
+    url: str
+    content_type: str
+    is_video: bool
+    size: int
+    alt_text: str | None
+    created_at: datetime | None
+
+    @classmethod
+    def of(cls, m) -> MediaOut:
+        return cls(id=m.id, name=m.filename, url=m.url, content_type=m.content_type, is_video=m.is_video, size=m.size,
+                   alt_text=m.alt_text, created_at=_dt(m.created_at))
+
+
+class MediaUploadOut(BaseModel):
+    items: list[MediaOut]
+    rejected: list[dict[str, str]]
+
+
+class MediaPage(BaseModel):
+    items: list[MediaOut]
+
+
+class MediaUpdate(BaseModel):
+    alt_text: str | None = None
+
+
+class HashtagGroupIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    tags: list[str] = []
+
+
+class HashtagGroupUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    tags: list[str] | None = None
+
+
+class HashtagGroupOut(Out):
+    id: int
+    name: str
+    tags: list[str]
+
+
+class TemplateIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    body: str = ""
+    category: str | None = None
+
+
+class TemplateUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    body: str | None = None
+    category: str | None = None
+
+
+class TemplateOut(Out):
+    id: int
+    name: str
+    body: str
+    category: str | None
+
+
+class CampaignOut(Out):
+    id: int
+    name: str
+    color: str
+    goal: str | None
+    utm_campaign: str | None
+    starts_on: datetime | None
+    ends_on: datetime | None
+
+
+class GenerateIn(BaseModel):
+    brief: str = ""
+    platforms: list[str] = []
+    url: str | None = None
+    link: str | None = None
+    variants: int = Field(1, ge=1, le=3)
+
+
+class RewriteIn(BaseModel):
+    text: str
+    instruction: str = "Improve it"
+    platform: str | None = None
+
+
+class HashtagsIn(BaseModel):
+    text: str

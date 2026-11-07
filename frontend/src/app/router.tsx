@@ -12,6 +12,10 @@ import { LoginPage } from "@/pages/login";
 import { SetupPage } from "@/pages/setup";
 import { TodayPage } from "@/pages/today";
 import { ClassicPage } from "@/pages/classic";
+import { PublishingPage } from "@/pages/publishing";
+import { IdeasPage } from "@/pages/ideas";
+import { LibraryPage } from "@/pages/library";
+import { ComposePage, EditPostPage } from "@/pages/compose";
 import { sessionQuery } from "@/app/session";
 
 interface RouterContext {
@@ -20,8 +24,8 @@ interface RouterContext {
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: () => <Outlet />,
-  validateSearch: (s: Record<string, unknown>): { brand?: string } =>
-    typeof s.brand === "string" && s.brand ? { brand: s.brand } : {},
+  validateSearch: (s: Record<string, unknown>): { brand?: string; view?: string; account?: string; cal?: string; month?: string; campaign?: string; tab?: string; at?: string } =>
+    Object.fromEntries(Object.entries(s).filter(([k, v]) => ["brand", "view", "account", "cal", "month", "campaign", "tab", "at"].includes(k) && typeof v === "string" && v)) as { brand?: string },
 });
 
 const loginRoute = createRoute({
@@ -62,10 +66,12 @@ export const routeTree = rootRoute.addChildren([
   setupRoute,
   shellRoute.addChildren([
     page("/", TodayPage),
-    classic("/publishing", "Publishing", "/queue", "Queue, calendar, drafts, approvals and sent posts."),
+    page("/publishing", PublishingPage),
+    page("/compose", ComposePage),
+    page("/posts/$postId/edit", EditPostPage),
     classic("/inbox", "Inbox", "/inbox", "Comments and replies across your channels."),
-    classic("/ideas", "Ideas", "/ideas", "The idea board, from a note to a ready post."),
-    classic("/library", "Library", "/media", "Media, templates and hashtag groups."),
+    page("/ideas", IdeasPage),
+    page("/library", LibraryPage),
     classic("/analytics", "Analytics", "/analytics", "Impressions, engagement, best times and link clicks."),
     classic("/campaigns", "Campaigns", "/campaigns", "Group posts under a goal and track them together."),
     classic("/links", "Links", "/links", "Tracked short links, UTM tags and your bio page."),

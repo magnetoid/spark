@@ -8,6 +8,7 @@ import { EmptyState, PageHeader, StatusBadge, statusColorVar } from "@/component
 import { PlatformMark } from "@/lib/platforms";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useComposer } from "@/features/composer/composer-host";
 
 type Today = components["schemas"]["TodayOut"];
 
@@ -33,11 +34,12 @@ export function TodayPage() {
 }
 
 function TodayBody({ data, tz }: { data: Today; tz: string }) {
+  const composer = useComposer();
   const n = data.needs_you;
   const needs = [
-    { count: n.approvals, label: "to approve", icon: CheckCircle2, href: "/queue?tab=approvals", tone: "text-st-pending" },
-    { count: n.failed, label: n.failed === 1 ? "failed post" : "failed posts", icon: AlertTriangle, href: "/posts?status=failed", tone: "text-st-failed" },
-    { count: n.drafts, label: n.drafts === 1 ? "draft waiting" : "drafts waiting", icon: FileText, href: "/queue?tab=drafts", tone: "text-ink-2" },
+    { count: n.approvals, label: "to approve", icon: CheckCircle2, to: "/publishing", search: { view: "approvals" }, tone: "text-st-pending" },
+    { count: n.failed, label: n.failed === 1 ? "failed post" : "failed posts", icon: AlertTriangle, to: "/publishing", search: { view: "sent" }, tone: "text-st-failed" },
+    { count: n.drafts, label: n.drafts === 1 ? "draft waiting" : "drafts waiting", icon: FileText, to: "/publishing", search: { view: "drafts" }, tone: "text-ink-2" },
   ].filter((x) => x.count > 0);
 
   return (
@@ -54,7 +56,7 @@ function TodayBody({ data, tz }: { data: Today; tz: string }) {
         {data.timeline.length === 0 ? (
           <EmptyState icon={Sunrise} title="Nothing scheduled for today" className="mt-4"
                       body={data.free_slots_today > 0 ? `${data.free_slots_today} posting ${data.free_slots_today === 1 ? "slot is" : "slots are"} still free today.` : "Tomorrow's queue is where the next posts are."}
-                      action={<Button asChild size="sm" variant="outline"><a href="/compose"><CalendarPlus className="size-4" />Write a post</a></Button>} />
+                      action={<Button size="sm" variant="outline" onClick={() => composer.open()}><CalendarPlus className="size-4" />Write a post</Button>} />
         ) : (
           <ul className="mt-4 divide-y divide-line">
             {data.timeline.map((it) => (
@@ -63,7 +65,7 @@ function TodayBody({ data, tz }: { data: Today; tz: string }) {
                 <div className="flex shrink-0 -space-x-1 pt-0.5">
                   {it.channels.map((c) => <span key={c.account_id} className="grid size-6 place-items-center rounded-full border border-line bg-surface" title={`${c.handle} · ${c.platform}`}><PlatformMark platform={c.platform} size={13} /></span>)}
                 </div>
-                <a href={`/posts/${it.post_id}/edit`} className="min-w-0 flex-1 truncate text-sm hover:underline">{it.content || <span className="text-ink-2">(media only)</span>}</a>
+                <button type="button" onClick={() => composer.open({ postId: it.post_id })} className="min-w-0 flex-1 truncate text-left text-sm hover:underline">{it.content || <span className="text-ink-2">(media only)</span>}</button>
                 <StatusBadge status={it.status} className="shrink-0" />
               </li>
             ))}
@@ -80,10 +82,10 @@ function TodayBody({ data, tz }: { data: Today; tz: string }) {
             <ul className="space-y-1">
               {needs.map((x) => (
                 <li key={x.label}>
-                  <a href={x.href} className="flex items-center gap-3 rounded-control px-2 py-2 hover:bg-hover">
+                  <Link to={x.to} search={(p) => ({ ...p, ...x.search })} className="flex items-center gap-3 rounded-control px-2 py-2 hover:bg-hover">
                     <x.icon className={`size-4 ${x.tone}`} aria-hidden />
                     <span className="text-sm"><span className="font-semibold tnum">{x.count}</span> {x.label}</span>
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

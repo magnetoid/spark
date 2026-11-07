@@ -5,6 +5,7 @@ import { useWorkspace } from "@/app/session";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useComposer } from "@/features/composer/composer-host";
 
 const PAGES = [
   ["Today", "/"], ["Publishing", "/publishing"], ["Inbox", "/inbox"], ["Ideas", "/ideas"], ["Library", "/library"],
@@ -17,6 +18,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const page = PAGES.find(([, to]) => to === pathname)?.[0] ?? "Spark";
   const [open, setOpen] = useState(false);
+  const composer = useComposer();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -37,7 +39,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         <Search className="size-4" /><span className="flex-1 truncate">Jump to a page or brand…</span>
         <kbd className="hidden rounded border border-line px-1 text-[10px] sm:inline">⌘K</kbd>
       </button>
-      <Button asChild size="sm"><a href="/compose"><Plus className="size-4" />New post</a></Button>
+      <Button size="sm" onClick={() => composer.open()}><Plus className="size-4" />New post</Button>
       <JumpDialog open={open} onOpenChange={setOpen} brands={brands} onBrand={setBrand} />
     </header>
   );
