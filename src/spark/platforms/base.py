@@ -102,6 +102,9 @@ class PlatformAdapter(abc.ABC):
     connect_mode: ClassVar[str] = "oauth"
     credential_fields: ClassVar[tuple[tuple[str, str], ...]] = ()
     docs_url: ClassVar[str] = ""
+    # What this adapter actually sends: the composer only offers what the adapter can deliver
+    supports_first_comment: ClassVar[bool] = False  # a reply posted right after publishing
+    supports_thread: ClassVar[bool] = False  # follow-up items as a thread of replies
 
     def __init__(self, http: httpx.AsyncClient | None = None):
         self._http = http

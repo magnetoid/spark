@@ -28,12 +28,16 @@ class DryRunAdapter(PlatformAdapter):
     limits = Limits(max_chars=5000, max_media=10)
     connect_mode = "credentials"
     credential_fields = (("handle", "Handle to display"),)
+    supports_first_comment = True
+    supports_thread = True
 
     def __init__(self, http: httpx.AsyncClient | None = None, impersonate=None):
         super().__init__(http)
         if impersonate is not None:
             self.limits = impersonate.limits
             self.label = f"{impersonate.label} (dry run)"
+            self.supports_first_comment = impersonate.supports_first_comment
+            self.supports_thread = impersonate.supports_thread
 
     async def connect_with_credentials(self, data: dict[str, str]) -> list[ConnectedAccount]:
         handle = (data.get("handle") or "test-account").strip()

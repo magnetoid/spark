@@ -29,9 +29,9 @@ from spark.models import (
 from spark.security import token
 from spark.services import analytics, scheduler
 from spark.services.ai import AIUnavailable, ContentAI
+from spark.services.jobs import enqueue
 from spark.services.links import add_utm, create_short_link, short_url
 from spark.web.deps import current_user, editor, flash, render, require_brand, templates
-from spark.web.posts import enqueue
 
 router = APIRouter()
 

@@ -1,0 +1,25 @@
+# Keep the image to the application: no local state, secrets, caches or tooling.
+.git
+.github
+.venv
+.env
+.env.*
+!.env.example
+*.db
+*.db-journal
+media/
+scratch*
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.superpowers/
+.claude/
+node_modules/
+frontend/node_modules/
+frontend/dist/
+tests/
+docs/
+*.md
+!README.md
+.DS_Store

@@ -88,6 +88,9 @@ class ZernioAdapter(PlatformAdapter):
             self.video_only = meta.video_only
         else:
             self.video_only = False
+        z = to_zernio(platform)
+        self.supports_first_comment = z in self.FIRST_COMMENT_PLATFORMS
+        self.supports_thread = z in self.THREAD_PLATFORMS
 
     @classmethod
     def for_platform(cls, platform: str, http: httpx.AsyncClient | None = None) -> ZernioAdapter:
@@ -236,7 +239,9 @@ class ZernioAdapter(PlatformAdapter):
             item["altText"] = m.alt_text
         return item
 
+    # Zernio has `platformSpecificData.firstComment` and `threadItems` only for these
     FIRST_COMMENT_PLATFORMS = {"threads", "facebook", "instagram", "linkedin", "youtube"}
+    THREAD_PLATFORMS = {"twitter", "threads", "bluesky"}
 
     def _platform_data(self, account, payload: PublishPayload) -> dict:
         z = to_zernio(account.platform)
@@ -258,7 +263,9 @@ class ZernioAdapter(PlatformAdapter):
         if account.extra.get("needs_reconnection"):
             raise AuthExpired("Zernio reports this account needs reconnection")
         text = payload.text
-        if payload.link and payload.link not in text and account.platform not in ("facebook", "linkedin"):
+        # Zernio's create-post has no link field: the URL must be in the text on every network
+        # (Facebook and LinkedIn build their preview card from it).
+        if payload.link and payload.link not in text:
             text = f"{text}\n\n{payload.link}".strip()
         body: dict = {
             "content": text,
@@ -268,7 +275,7 @@ class ZernioAdapter(PlatformAdapter):
         }
         media_items = [await self._upload(payload, m) for m in payload.media] if payload.media else []
         pdata = self._platform_data(account, payload)
-        if payload.thread and to_zernio(account.platform) in ("twitter", "threads", "bluesky"):
+        if payload.thread and to_zernio(account.platform) in self.THREAD_PLATFORMS:
             # threadItems[0] is the root and carries the media; top-level content is display-only.
             root: dict = {"content": text}
             if media_items:

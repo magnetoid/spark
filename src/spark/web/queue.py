@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from spark.db import get_db
 from spark.models import Brand, Post, PostStatus, PostTarget, SocialAccount, User
 from spark.platforms.zernio import ZERNIO_PLATFORMS
+from spark.services import posts as post_svc
 from spark.services import scheduler
 from spark.web.deps import (
     current_user,
@@ -25,7 +26,6 @@ from spark.web.deps import (
     templates,
     toast,
 )
-from spark.web.posts import enqueue
 
 router = APIRouter()
 TABS = ("queue", "drafts", "approvals", "sent")
@@ -133,15 +133,16 @@ async def share_now(post_id: int, request: Request, db: AsyncSession = Depends(g
     if not post.targets:
         flash(request, "Pick at least one account first", "error")
         return RedirectResponse(f"/posts/{post.id}/edit", 303)
-    status = scheduler.schedule(post, datetime.now(UTC), user, brand)
+    try:
+        msg = await post_svc.place_post(db, brand, user, post, "now", None)
+    except post_svc.PlaceError as e:
+        await db.commit()
+        if is_hx(request):
+            return hx_none(toast(" · ".join(e.problems), "error"))
+        flash(request, " · ".join(e.problems), "error")
+        return RedirectResponse(f"/posts/{post.id}/edit", 303)
     await db.commit()
-    if status == PostStatus.scheduled:
-        for t in post.targets:
-            if t.status == PostStatus.scheduled:
-                await enqueue("publish_now", t.id)
-        msg = "Publishing now…"
-    else:
-        msg = "Sent for approval"
+    await post_svc.enqueue_due(post)
     if is_hx(request):
         return hx_none({**toast(msg), "posts-changed": {"id": post.id}})
     flash(request, msg)

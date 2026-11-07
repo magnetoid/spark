@@ -31,6 +31,8 @@ CHUNK = 4 * 1024 * 1024
 @register
 class XAdapter(PlatformAdapter):
     name = "x"
+    supports_first_comment = True
+    supports_thread = True
     label = "X / Twitter"
     limits = Limits(max_chars=280, max_media=4)
     docs_url = "https://developer.x.com/en/portal/dashboard"

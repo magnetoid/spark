@@ -1,8 +1,5 @@
 """Settings → Connectors: Zernio first, then Claude AI, email delivery, MCP access, direct apps."""
 
-import hashlib
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
@@ -11,16 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from spark.config import get_settings
 from spark.db import get_db
 from spark.models import ApiToken, Brand, SocialAccount, User
-from spark.security import token as new_secret
 from spark.services import connectors as conn
+from spark.services import tokens
 from spark.web.deps import current_user, flash, hx_none, is_hx, owner, render, require_brand, toast
 
 router = APIRouter()
-TOKEN_PREFIX = "spk_"
-
-
-def hash_token(raw: str) -> str:
-    return hashlib.sha256(raw.encode()).hexdigest()
 
 
 def mcp_url() -> str:
@@ -129,9 +121,7 @@ async def connector_test(key: str, request: Request, user: User = Depends(owner)
 async def token_create(request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(current_user)):
     form = await request.form()
     name = str(form.get("name", "")).strip()[:120] or "MCP client"
-    raw = TOKEN_PREFIX + new_secret(30)
-    db.add(ApiToken(user_id=user.id, name=name, token_hash=hash_token(raw), prefix=raw[:10]))
-    await db.commit()
+    raw, _row = await tokens.create_token(db, user, name)
     # Shown exactly once, on the next page view; only the hash is stored.
     request.session["new_api_token"] = {"name": name, "token": raw}
     return RedirectResponse("/settings/connectors/mcp#tokens", 303)
@@ -147,18 +137,3 @@ async def token_delete(token_id: int, request: Request, db: AsyncSession = Depen
     await db.commit()
     flash(request, f"Revoked “{t.name}”. Clients using it lose access now.")
     return RedirectResponse("/settings/connectors/mcp#tokens", 303)
-
-
-async def user_for_token(db: AsyncSession, raw: str | None) -> User | None:
-    """Resolve a bearer token to an active user and stamp last use (at most once a minute)."""
-    if not raw or not raw.startswith(TOKEN_PREFIX):
-        return None
-    t = await db.scalar(select(ApiToken).where(ApiToken.token_hash == hash_token(raw)))
-    if not t or not t.user or not t.user.is_active:
-        return None
-    now = datetime.now(UTC)
-    last = t.last_used_at.replace(tzinfo=UTC) if t.last_used_at and t.last_used_at.tzinfo is None else t.last_used_at
-    if not last or (now - last).total_seconds() > 60:
-        t.last_used_at = now
-        await db.commit()
-    return t.user

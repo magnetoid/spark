@@ -26,10 +26,11 @@ from spark.models import (
     User,
 )
 from spark.platforms import PublishPayload, adapter_for
+from spark.services import posts as post_svc
 from spark.services import scheduler
 from spark.services.ai import AIUnavailable, ContentAI
-from spark.services.links import shorten_in_text
-from spark.services.publisher import as_utc, validate_post
+from spark.services.fetch import fetch_page_text
+from spark.services.publisher import as_utc
 from spark.web.deps import (
     current_user,
     editor,
@@ -45,33 +46,7 @@ from spark.web.deps import (
 
 router = APIRouter()
 log = logging.getLogger(__name__)
-# Platforms where a "first comment" is posted right after publishing (direct adapters and Zernio)
-FIRST_COMMENT_PLATFORMS = {"x", "mastodon", "bluesky", "threads", "facebook", "instagram", "linkedin",
-                           "youtube", "dry_run"}
-# Platforms where long text can be split into a thread of replies
-THREAD_PLATFORMS = {"x", "threads", "bluesky", "mastodon", "dry_run"}
-
-
-async def enqueue(job: str, *args) -> bool:
-    """Best-effort immediate job; the worker's cron picks it up anyway."""
-    try:
-        from arq import create_pool
-        from arq.connections import RedisSettings
-
-        pool = await create_pool(RedisSettings.from_dsn(get_settings().redis_url))
-        await pool.enqueue_job(job, *args)
-        await pool.aclose()
-        return True
-    except Exception as e:
-        log.info("Could not enqueue %s (%s); cron will handle it", job, e)
-        return False
-
-
-async def _accounts(db: AsyncSession, brand: Brand) -> list[SocialAccount]:
-    return (await db.execute(
-        select(SocialAccount).where(SocialAccount.brand_id == brand.id, SocialAccount.is_active.is_(True))
-        .order_by(SocialAccount.platform)
-    )).scalars().all()
+_accounts = post_svc.active_accounts
 
 
 async def _campaigns(db: AsyncSession, brand: Brand) -> list[Campaign]:
@@ -104,15 +79,7 @@ async def _composer_context(request: Request, db: AsyncSession, brand: Brand, us
         rows = (await db.execute(select(Media).where(Media.id.in_(media_ids), Media.brand_id == brand.id))).scalars().all()
         media = sorted(rows, key=lambda m: media_ids.index(m.id))
     accounts = await _accounts(db, brand)
-    limits = {}
-    for a in accounts:
-        ad = adapter_for(a)
-        limits[a.id] = {"max": ad.limits.max_chars, "label": ad.label, "platform": a.platform,
-                        "handle": a.handle, "requires_media": ad.limits.requires_media,
-                        "provider": a.provider, "avatar": a.avatar_url,
-                        "display_name": a.display_name or a.handle,
-                        "first_comment": a.platform in FIRST_COMMENT_PLATFORMS,
-                        "threadable": a.platform in THREAD_PLATFORMS}
+    limits = {a.id: post_svc.channel_capabilities(a) for a in accounts}
     prefill_at = request.query_params.get("at")
     ai_enabled = bool(get_settings().anthropic_api_key)
     preselect = request.query_params.get("account")
@@ -242,86 +209,38 @@ async def compose_save(request: Request, post_id: int | None = None,
     link = str(form.get("link", "")).strip() or None
 
     post = await _get_post(db, brand, post_id) if post_id else None
-    if post is None:
-        post = Post(brand_id=brand.id, author_id=user.id, source=str(form.get("source", "manual")))
-        post.targets = []
-        db.add(post)
-    if post.status in (PostStatus.publishing,):
+    if post is not None and post.status == PostStatus.publishing:
         if is_hx(request):
             return hx_none(toast("This post is publishing right now and can't be edited", "error"))
         flash(request, "This post is publishing right now and can't be edited", "error")
         return RedirectResponse("/posts", 303)
-    post.is_autosave = False
 
-    campaign = await db.get(Campaign, campaign_id) if campaign_id else None
-    if brand.auto_shorten_links and content:
-        content = await shorten_in_text(
-            db, brand, content, source="spark", campaign=campaign.utm_campaign if campaign else None,
-            campaign_id=campaign_id,
-        )
-    post.content, post.link, post.media_ids, post.campaign_id = content, link, media_ids, campaign_id
-    post.notes = str(form.get("notes", "")) or None
-
-    valid_accounts = {a.id for a in await _accounts(db, brand)}
-    existing = {t.account_id: t for t in post.targets}
-    keep = []
+    targets = []
     for aid in account_ids:
-        if aid not in valid_accounts:
-            continue
-        t = existing.get(aid) or PostTarget(account_id=aid)
-        override = str(form.get(f"override_{aid}", "")).strip()
-        t.content_override = override if override and override != content else None
-        t.first_comment = str(form.get(f"first_comment_{aid}", "")).strip() or None
         try:
             raw_thread = json.loads(str(form.get(f"thread_{aid}", "") or "[]"))
         except ValueError:
             raw_thread = []
-        t.thread = [str(x).strip() for x in raw_thread if str(x).strip()][:25] if isinstance(raw_thread, list) else []
-        if t.status in (PostStatus.failed,):
-            t.status = PostStatus.draft
-        keep.append(t)
-    post.targets = keep
-    await db.flush()
-    await db.refresh(post, ["targets"])
+        targets.append(post_svc.TargetInput(
+            account_id=aid, override=str(form.get(f"override_{aid}", "")),
+            first_comment=str(form.get(f"first_comment_{aid}", "")),
+            thread=raw_thread if isinstance(raw_thread, list) else []))
+    post = await post_svc.save_post(
+        db, brand, user, post, content=content, link=link, media_ids=media_ids, campaign_id=campaign_id,
+        notes=str(form.get("notes", "")) or None, source=str(form.get("source", "manual")), targets=targets)
 
-    if action != "draft":
-        problems = ["Pick at least one account to publish to"] if not post.targets else await validate_post(db, post)
-        if problems:
-            await db.commit()
-            if is_hx(request):
-                return hx_none(toast(" · ".join(problems), "error"))
-            for p in problems:
-                flash(request, p, "error")
-            return RedirectResponse(f"/posts/{post.id}/edit", 303)
-
-    if action == "draft":
-        scheduler.unschedule(post)
-        msg = "Draft saved"
-    elif action == "now":
-        scheduler.schedule(post, datetime.now(UTC), user, brand)
-        msg = "Publishing now…" if post.status == PostStatus.scheduled else "Sent for approval"
-    elif action == "queue":
-        when = await scheduler.next_free_slot(db, brand)
-        status = scheduler.schedule(post, when, user, brand)
-        msg = f"Queued for {when.astimezone(ZoneInfo(brand.timezone)):%a %b %d, %H:%M}"
-        if status == PostStatus.pending_approval:
-            msg += " (awaiting approval)"
-    elif action == "next":
-        status = await scheduler.prioritize(db, brand, post, user)
-        msg = f"Sharing next, at {post.scheduled_at.astimezone(ZoneInfo(brand.timezone)):%a %b %d, %H:%M}"
-        if status == PostStatus.pending_approval:
-            msg += " (awaiting approval)"
-    else:
-        raw = str(form.get("scheduled_at", ""))
-        if not raw:
-            await db.commit()
-            if is_hx(request):
-                return hx_none(toast("Pick a date and time", "error"))
-            flash(request, "Pick a date and time", "error")
-            return RedirectResponse(f"/posts/{post.id}/edit", 303)
-        when = parse_local(raw, brand.timezone)
-        status = scheduler.schedule(post, when, user, brand)
-        msg = "Scheduled" if status == PostStatus.scheduled else "Scheduled — awaiting approval"
+    when = None
+    if action == "schedule" and str(form.get("scheduled_at", "")):
+        when = parse_local(str(form["scheduled_at"]), brand.timezone)
+    try:
+        msg = await post_svc.place_post(db, brand, user, post, action, when)
+    except post_svc.PlaceError as e:
+        await db.commit()
+        if is_hx(request):
+            return hx_none(toast(" · ".join(e.problems), "error"))
+        for problem in e.problems:
+            flash(request, problem, "error")
+        return RedirectResponse(f"/posts/{post.id}/edit", 303)
     if str(form.get("idea_id", "")).isdigit():
         idea = await db.get(Idea, int(form["idea_id"]))
         if idea and idea.brand_id == brand.id:
@@ -329,9 +248,7 @@ async def compose_save(request: Request, post_id: int | None = None,
             if idea.status in ("idea", "drafting"):
                 idea.status = "ready"
     await db.commit()
-    if action == "now" and post.status == PostStatus.scheduled:
-        for t in post.targets:
-            await enqueue("publish_now", t.id)
+    await post_svc.enqueue_due(post)
     if is_hx(request):
         return hx_none({**toast(msg), "post-saved": {
             "id": post.id, "status": post.status.value, "action": action,
@@ -376,7 +293,7 @@ async def ai_generate(request: Request, user: User = Depends(editor),
     platforms = body.get("platforms") or ["x", "linkedin"]
     source = None
     if url := body.get("url"):
-        source = await _fetch_page_text(url)
+        source = await fetch_page_text(url)
     try:
         drafts = await _ai().generate(brand, body.get("brief", ""), platforms,
                                       source_text=source, link=body.get("link") or body.get("url"),
@@ -407,21 +324,6 @@ async def ai_hashtags(request: Request, user: User = Depends(editor),
     except AIUnavailable as e:
         raise HTTPException(400, str(e))
     return {"hashtags": tags}
-
-
-async def _fetch_page_text(url: str) -> str | None:
-    import re
-
-    import httpx
-
-    try:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as http:
-            resp = await http.get(url, headers={"User-Agent": "Spark/1.0"})
-        html = re.sub(r"(?is)<(script|style|nav|footer|header)[^>]*>.*?</\1>", " ", resp.text)
-        text = re.sub(r"<[^>]+>", " ", html)
-        return re.sub(r"\s+", " ", text).strip()[:20000]
-    except httpx.HTTPError:
-        return None
 
 
 # ---- list / actions -----------------------------------------------------------
@@ -467,15 +369,9 @@ async def post_unschedule(post_id: int, request: Request, db: AsyncSession = Dep
 async def post_retry(post_id: int, request: Request, db: AsyncSession = Depends(get_db),
                      user: User = Depends(editor), brand: Brand = Depends(require_brand)):
     post = await _get_post(db, brand, post_id)
-    now = datetime.now(UTC)
-    for t in post.targets:
-        if t.status == PostStatus.failed:
-            t.status, t.scheduled_at, t.attempts, t.next_attempt_at = PostStatus.scheduled, now, 0, None
-    post.refresh_status()
+    post_svc.retry_failed(post)
     await db.commit()
-    for t in post.targets:
-        if t.status == PostStatus.scheduled:
-            await enqueue("publish_now", t.id)
+    await post_svc.enqueue_due(post)
     if is_hx(request):
         return hx_none({**toast("Retrying failed targets"), "posts-changed": {"id": post.id}})
     flash(request, "Retrying failed targets")
@@ -486,12 +382,7 @@ async def post_retry(post_id: int, request: Request, db: AsyncSession = Depends(
 async def post_duplicate(post_id: int, request: Request, db: AsyncSession = Depends(get_db),
                          user: User = Depends(editor), brand: Brand = Depends(require_brand)):
     src = await _get_post(db, brand, post_id)
-    post = Post(brand_id=brand.id, author_id=user.id, content=src.content, link=src.link,
-                media_ids=list(src.media_ids), campaign_id=src.campaign_id)
-    post.targets = [PostTarget(account_id=t.account_id, content_override=t.content_override)
-                    for t in src.targets]
-    db.add(post)
-    await db.commit()
+    post = await post_svc.duplicate_post(db, brand, user, src)
     return RedirectResponse(f"/posts/{post.id}/edit", 303)
 
 
@@ -567,19 +458,11 @@ async def calendar_move(request: Request, post_id: int = Form(...), day: str = F
                         brand: Brand = Depends(require_brand)):
     """Drag & drop: keep time of day, change date."""
     post = await _get_post(db, brand, post_id)
-    if post.status not in (PostStatus.scheduled, PostStatus.pending_approval, PostStatus.draft):
-        raise HTTPException(400, "Only unpublished posts can be moved")
     zone = ZoneInfo(brand.timezone)
-    current = as_utc(post.scheduled_at).astimezone(zone) if post.scheduled_at else \
-        datetime.now(zone).replace(hour=9, minute=0)
-    new_day = date.fromisoformat(day)
-    when = current.replace(year=new_day.year, month=new_day.month, day=new_day.day).astimezone(UTC)
-    if when < datetime.now(UTC):
-        raise HTTPException(400, "Can't move a post into the past")
-    post.scheduled_at = when
-    for t in post.targets:
-        if t.status != PostStatus.published:
-            t.scheduled_at = when
+    try:
+        when = post_svc.move_to_day(post, date.fromisoformat(day), brand)
+    except post_svc.PlaceError as e:
+        raise HTTPException(400, e.problems[0])
     await db.commit()
     if is_hx(request):
         return hx_none({**toast(f"Moved to {when.astimezone(zone):%a %b %d, %H:%M}"), "posts-changed": {"id": post.id}})

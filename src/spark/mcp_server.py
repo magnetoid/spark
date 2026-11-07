@@ -25,7 +25,8 @@ from starlette.routing import Route
 
 from spark.config import get_settings
 from spark.db import SessionLocal
-from spark.models import Brand, Idea, Post, PostStatus, PostTarget, SocialAccount, User
+from spark.models import Brand, Idea, Post, PostStatus, SocialAccount, User
+from spark.services import posts as post_svc
 from spark.services import scheduler
 
 log = logging.getLogger(__name__)
@@ -60,7 +61,7 @@ class _Session:
         self.ctx = ctx
 
     async def __aenter__(self) -> tuple[AsyncSession, User]:
-        from spark.web.connectors import user_for_token
+        from spark.services.tokens import user_for_token
 
         self.db = SessionLocal()
         db = await self.db.__aenter__()
@@ -174,48 +175,18 @@ async def _get_post(db: AsyncSession, post_id: int) -> tuple[Post, Brand]:
     return p, await db.get(Brand, p.brand_id)
 
 
-async def _after_schedule(post: Post) -> None:
-    from spark.services.publisher import as_utc
-
-    if post.status == PostStatus.scheduled and post.scheduled_at and as_utc(post.scheduled_at) <= datetime.now(UTC):
-        from spark.web.posts import enqueue
-
-        for t in post.targets:
-            if t.status == PostStatus.scheduled:
-                await enqueue("publish_now", t.id)
-
-
 async def _place(db: AsyncSession, post: Post, brand: Brand, user: User, action: str, scheduled_at: str | None) -> str:
-    """Apply a scheduling action the way the composer does. Returns a sentence for the model."""
-    tz = _tz(brand)
-    if action == "draft":
-        scheduler.unschedule(post)
-        return "Saved as a draft."
-    from spark.services.publisher import validate_post
-
-    problems = await validate_post(db, post)
-    if problems:
-        raise ToolError("Not scheduled: " + "; ".join(problems))
-    if action == "now":
-        scheduler.schedule(post, datetime.now(UTC), user, brand)
-        return "Publishing now." if post.status == PostStatus.scheduled else "Sent for an owner's approval."
-    if action == "queue":
-        when = await scheduler.next_free_slot(db, brand)
-        scheduler.schedule(post, when, user, brand)
-        msg = f"Queued for {when.astimezone(tz):%a %b %d, %H:%M} ({brand.timezone})."
-    elif action == "next":
-        await scheduler.prioritize(db, brand, post, user)
-        msg = f"Moved to the front of the queue: {post.scheduled_at.astimezone(tz):%a %b %d, %H:%M} ({brand.timezone})."
-    elif action == "schedule":
-        if not scheduled_at:
-            raise ToolError("Pass scheduled_at with action='schedule'")
-        when = _parse_when(scheduled_at, brand)
-        scheduler.schedule(post, when, user, brand)
-        msg = f"Scheduled for {when.astimezone(tz):%a %b %d, %H:%M} ({brand.timezone})."
-    else:
-        raise ToolError("action must be draft, queue, next, schedule or now")
-    if post.status == PostStatus.pending_approval:
-        msg += " It waits for an owner's approval."
+    """Apply a scheduling action exactly like the composer does."""
+    when = _parse_when(scheduled_at, brand) if action == "schedule" and scheduled_at else None
+    try:
+        msg = await post_svc.place_post(db, brand, user, post, action, when)
+    except post_svc.PlaceError as e:
+        raise ToolError("Not scheduled: " + "; ".join(e.problems))
+    if action in ("queue", "next"):
+        msg = f"{msg} ({brand.timezone})"
+    elif action == "schedule" and when is not None:
+        msg = f"Scheduled for {when.astimezone(_tz(brand)):%a %b %d, %H:%M} ({brand.timezone})" + \
+              (" — awaiting approval" if post.status == PostStatus.pending_approval else "")
     return msg
 
 
@@ -292,24 +263,17 @@ async def create_post(
         _need(user, "edit")
         b = await _brand(db, brand)
         accounts = await _pick_channels(db, b, channels)
-        text = content.strip()
-        if b.auto_shorten_links:
-            from spark.services.links import shorten_in_text
-
-            text = await shorten_in_text(db, b, text, source="spark")
-        post = Post(brand_id=b.id, author_id=user.id, source="mcp", content=text, link=(link or "").strip() or None)
-        post.targets = [PostTarget(account_id=a.id, first_comment=(first_comment or "").strip() or None) for a in accounts]
-        db.add(post)
-        await db.flush()
-        await db.refresh(post, ["targets"])
+        post = await post_svc.save_post(
+            db, b, user, None, content=content, link=(link or "").strip() or None, media_ids=[],
+            campaign_id=None, notes=None, source="mcp",
+            targets=[post_svc.TargetInput(account_id=a.id, first_comment=first_comment) for a in accounts])
         try:
             msg = await _place(db, post, b, user, action, scheduled_at)
         except ToolError as e:
-            scheduler.unschedule(post)
             await db.commit()
             raise ToolError(f"{e} Saved as draft #{post.id} instead.")
         await db.commit()
-        await _after_schedule(post)
+        await post_svc.enqueue_due(post)
         await db.refresh(post, ["targets"])
         return {"message": msg, "post": _post(post, b)}
 
@@ -329,7 +293,7 @@ async def reschedule_post(
             raise ToolError(f"Post #{p.id} is {p.status.value} and can't be rescheduled")
         msg = await _place(db, p, b, user, action, scheduled_at)
         await db.commit()
-        await _after_schedule(p)
+        await post_svc.enqueue_due(p)
         return {"message": msg, "post": _post(p, b)}
 
 
@@ -356,7 +320,7 @@ async def approve_post(ctx: Context, post_id: int) -> dict:
             raise ToolError(f"Post #{p.id} is {p.status.value}, not waiting for approval")
         scheduler.approve(p)
         await db.commit()
-        await _after_schedule(p)
+        await post_svc.enqueue_due(p)
         return {"message": "Approved.", "post": _post(p, b)}
 
 
@@ -366,17 +330,11 @@ async def retry_post(ctx: Context, post_id: int) -> dict:
     async with _Session(ctx) as (db, user):
         _need(user, "edit")
         p, b = await _get_post(db, post_id)
-        now = datetime.now(UTC)
-        n = 0
-        for t in p.targets:
-            if t.status == PostStatus.failed:
-                t.status, t.scheduled_at, t.attempts, t.next_attempt_at = PostStatus.scheduled, now, 0, None
-                n += 1
+        n = post_svc.retry_failed(p)
         if not n:
             raise ToolError(f"Post #{p.id} has no failed channels")
-        p.refresh_status()
         await db.commit()
-        await _after_schedule(p)
+        await post_svc.enqueue_due(p)
         return {"message": f"Retrying {n} channel(s).", "post": _post(p, b)}
 
 
@@ -514,7 +472,7 @@ async def _endpoint(scope, receive, send) -> None:
     """Reject requests without a valid token before they reach the MCP session manager."""
     from starlette.requests import Request
 
-    from spark.web.connectors import user_for_token
+    from spark.services.tokens import user_for_token
 
     request = Request(scope)
     raw = _bearer(request.headers)

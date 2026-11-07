@@ -20,6 +20,8 @@ log = logging.getLogger(__name__)
 @register
 class MastodonAdapter(PlatformAdapter):
     name = "mastodon"
+    supports_first_comment = True
+    supports_thread = True
     label = "Mastodon"
     limits = Limits(max_chars=500, max_media=4)
     connect_mode = "credentials"

@@ -47,6 +47,8 @@ def facets(text: str) -> list[dict]:
 @register
 class BlueskyAdapter(PlatformAdapter):
     name = "bluesky"
+    supports_first_comment = True
+    supports_thread = True
     label = "Bluesky"
     limits = Limits(max_chars=300, max_media=4, supports_video=False)
     connect_mode = "credentials"
