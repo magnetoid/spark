@@ -29,6 +29,7 @@ from spark.api.routes import (
     library,
     links,
     palette,
+    planning,
     posts,
     queue,
     session,
@@ -42,7 +43,7 @@ api = FastAPI(title="Spark API", version="1.0", docs_url="/docs", openapi_url="/
               redoc_url=None)
 for r in (session.router, brands.router, posts.router, queue.router, ideas.router, library.router, ai.router, today.router,
           insights.router, campaigns.router, links.router, audience.router, bio.router, channels.router, settings.router,
-          inbox.router, palette.router, events.router, collab.router, collab.public):
+          inbox.router, palette.router, events.router, collab.router, collab.public, planning.router):
     api.include_router(r)
 
 

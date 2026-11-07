@@ -12,6 +12,7 @@ from spark.models.marketing import (
     PostTemplate,
     ShortLink,
 )
+from spark.models.planning import ContentPillar
 from spark.models.social import (
     Campaign,
     Metric,
@@ -31,6 +32,7 @@ __all__ = [
     "PostComment",
     "ShareLink",
     "ConnectorSetting",
+    "ContentPillar",
     "BioPage",
     "Brand",
     "Campaign",

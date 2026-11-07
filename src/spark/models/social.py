@@ -99,6 +99,10 @@ class Post(TimestampMixin, Base):
     # Written by the composer's autosave; hidden from lists until the user saves for real
     is_autosave: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str | None] = mapped_column(Text)
+    pillar_id: Mapped[int | None] = mapped_column(ForeignKey("content_pillars.id", ondelete="SET NULL"))
+    evergreen: Mapped[bool] = mapped_column(Boolean, default=False)  # comes back every recycle_every_days into an empty slot
+    recycle_every_days: Mapped[int | None] = mapped_column(Integer)
+    recycled_from_id: Mapped[int | None] = mapped_column(ForeignKey("posts.id", ondelete="SET NULL"))
     # When owners were emailed that this post waits for approval (None = not yet)
     approval_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -170,6 +174,7 @@ class QueueSlot(Base):
     brand_id: Mapped[int] = mapped_column(ForeignKey("brands.id", ondelete="CASCADE"), index=True)
     weekday: Mapped[int] = mapped_column(Integer)  # 0 = Monday
     time: Mapped[str] = mapped_column(String(5))  # "HH:MM"
+    account_id: Mapped[int | None] = mapped_column(ForeignKey("social_accounts.id", ondelete="CASCADE"))  # None = every channel
 
 
 class RssFeed(TimestampMixin, Base):

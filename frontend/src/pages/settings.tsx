@@ -5,6 +5,9 @@ import { Check, Copy, KeyRound, Plug, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { readTheme, setTheme, useBrand, usePerms, useWorkspace, type ThemeMode } from "@/app/session";
 import { MembersSection } from "@/features/collab/panels";
+import { GuardrailsSection, PillarsSection } from "@/features/planning/panels";
+import { useAccounts } from "@/features/posts/api";
+import { PlatformMark, platformLabel } from "@/lib/platforms";
 import { PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -93,6 +96,8 @@ function BrandTab() {
           {isOwner && <Button type="submit" disabled={update.isPending}>Save brand settings</Button>}
           {!isOwner && <p className="text-xs text-ink-2">Only owners change brand settings.</p>}
         </form>
+        <PillarsSection />
+        <GuardrailsSection />
         {isOwner && <MembersSection />}
         {isWorkspaceOwner && <TeamSection />}
         {isOwner && brands.length > 1 && (
@@ -163,6 +168,8 @@ function TimesTab() {
   const add = useAddSlots(brand.id);
   const remove = useDeleteSlot(brand.id);
   const { canEdit } = usePerms();
+  const { data: accounts = [] } = useAccounts(brand.id);
+  const accountOf = (id: number | null | undefined) => accounts.find((a) => a.id === id);
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <section className="rounded-card border border-line bg-surface p-5 lg:col-span-2">
@@ -172,7 +179,7 @@ function TimesTab() {
           <div className="mt-4 grid grid-cols-7 gap-2 text-sm">
             {WEEKDAYS.map((d, i) => (
               <div key={d}><div className="mb-1 text-xs text-ink-2">{d}</div>
-                <ul className="space-y-1">{data.filter((s) => s.weekday === i).map((s) => <li key={s.id} className="group flex items-center justify-between rounded-control border border-line px-1.5 py-1 tnum">{s.time}{canEdit && <button type="button" aria-label={`Remove ${d} ${s.time}`} className="text-ink-2 opacity-0 hover:text-st-failed group-hover:opacity-100 focus:opacity-100" onClick={() => remove.mutate(s.id)}>×</button>}</li>)}</ul>
+                <ul className="space-y-1">{data.filter((s) => s.weekday === i).map((s) => <li key={s.id} className="group flex items-center justify-between rounded-control border border-line px-1.5 py-1 tnum" title={s.account_id ? `${accountOf(s.account_id)?.handle ?? "channel"} only` : "All channels"}><span className="flex items-center gap-1">{s.account_id && accountOf(s.account_id) && <PlatformMark platform={accountOf(s.account_id)!.platform} size={10} />}{s.time}</span>{canEdit && <button type="button" aria-label={`Remove ${d} ${s.time}`} className="text-ink-2 opacity-0 hover:text-st-failed group-hover:opacity-100 focus:opacity-100" onClick={() => remove.mutate(s.id)}>×</button>}</li>)}</ul>
               </div>
             ))}
           </div>
@@ -180,10 +187,16 @@ function TimesTab() {
         {data.length === 0 && !isPending && <p className="mt-4 text-sm text-st-pending">No slots: the queue falls back to 09:00, 12:30 and 17:00 every day until you add some.</p>}
       </section>
       {canEdit && (
-        <form className="space-y-3 self-start rounded-card border border-line bg-surface p-4" onSubmit={(e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget); add.mutate({ weekdays: fd.getAll("weekdays").map(Number), time: String(fd.get("time")) }); }}>
+        <form className="space-y-3 self-start rounded-card border border-line bg-surface p-4" onSubmit={(e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const fd = new FormData(e.currentTarget); const acc = String(fd.get("account_id") ?? "all"); add.mutate({ weekdays: fd.getAll("weekdays").map(Number), time: String(fd.get("time")), account_id: acc === "all" ? null : Number(acc) }); }}>
           <h2 className="font-semibold">Add a time</h2>
           <div className="flex flex-wrap gap-1.5">{WEEKDAYS.map((d, i) => <label key={d} className="flex items-center gap-1 rounded-control border border-line px-2 py-1 text-sm"><input type="checkbox" name="weekdays" value={i} defaultChecked={i < 5} className="accent-[var(--brand)]" />{d}</label>)}</div>
           <div className="space-y-1.5"><Label htmlFor="s-time">Time</Label><Input id="s-time" name="time" type="time" required defaultValue="09:00" /></div>
+          {accounts.length > 1 && (
+            <div className="space-y-1.5"><Label htmlFor="slot-channel">Channel</Label>
+              <Select name="account_id" defaultValue="all"><SelectTrigger id="slot-channel"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All channels</SelectItem>{accounts.map((a) => <SelectItem key={a.id} value={String(a.id)}>{a.handle} · {platformLabel(a.platform)}</SelectItem>)}</SelectContent></Select>
+              <p className="text-xs text-ink-2">A channel with its own times ignores the shared ones.</p></div>
+          )}
           <Button type="submit" className="w-full" disabled={add.isPending}>Add slot</Button>
         </form>
       )}

@@ -30,7 +30,7 @@ async def channel_queue(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx =
 
     counts = {"queue": await count(PostStatus.scheduled, PostStatus.pending_approval, PostStatus.publishing),
               "drafts": await count(PostStatus.draft), "approvals": await count(PostStatus.pending_approval)}
-    slots = await scheduler.brand_slots(db, ctx.brand)
+    slots = await scheduler.brand_slots(db, ctx.brand, [current.id])
     return QueueOut(
         account=AccountOut.of(current),
         items=[QueueItem(when=i["when"], post=PostOut.of(i["post"]) if i["post"] else None,

@@ -47,13 +47,17 @@ class BrandOut(Out):
     default_hashtags: str | None = None
     utm_campaign: str | None = None
     role: str
+    agent_config: dict[str, Any] = {}
+    voice_profile: dict[str, Any] = {}
 
     @classmethod
     def of(cls, b: Brand, role: str) -> BrandOut:
         return cls(id=b.id, slug=b.slug, name=b.name, color=b.color, timezone=b.timezone, website=b.website,
                    require_approval=b.require_approval, auto_shorten_links=b.auto_shorten_links, voice_tone=b.voice_tone,
                    voice_audience=b.voice_audience, voice_rules=b.voice_rules, voice_examples=b.voice_examples,
-                   default_hashtags=b.default_hashtags, utm_campaign=(b.utm_defaults or {}).get("campaign"), role=role)
+                   default_hashtags=b.default_hashtags, utm_campaign=(b.utm_defaults or {}).get("campaign"), role=role,
+                   agent_config={"never_say": [], "avoid_topics": [], "keywords": [], "auto_schedule": False, **(b.agent_config or {})},
+                   voice_profile=dict(b.voice_profile or {}))
 
 
 class SessionOut(BaseModel):
@@ -106,6 +110,8 @@ class BrandUpdate(BaseModel):
     voice_examples: str | None = None
     default_hashtags: str | None = None
     utm_campaign: str | None = None
+    agent_config: dict[str, Any] | None = None
+    voice_profile: dict[str, Any] | None = None
 
 
 class Capabilities(BaseModel):
@@ -177,10 +183,15 @@ class PostOut(Out):
     updated_at: datetime | None
     targets: list[TargetOut]
     comment_count: int = 0
+    pillar_id: int | None = None
+    evergreen: bool = False
+    recycle_every_days: int | None = None
+    recycled_from_id: int | None = None
 
     @classmethod
     def of(cls, p: Post) -> PostOut:
         return cls(id=p.id, content=p.content, link=p.link, media_ids=list(p.media_ids or []), status=p.status.value,
+                   pillar_id=p.pillar_id, evergreen=bool(p.evergreen), recycle_every_days=p.recycle_every_days, recycled_from_id=p.recycled_from_id,
                    scheduled_at=_dt(p.scheduled_at), source=p.source, campaign_id=p.campaign_id, author_id=p.author_id,
                    notes=p.notes, created_at=_dt(p.created_at), updated_at=_dt(p.updated_at),
                    targets=[TargetOut.of(t) for t in p.targets])
@@ -266,6 +277,9 @@ class PostWrite(BaseModel):
     action: ActionName = "draft"
     scheduled_at: datetime | None = None
     idea_id: int | None = None
+    pillar_id: int | None = None
+    evergreen: bool | None = None
+    recycle_every_days: int | None = Field(default=None, ge=1, le=365)
 
 
 class PlaceIn(BaseModel):
@@ -305,6 +319,11 @@ class ValidateIn(BaseModel):
     targets: dict[str, str]
     media_ids: list[int] = []
     link: str | None = None
+
+
+class ValidateOut(BaseModel):
+    problems: dict[str, list[str]]
+    warnings: dict[str, list[str]]
 
 
 class SlotOut(BaseModel):
@@ -708,12 +727,14 @@ class ImportResult(BaseModel):
 class SlotIn(BaseModel):
     weekdays: list[int] = Field(min_length=1)
     time: str = Field(pattern=r"^\d{2}:\d{2}$")
+    account_id: int | None = None  # None = every channel
 
 
 class SlotRow(Out):
     id: int
     weekday: int
     time: str
+    account_id: int | None = None
 
 
 class TeamIn(BaseModel):
@@ -944,3 +965,43 @@ class ReviewPage(BaseModel):
 class ReviewAction(BaseModel):
     name: str = Field(min_length=1, max_length=160)
     body: str | None = None
+
+
+# ---- phase 7: planning ---------------------------------------------------------------------
+class PillarIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    color: str = Field("#6D4AE0", pattern=r"^#[0-9a-fA-F]{6}$")
+    target_share: int = Field(0, ge=0, le=100)
+    description: str | None = None
+
+
+class PillarUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    target_share: int | None = Field(default=None, ge=0, le=100)
+    description: str | None = None
+    position: int | None = None
+
+
+class PillarOut(BaseModel):
+    id: int
+    name: str
+    color: str
+    target_share: int
+    description: str | None
+    position: int
+    posts_30d: int
+
+
+class PostImportIn(BaseModel):
+    csv: str = Field(min_length=1, max_length=2_000_000)
+
+
+class ImportRowError(BaseModel):
+    row: int
+    error: str
+
+
+class PostImportOut(BaseModel):
+    created: int
+    errors: list[ImportRowError]

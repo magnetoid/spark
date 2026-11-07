@@ -10,9 +10,19 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from spark.models import Brand, Campaign, Media, Post, PostStatus, PostTarget, SocialAccount, User
+from spark.models import (
+    Brand,
+    Campaign,
+    ContentPillar,
+    Media,
+    Post,
+    PostStatus,
+    PostTarget,
+    SocialAccount,
+    User,
+)
 from spark.platforms import PublishPayload, adapter_for
-from spark.services import jobs, scheduler
+from spark.services import guardrails, jobs, scheduler
 from spark.services.links import shorten_in_text
 from spark.services.publisher import as_utc, validate_post
 
@@ -56,6 +66,7 @@ async def save_post(
     db: AsyncSession, brand: Brand, user: User, post: Post | None, *,
     content: str, link: str | None, media_ids: list[int], campaign_id: int | None,
     notes: str | None, source: str, targets: list[TargetInput],
+    pillar_id: int | None = None, evergreen: bool | None = None, recycle_every_days: int | None = None,
 ) -> Post:
     """Create or update a post and its targets. Does not schedule; see `place_post`."""
     if post is None:
@@ -74,6 +85,11 @@ async def save_post(
     content = (await short(content.strip())) or ""
     post.content, post.link, post.media_ids, post.campaign_id = content, link or None, list(media_ids), campaign_id
     post.notes = notes or None
+    pillar = await db.get(ContentPillar, pillar_id) if pillar_id else None
+    post.pillar_id = pillar.id if pillar and pillar.brand_id == brand.id else None
+    if evergreen is not None:
+        post.evergreen = evergreen
+        post.recycle_every_days = (recycle_every_days or 30) if evergreen else None
 
     valid = {a.id for a in await active_accounts(db, brand)}
     existing = {t.account_id: t for t in post.targets}
@@ -110,6 +126,10 @@ async def place_post(db: AsyncSession, brand: Brand, user: User, post: Post, act
         scheduler.unschedule(post)
         return "Draft saved"
     problems = ["Pick at least one account to publish to"] if not post.targets else await validate_post(db, post)
+    for t in post.targets:
+        for p in guardrails.check(brand, t.content_override or post.content)[0]:
+            if p not in problems:
+                problems.append(p)
     if action == "schedule" and not when:
         problems.append("Pick a date and time")
     if problems:
@@ -119,7 +139,7 @@ async def place_post(db: AsyncSession, brand: Brand, user: User, post: Post, act
         scheduler.schedule(post, datetime.now(UTC), user, brand)
         return "Publishing now…" if post.status == PostStatus.scheduled else "Sent for approval"
     if action == "queue":
-        slot = await scheduler.next_free_slot(db, brand)
+        slot = await scheduler.next_free_slot(db, brand, account_ids=[t.account_id for t in post.targets])
         status = scheduler.schedule(post, slot, user, brand)
         msg = f"Queued for {_fmt(slot, brand)}"
     elif action == "next":
@@ -229,14 +249,17 @@ async def latest_autosave(db: AsyncSession, brand: Brand, user: User, max_age: t
 
 
 async def validate_targets(db: AsyncSession, brand: Brand, targets: dict[str, str], media_ids: list[int],
-                           link: str | None) -> dict[str, list[str]]:
-    """Live validation while typing: per-channel problems for the given texts."""
+                           link: str | None) -> dict[str, dict[str, list[str]]]:
+    """Live validation while typing: per-channel problems (block placing) and warnings (shown only)."""
     media = []
     if media_ids:
         media = (await db.execute(select(Media).where(Media.id.in_(media_ids), Media.brand_id == brand.id))).scalars().all()
-    out: dict[str, list[str]] = {}
+    problems: dict[str, list[str]] = {}
+    warnings: dict[str, list[str]] = {}
     for aid, text in targets.items():
         acc = await db.get(SocialAccount, int(aid)) if str(aid).isdigit() else None
         if acc and acc.brand_id == brand.id:
-            out[str(aid)] = adapter_for(acc).validate(PublishPayload(text=text or "", media=list(media), link=link))
-    return out
+            gp, gw = guardrails.check(brand, text or "")
+            problems[str(aid)] = adapter_for(acc).validate(PublishPayload(text=text or "", media=list(media), link=link)) + gp
+            warnings[str(aid)] = gw
+    return {"problems": problems, "warnings": warnings}

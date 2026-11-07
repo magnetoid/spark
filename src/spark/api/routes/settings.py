@@ -43,11 +43,15 @@ async def add_slots(body: SlotIn, db: AsyncSession = Depends(get_db), ctx: deps.
     h, m = (int(x) for x in body.time.split(":"))
     if not (0 <= h < 24 and 0 <= m < 60) or not all(0 <= d <= 6 for d in body.weekdays):
         raise ApiError(422, "validation", "Weekdays are 0–6 and the time is HH:MM")
-    existing = {(s.weekday, s.time) for s in (await db.execute(select(QueueSlot).where(QueueSlot.brand_id == ctx.brand.id))).scalars()}
+    if body.account_id is not None:
+        acc = await db.get(SocialAccount, body.account_id)
+        if acc is None or acc.brand_id != ctx.brand.id:
+            raise ApiError(422, "validation", "That channel is not part of this brand")
+    existing = {(s.weekday, s.time, s.account_id) for s in (await db.execute(select(QueueSlot).where(QueueSlot.brand_id == ctx.brand.id))).scalars()}
     created = []
     for d in sorted(set(body.weekdays)):
-        if (d, body.time) not in existing:
-            s = QueueSlot(brand_id=ctx.brand.id, weekday=d, time=body.time)
+        if (d, body.time, body.account_id) not in existing:
+            s = QueueSlot(brand_id=ctx.brand.id, weekday=d, time=body.time, account_id=body.account_id)
             db.add(s)
             created.append(s)
     await db.commit()

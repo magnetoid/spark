@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReviewLinksBar } from "@/features/collab/panels";
+import { ImportCsvButton } from "@/features/planning/panels";
 import { useComposer } from "@/features/composer/composer-host";
 import { useAccounts, useCampaigns, usePostActions, usePosts, useQueue, type AccountOut, type PostOut, type QueueOut } from "@/features/posts/api";
 import { PlatformMark, platformLabel } from "@/lib/platforms";
@@ -33,7 +34,7 @@ export function PublishingPage() {
   return (
     <>
       <PageHeader title="Publishing" description="What goes out, where and when."
-                  actions={<Button size="sm" onClick={() => composer.open()}><Plus className="size-4" />New post</Button>} />
+                  actions={<><ImportCsvButton /><Button size="sm" onClick={() => composer.open()}><Plus className="size-4" />New post</Button></>} />
       <div role="tablist" aria-label="Publishing views" className="mb-5 flex gap-1 border-b border-line">
         {VIEWS.map(([k, label]) => (
           <button key={k} role="tab" aria-selected={view === k} onClick={() => setSearch({ view: k })}

@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { usePillars } from "@/features/planning/api";
 import { StatusBadge } from "@/components/page";
 import { PlatformMark } from "@/lib/platforms";
 import { fromLocalInput } from "@/lib/time";
@@ -40,6 +42,7 @@ export function Composer({ initial, existing, onSaved, onCancel, compact }: {
   const { data: session } = useSession();
   const { data: accounts = [] } = useAccounts(brand.id);
   const { data: campaigns = [] } = useCampaigns(brand.id);
+  const { data: pillars = [] } = usePillars(brand.id);
   const { data: templates = [] } = useTemplates(brand.id);
   const { data: hashtagGroups = [] } = useHashtagGroups(brand.id);
   const active = accounts.filter((a) => a.is_active);
@@ -171,6 +174,24 @@ export function Composer({ initial, existing, onSaved, onCancel, compact }: {
               <SelectContent><SelectItem value="none">None</SelectItem>{campaigns.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
+          {pillars.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>Pillar</Label>
+              <Select value={draft.pillarId ? String(draft.pillarId) : "none"} onValueChange={(v) => set({ pillarId: v === "none" ? null : Number(v) })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="none">None</SelectItem>{pillars.map((p) => <SelectItem key={p.id} value={String(p.id)}><span className="mr-2 inline-block size-2 rounded-full align-middle" style={{ background: p.color }} aria-hidden />{p.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="c-evergreen">Evergreen</Label>
+            <div className="flex h-9 items-center gap-3 text-sm">
+              <Switch id="c-evergreen" checked={draft.evergreen} onCheckedChange={(v) => set({ evergreen: v })} />
+              {draft.evergreen ? (
+                <span className="flex items-center gap-1.5">every <Input type="number" min={1} max={365} className="h-7 w-16 text-sm" aria-label="Days between repeats" value={draft.recycleEveryDays} onChange={(e) => set({ recycleEveryDays: Math.min(365, Math.max(1, Number(e.target.value) || 30)) })} /> days, into an empty slot</span>
+              ) : <span className="text-ink-2">Comes back on its own once published</span>}
+            </div>
+          </div>
         </div>
 
         <div>
@@ -245,6 +266,7 @@ export function Composer({ initial, existing, onSaved, onCancel, compact }: {
                 const isOver = s.over(a.id);
                 const thread = draft.threads[a.id] ?? [];
                 const probs = s.problems[String(a.id)] ?? [];
+                const warns = s.warnings[String(a.id)] ?? [];
                 return (
                   <li key={a.id} className="px-4 py-3">
                     <label className="flex cursor-pointer items-center gap-3">
@@ -289,6 +311,7 @@ export function Composer({ initial, existing, onSaved, onCancel, compact }: {
                           <Textarea rows={2} value={draft.firstComments[a.id]} onChange={(e) => s.setFirstComment(a.id, e.target.value)} className="text-sm" placeholder="Posted as the first reply right after publishing: links, hashtags, context" />
                         )}
                         {probs.length > 0 && <ul className="space-y-0.5 text-st-failed">{probs.map((p) => <li key={p}>{p}</li>)}</ul>}
+                        {warns.length > 0 && <ul className="space-y-0.5 text-st-pending">{warns.map((w) => <li key={w}>{w}</li>)}</ul>}
                       </div>
                     )}
                   </li>

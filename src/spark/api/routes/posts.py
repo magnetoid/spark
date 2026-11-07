@@ -25,6 +25,7 @@ from spark.api.schemas import (
     PostWrite,
     RetryResult,
     ValidateIn,
+    ValidateOut,
 )
 from spark.db import get_db
 from spark.models import Idea, Post, PostStatus, PostTarget
@@ -40,6 +41,14 @@ async def _post(db: AsyncSession, ctx: deps.BrandCtx, post_id: int, allow_autosa
     post = await db.get(Post, post_id)
     if not post or post.brand_id != ctx.brand.id or (post.is_autosave and not allow_autosave):
         raise not_found("No such post")
+    return post
+
+
+async def _reload(db: AsyncSession, post: Post) -> Post:
+    """After a commit, make sure the targets and their accounts are loaded before serialising."""
+    await db.refresh(post, ["targets"])
+    for t in post.targets:
+        await db.refresh(t, ["account"])
     return post
 
 
@@ -73,16 +82,17 @@ async def put_autosave(body: AutosaveIn, db: AsyncSession = Depends(get_db), ctx
     return AutosaveOut(post_id=post.id if post else None, saved_at=datetime.now(UTC))
 
 
-@router.post(B + "/posts/validate", response_model=dict[str, list[str]])
+@router.post(B + "/posts/validate", response_model=ValidateOut)
 async def validate(body: ValidateIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
-    return await svc.validate_targets(db, ctx.brand, body.targets, body.media_ids, body.link)
+    out = await svc.validate_targets(db, ctx.brand, body.targets, body.media_ids, body.link)
+    return ValidateOut(**out)
 
 
 # ---- read -----------------------------------------------------------------------------------
 @router.get(B + "/posts", response_model=PostPage)
 async def list_posts(
     db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx),
-    status: PostStatusName | None = None, account: int | None = None, campaign: int | None = None,
+    status: PostStatusName | None = None, account: int | None = None, campaign: int | None = None, pillar_id: int | None = None,
     q: str | None = None, since: datetime | None = None, until: datetime | None = None,
     limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0),
 ):
@@ -93,6 +103,8 @@ async def list_posts(
         stmt = stmt.where(Post.id.in_(select(PostTarget.post_id).where(PostTarget.account_id == account)))
     if campaign:
         stmt = stmt.where(Post.campaign_id == campaign)
+    if pillar_id is not None:
+        stmt = stmt.where(Post.pillar_id == pillar_id)
     if q:
         stmt = stmt.where(Post.content.ilike(f"%{q}%"))
     if since:
@@ -125,13 +137,13 @@ async def _save_and_place(db: AsyncSession, ctx: deps.BrandCtx, post: Post | Non
     creating = post is None
     post = await svc.save_post(db, ctx.brand, ctx.user, post, content=body.content, link=body.link,
                                media_ids=body.media_ids, campaign_id=body.campaign_id, notes=body.notes,
-                               source=body.source, targets=_targets(body.targets))
+                               source=body.source, targets=_targets(body.targets), pillar_id=body.pillar_id,
+                               evergreen=body.evergreen, recycle_every_days=body.recycle_every_days)
     try:
         msg = await svc.place_post(db, ctx.brand, ctx.user, post, body.action, _when(body.scheduled_at))
     except svc.PlaceError as e:
         await db.commit()
-        await db.refresh(post, ["targets"])
-        return _cannot_place(e, post)
+        return _cannot_place(e, await _reload(db, post))
     if body.idea_id:
         idea = await db.get(Idea, body.idea_id)
         if idea and idea.brand_id == ctx.brand.id:
@@ -178,7 +190,7 @@ async def place(post_id: int, body: PlaceIn, db: AsyncSession = Depends(get_db),
         msg = await svc.place_post(db, ctx.brand, ctx.user, post, body.action, _when(body.scheduled_at))
     except svc.PlaceError as e:
         await db.commit()
-        return _cannot_place(e, post)
+        return _cannot_place(e, await _reload(db, post))
     activity.record(db, ctx.brand.id, ctx.user, "placed", "post", post.id, post.content[:120], {"action": body.action, "status": post.status.value})
     await db.commit()
     await svc.enqueue_due(post)

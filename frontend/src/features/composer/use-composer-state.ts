@@ -25,13 +25,16 @@ export interface ComposerDraft {
   scheduledAt: string; // datetime-local value in the brand's zone
   source: string;
   ideaId: number | null;
+  pillarId: number | null;
+  evergreen: boolean;
+  recycleEveryDays: number;
 }
 
 type Patch = Partial<ComposerDraft> | ((d: ComposerDraft) => Partial<ComposerDraft>);
 
 export const emptyDraft = (over: Partial<ComposerDraft> = {}): ComposerDraft => ({
   postId: null, content: "", link: "", media: [], selected: [], overrides: {}, firstComments: {}, threads: {},
-  campaignId: null, notes: "", action: "queue", scheduledAt: "", source: "manual", ideaId: null, ...over,
+  campaignId: null, notes: "", action: "queue", scheduledAt: "", source: "manual", ideaId: null, pillarId: null, evergreen: false, recycleEveryDays: 30, ...over,
 });
 
 export function draftFromPost(post: PostOut, media: MediaOut[], toLocal: (iso: string | null) => string, asCopy = false): ComposerDraft {
@@ -47,13 +50,16 @@ export function draftFromPost(post: PostOut, media: MediaOut[], toLocal: (iso: s
     selected: post.targets.map((t) => t.account_id), overrides, firstComments, threads,
     campaignId: post.campaign_id, notes: asCopy ? "" : post.notes ?? "", source: asCopy ? "manual" : post.source,
     action: scheduled ? "schedule" : "queue", scheduledAt: scheduled ? toLocal(post.scheduled_at) : "",
+    pillarId: post.pillar_id ?? null, evergreen: asCopy ? false : Boolean(post.evergreen), recycleEveryDays: post.recycle_every_days ?? 30,
   });
 }
 
 export function useComposerState(initial: ComposerDraft, brandId: number, accounts: AccountOut[], autosave: boolean) {
   const [draft, dispatch] = useReducer((d: ComposerDraft, patch: Patch) => ({ ...d, ...(typeof patch === "function" ? patch(d) : patch) }), initial);
   const [serverProblems, setProblems] = useState<Record<string, string[]>>({});
+  const [serverWarnings, setWarnings] = useState<Record<string, string[]>>({});
   const problems = draft.selected.length ? serverProblems : {};
+  const warnings = draft.selected.length ? serverWarnings : {};
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const byId = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
   const set = useCallback((patch: Patch) => dispatch(patch), []);
@@ -71,7 +77,7 @@ export function useComposerState(initial: ComposerDraft, brandId: number, accoun
     if (!draft.selected.length) return;
     validateTimer.current = window.setTimeout(() => {
       const targets = Object.fromEntries(draft.selected.map((id) => [String(id), textFor(id)]));
-      validateTargets(brandId, targets, draft.media.map((m) => m.id), draft.link || null).then(setProblems).catch(() => { /* offline: keep client checks */ });
+      validateTargets(brandId, targets, draft.media.map((m) => m.id), draft.link || null).then((r) => { setProblems(r.problems); setWarnings(r.warnings); }).catch(() => { /* offline: keep client checks */ });
     }, 300);
     return () => { if (validateTimer.current) window.clearTimeout(validateTimer.current); };
   }, [brandId, draft.selected, draft.content, draft.overrides, draft.media, draft.link, textFor]);
@@ -118,13 +124,14 @@ export function useComposerState(initial: ComposerDraft, brandId: number, accoun
   const toWrite = (localToIso: (v: string) => string | null): PostWrite => ({
     content: draft.content, link: draft.link || null, media_ids: draft.media.map((m) => m.id), campaign_id: draft.campaignId,
     notes: draft.notes || null, source: draft.source, action: draft.action, idea_id: draft.ideaId,
+    pillar_id: draft.pillarId, evergreen: draft.evergreen, recycle_every_days: draft.evergreen ? draft.recycleEveryDays : null,
     scheduled_at: draft.action === "schedule" && draft.scheduledAt ? localToIso(draft.scheduledAt) : null,
     targets: draft.selected.map((id) => ({
       account_id: id, override: draft.overrides[id] || null, first_comment: draft.firstComments[id] || null, thread: draft.threads[id] ?? [],
     })),
   });
 
-  return { draft, set, problems, savedAt, byId, textFor, limit, over, threadOver, hasProblems, toggle, setOverride,
+  return { draft, set, problems, warnings, savedAt, byId, textFor, limit, over, threadOver, hasProblems, toggle, setOverride,
            setFirstComment, setThread, split, addMedia, removeMedia, moveMedia, useTemplate, addHashtags, toWrite };
 }
 

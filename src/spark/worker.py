@@ -11,7 +11,7 @@ from sqlalchemy import select
 from spark.config import get_settings
 from spark.db import SessionLocal
 from spark.models import EmailCampaign, RssFeed
-from spark.services import analytics, email, notify, publisher, rss
+from spark.services import analytics, email, evergreen, notify, publisher, rss
 from spark.services.ai import AIUnavailable, ContentAI
 
 log = logging.getLogger("spark.worker")
@@ -32,6 +32,11 @@ async def publish_now(ctx, target_id: int) -> None:
 async def recover_stuck(ctx) -> None:
     async with SessionLocal() as db:
         await publisher.recover_stuck(db)
+
+
+async def recycle_evergreen(ctx) -> int:
+    async with SessionLocal() as db:
+        return await evergreen.recycle(db)
 
 
 async def collect_metrics(ctx) -> int:
@@ -113,6 +118,7 @@ class WorkerSettings:
         cron(recover_stuck, minute={0, 15, 30, 45}),
         cron(poll_feeds, minute={5, 35}),
         cron(collect_metrics, hour={0, 6, 12, 18}, minute=20),
+        cron(recycle_evergreen, hour={6}, minute=10),
         cron(send_notifications, second=50),
         cron(send_weekly_digest, weekday=0, hour=7, minute=0),  # Mondays 07:00 UTC
     ]

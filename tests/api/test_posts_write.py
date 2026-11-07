@@ -116,6 +116,6 @@ async def test_autosave_and_resume(api, db, brand):
 async def test_validate_targets(api, db, brand):
     bid, acc = await _ctx(api, db, brand)
     r = await api.post(f"{API}/brands/{bid}/posts/validate", json={"targets": {str(acc.id): "x" * 6000}, "media_ids": [], "link": None})
-    assert r.status_code == 200 and "characters" in r.json()[str(acc.id)][0]
+    assert r.status_code == 200 and "characters" in r.json()["problems"][str(acc.id)][0]
     r = await api.post(f"{API}/brands/{bid}/posts/validate", json={"targets": {str(acc.id): "fine"}, "media_ids": []})
-    assert r.json()[str(acc.id)] == []
+    assert r.json()["problems"][str(acc.id)] == [] and r.json()["warnings"][str(acc.id)] == []

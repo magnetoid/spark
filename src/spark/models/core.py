@@ -56,6 +56,8 @@ class Brand(TimestampMixin, Base):
     require_approval: Mapped[bool] = mapped_column(Boolean, default=False)
     auto_shorten_links: Mapped[bool] = mapped_column(Boolean, default=False)
     utm_defaults: Mapped[dict] = mapped_column(JSON, default=dict)
+    agent_config: Mapped[dict] = mapped_column(JSON, default=dict)  # guardrails + agent settings, see services/guardrails
+    voice_profile: Mapped[dict] = mapped_column(JSON, default=dict)  # learned voice, see services/janus
 
     accounts: Mapped[list["SocialAccount"]] = relationship(  # noqa: F821
         back_populates="brand", cascade="all, delete-orphan"
