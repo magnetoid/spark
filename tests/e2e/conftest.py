@@ -72,7 +72,6 @@ def seeded_brand(server_url):
         brands = r.json()["brands"] or [c.post("/api/v1/brands", json={"name": "E2E Brand"}).json()]
         bid = brands[0]["id"]
         if not c.get(f"/api/v1/brands/{bid}/accounts").json():
-            # the channel connect API arrives in phase 4; the form route works with the same session + CSRF header
-            r = c.post("/accounts/connect/dry_run", data={"handle": "e2e-handle"})
-            assert r.status_code in (200, 303), r.text
+            r = c.post(f"/api/v1/brands/{bid}/accounts/connect/dry_run", json={"handle": "e2e-handle"})
+            assert r.status_code == 201, r.text
         return bid

@@ -42,7 +42,7 @@ def layout(title: str, intro: str, body: str, cta_url: str | None = None, cta_la
         f'<p style="color:#555;margin:0 0 16px">{intro}</p>{body}{cta}'
         '<hr style="border:none;border-top:1px solid #eee;margin:32px 0 12px">'
         f'<p style="font-size:12px;color:#888">Sent by Spark. Change what you receive under '
-        f'<a href="{_base()}/me" style="color:#888">Preferences</a>.</p></div>'
+        f'<a href="{_base()}/settings?tab=me" style="color:#888">Preferences</a>.</p></div>'
     )
 
 
@@ -76,7 +76,7 @@ async def notify_failed(db: AsyncSession, sender: EmailSender | None = None) -> 
         n = len(targets)
         subject = f"[{brand.name}] {n} post{'s' if n != 1 else ''} failed to publish"
         body = layout(subject, "Spark could not publish these after retrying. Fix the cause and press Retry.",
-                      _rows(items), f"{_base()}/posts?status=failed", "Review failed posts")
+                      _rows(items), f"{_base()}/publishing?view=failed", "Review failed posts")
         for u in users:
             try:
                 await sender.send(u.email, subject, body)
@@ -115,7 +115,7 @@ async def notify_approvals(db: AsyncSession, sender: EmailSender | None = None) 
         n = len(group)
         subject = f"[{brand.name}] {n} post{'s' if n != 1 else ''} waiting for your approval"
         body = layout(subject, "Nothing goes out until an owner approves it.", _rows(items),
-                      f"{_base()}/queue?tab=approvals", "Open approvals")
+                      f"{_base()}/publishing?view=approvals", "Open approvals")
         for u in owners:
             try:
                 await sender.send(u.email, subject, body)

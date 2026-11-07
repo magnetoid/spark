@@ -1,4 +1,4 @@
-"""Serving the React app from /app next to the Jinja UI, with a strict CSP for it."""
+"""Serving the React app at /, with a strict CSP; the public bio page keeps its own policy."""
 
 from pathlib import Path
 
@@ -17,29 +17,40 @@ async def _spa(tmp_path: Path, monkeypatch) -> Path:
 
 async def test_app_routes_fall_back_to_index_html(client, tmp_path, monkeypatch):
     await _spa(tmp_path, monkeypatch)
-    for path in ("/app", "/app/", "/app/publishing", "/app/posts/12/edit?brand=acme"):
+    for path in ("/", "/publishing", "/posts/12/edit?brand=acme", "/login", "/settings?tab=connectors"):
         r = await client.get(path)
-        assert r.status_code == 200 and 'id=root' in r.text, path
+        assert r.status_code == 200 and "id=root" in r.text, path
         assert "no-cache" in r.headers.get("cache-control", ""), path
-    r = await client.get("/app/assets/app-abc123.js")
-    assert r.status_code == 200 and "spa" in r.text
-    assert "immutable" in r.headers.get("cache-control", "")
-    assert (await client.get("/app/assets/missing.js")).status_code == 404
-    # files at the root of the build (theme.js, favicon.svg) are served, not swallowed by the fallback
-    r = await client.get("/app/theme.js")
+    r = await client.get("/assets/app-abc123.js")
+    assert r.status_code == 200 and "spa" in r.text and "immutable" in r.headers.get("cache-control", "")
+    assert (await client.get("/assets/missing.js")).status_code == 404
+    r = await client.get("/theme.js")
     assert r.status_code == 200 and "classList" in r.text and "javascript" in r.headers["content-type"]
-    assert (await client.get("/app/../pyproject.toml")).status_code in (404, 200) and "[project]" not in (await client.get("/app/..%2Fpyproject.toml")).text
+    assert "[project]" not in (await client.get("/..%2Fpyproject.toml")).text
 
 
-async def test_spa_gets_a_strict_csp_and_the_old_ui_keeps_its_cdns(client, tmp_path, monkeypatch):
+async def test_old_app_prefix_redirects(client, tmp_path, monkeypatch):
     await _spa(tmp_path, monkeypatch)
-    strict = (await client.get("/app")).headers["content-security-policy"]
-    assert "cdn.jsdelivr.net" not in strict and "script-src 'self'" in strict and "'unsafe-eval'" not in strict
-    legacy = (await client.get("/queue")).headers["content-security-policy"]
-    assert "cdn.jsdelivr.net" in legacy
+    r = await client.get("/app/publishing?view=calendar")
+    assert r.status_code == 308 and r.headers["location"] == "/publishing?view=calendar"
+    assert (await client.get("/app")).headers["location"] == "/"
 
 
-async def test_app_is_404_without_a_build(client, tmp_path, monkeypatch):
+async def test_csp_is_strict_except_the_public_bio_page(client, tmp_path, monkeypatch):
+    await _spa(tmp_path, monkeypatch)
+    strict = (await client.get("/")).headers["content-security-policy"]
+    assert "script-src 'self'" in strict and "'unsafe-eval'" not in strict and "cdn." not in strict
+    bio = (await client.get("/b/nope")).headers["content-security-policy"]
+    assert "fonts.googleapis.com" in bio and "frame-ancestors *" in bio
+
+
+async def test_api_routes_win_over_the_fallback(client, tmp_path, monkeypatch):
+    await _spa(tmp_path, monkeypatch)
+    assert (await client.get("/api/v1/session")).headers["content-type"].startswith("application/json")
+    assert (await client.get("/healthz")).json() == {"ok": True}
+    assert (await client.get("/api/v1/nope")).status_code == 404
+
+
+async def test_fallback_is_404_without_a_build(client, tmp_path, monkeypatch):
     monkeypatch.setattr(get_settings(), "spa_dir", tmp_path / "nowhere")
-    assert (await client.get("/app")).status_code == 404
-    assert (await client.get("/app/publishing")).status_code == 404
+    assert (await client.get("/publishing")).status_code == 404

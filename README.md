@@ -99,13 +99,13 @@ Schema changes go through Alembic: `uv run alembic revision --autogenerate -m ".
 - **Email notifications** (worker, every minute): editors and owners get one email when a post fails for good; owners get one per post waiting for approval. **Weekly digest** on Monday 07:00 UTC per brand: published count, impressions, engagements, link clicks, top posts, what is scheduled. Each user opts in or out under **Preferences** (`/me`), which also holds the composer's default action, keyboard shortcuts on/off and the password.
 - **Zernio webhooks** replace polling for the moments that matter. Under *Settings → Connectors → Zernio* an owner presses **Enable webhooks**; Spark registers `{SPARK_BASE_URL}/webhooks/zernio` with Zernio for post and account events. Deliveries are verified with HMAC-SHA256 (`X-Zernio-Signature`; secret from `SPARK_ZERNIO_WEBHOOK_SECRET`, or derived from `SPARK_SECRET_KEY`) and de-duplicated by event id. `post.platform.published/failed`, `post.published/failed/partial` update the matching post target; `account.disconnected` pauses the channel with the reason; `account.connected` adds the channel to the brand whose Zernio profile it belongs to.
 
-## v3: the React app (in progress)
+## v3: the React app
 
-A new React interface is being built next to the server-rendered one. It is served from `/app` (Vite + React 19 + TanStack Router/Query + Tailwind v4 + shadcn/ui) and talks to a JSON API at `/api/v1` (`src/spark/api/`, its own OpenAPI document at `/api/v1/openapi.json`). The whole app takes its accent colour from the active brand. Every page is now in the React app (Today, Publishing with queue/calendar, composer, Ideas, Library, Inbox, Analytics, Campaigns, Links and bio, Audience, Channels, Settings with connectors). Live updates arrive over `GET /api/v1/events` (SSE; hints only, fanned out through Redis). The next step is the cutover: the React app takes `/` and the Jinja templates go.
+The interface is a React app (Vite + React 19 + TanStack Router/Query + Tailwind v4 + shadcn/ui) served by FastAPI at `/`, talking to the JSON API at `/api/v1` (`src/spark/api/`, OpenAPI at `/api/v1/openapi.json`). The whole app takes its accent colour from the active brand. Server-rendered pages remain only where they must: the public bio page, short links, email tracking, OAuth callbacks and webhooks. Every page is now in the React app (Today, Publishing with queue/calendar, composer, Ideas, Library, Inbox, Analytics, Campaigns, Links and bio, Audience, Channels, Settings with connectors). Live updates arrive over `GET /api/v1/events` (SSE; hints only, fanned out through Redis). Old `/app/...` links redirect to the same path at `/`.
 
 ```bash
 cd frontend && npm install && npm run dev      # dev server on :5173, proxies /api to :8000
-npm run build                                  # frontend/dist, which FastAPI serves under /app
+npm run build                                  # frontend/dist, which FastAPI serves at /
 uv run python -m spark.api.openapi frontend/src/api/openapi.json && (cd frontend && npm run api:types)  # after API changes
 ```
 

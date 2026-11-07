@@ -4,7 +4,7 @@ WORKDIR /fe
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
-ARG SPARK_SPA_BASE=/app/
+ARG SPARK_SPA_BASE=/
 ENV SPARK_SPA_BASE=$SPARK_SPA_BASE
 RUN npm run build
 

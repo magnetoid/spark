@@ -182,3 +182,24 @@ async def handle_zernio_event(db: AsyncSession, payload: dict) -> str:
         return "connected"
 
     return "ignored"
+
+
+def webhook_url() -> str:
+    """Where Zernio should deliver events for this Spark."""
+    return get_settings().base_url.rstrip("/") + "/webhooks/zernio"
+
+
+async def webhook_status() -> dict | None:
+    """Spark's registration in Zernio: the webhook dict, {"missing": True}, or None when Zernio is unreachable."""
+    from spark.platforms.zernio import ZernioAdapter
+
+    zernio = ZernioAdapter()
+    if not zernio.is_configured():
+        return None
+    try:
+        hooks = await zernio.list_webhooks()
+    except Exception as e:  # Zernio down must not break the page
+        log.warning("Could not list Zernio webhooks: %s", e)
+        return None
+    w = next((w for w in hooks if w.get("url") == webhook_url()), None)
+    return {**w, "url": webhook_url()} if w else {"missing": True, "url": webhook_url()}

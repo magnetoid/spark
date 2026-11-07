@@ -135,7 +135,7 @@ async def _connector_out(db: AsyncSession, c: conn.Connector, user: User) -> Con
     if c.key == "zernio" and conn.is_configured(c):
         extra["accounts"] = len((await db.execute(select(SocialAccount.id).where(SocialAccount.provider == "zernio"))).all())
         if user.can_approve():
-            from spark.web.accounts import webhook_status
+            from spark.services.webhooks import webhook_status
 
             extra["webhook"] = await webhook_status()
     return ConnectorOut(key=c.key, name=c.name, tagline=c.tagline, description=c.description, docs=c.docs, kind=c.kind,
@@ -204,7 +204,7 @@ async def connector_test(key: str, user: User = Depends(deps.owner)):
 async def zernio_webhook_register(user: User = Depends(deps.owner)):
     from spark.platforms.zernio import ZernioAdapter
     from spark.services.webhooks import ZERNIO_EVENTS, webhook_secret
-    from spark.web.accounts import _webhook_url
+    from spark.services.webhooks import webhook_url as _webhook_url
 
     try:
         w = await ZernioAdapter().upsert_webhook(_webhook_url(), webhook_secret(), ZERNIO_EVENTS)
@@ -216,7 +216,7 @@ async def zernio_webhook_register(user: User = Depends(deps.owner)):
 @router.post("/settings/zernio/webhook/test")
 async def zernio_webhook_test(user: User = Depends(deps.owner)):
     from spark.platforms.zernio import ZernioAdapter
-    from spark.web.accounts import _webhook_url
+    from spark.services.webhooks import webhook_url as _webhook_url
 
     try:
         adapter = ZernioAdapter()

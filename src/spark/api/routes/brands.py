@@ -12,7 +12,7 @@ from spark.api.schemas import AccountOut, BrandCreate, BrandOut, BrandUpdate
 from spark.db import get_db
 from spark.models import Brand, QueueSlot, SocialAccount, User
 from spark.security import token
-from spark.web.brands import slugify
+from spark.services.text import slugify
 
 router = APIRouter(tags=["brands"])
 TIMEZONES = available_timezones()

@@ -1,6 +1,5 @@
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
@@ -9,27 +8,12 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from spark.config import get_settings
 from spark.db import create_all
-from spark.web import (
-    accounts,
-    api,
-    auth,
-    brands,
-    connectors,
-    ideas,
-    inbox,
-    marketing,
-    me,
-    posts,
-    public,
-    queue,
-    webhooks,
-)
+from spark.web import oauth, public, webhooks
 from spark.web.deps import LoginRequired, templates
 
 log = logging.getLogger("spark")
-STATIC_DIR = Path(__file__).resolve().parent / "static"
 CSRF_EXEMPT_PREFIXES = ("/e/u/", "/webhooks/")
-SPA_BASE = get_settings().spa_base.rstrip("/") or ""
+SPA_BASE = get_settings().spa_base.rstrip("/")  # "" once the app owns "/"
 # The React app bundles everything, so it needs no CDNs, no eval and no inline scripts.
 SPA_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
            "img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data:; "
@@ -37,7 +21,6 @@ SPA_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inli
 
 # ---- rate limiting (token bucket per client+bucket; in-process, good enough per web container) ----
 RATE_LIMITS = {  # path prefix -> (methods, requests, per_seconds)
-    "/login": ({"POST"}, 10, 60), "/setup": ({"POST"}, 10, 60),
     "/l/": ({"GET"}, 120, 60), "/b/": ({"GET", "POST"}, 60, 60), "/e/": ({"GET", "POST"}, 120, 60),
     "/webhooks/": ({"POST"}, 600, 60), "/mcp": ({"GET", "POST", "DELETE"}, 240, 60),
     "/api/v1/auth/": ({"POST"}, 10, 60),
@@ -169,11 +152,8 @@ def create_app() -> FastAPI:
         max_age=60 * 60 * 24 * 14,
     )
     s.media_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.mount("/media", StaticFiles(directory=s.media_dir), name="media")
-    for r in (public.router, auth.router, brands.router, accounts.router, posts.router, queue.router,
-              ideas.router, inbox.router, api.router, marketing.router, me.router, webhooks.router,
-              connectors.router):
+    for r in (public.router, oauth.router, webhooks.router):
         app.include_router(r)
     from spark import mcp_server
     from spark.api.app import api as json_api
@@ -195,13 +175,12 @@ def create_app() -> FastAPI:
         h.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
         if not request.url.path.startswith("/b/"):  # bio pages may be embedded
             h.setdefault("X-Frame-Options", "SAMEORIGIN")
-        if request.url.path == SPA_BASE or request.url.path.startswith(SPA_BASE + "/"):
-            h.setdefault("Content-Security-Policy", SPA_CSP)
-        h.setdefault("Content-Security-Policy",
-                     "default-src 'self'; img-src * data: blob:; media-src * blob:; "
-                     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; "
-                     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
-                     "font-src 'self' https://fonts.gstatic.com data:; connect-src 'self'; frame-ancestors 'self'")
+        if request.url.path.startswith("/b/"):  # the public bio page: embeddable, loads one Google font
+            h.setdefault("Content-Security-Policy",
+                         "default-src 'self'; img-src * data: blob:; media-src * blob:; script-src 'self' 'unsafe-inline'; "
+                         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; "
+                         "connect-src 'self'; frame-ancestors *")
+        h.setdefault("Content-Security-Policy", SPA_CSP)
         return response
 
     @app.exception_handler(Exception)
@@ -230,6 +209,13 @@ def create_app() -> FastAPI:
     @app.get("/healthz")
     async def healthz():
         return {"ok": True}
+
+    @app.get("/app", include_in_schema=False)
+    @app.get("/app/{path:path}", include_in_schema=False)
+    async def _legacy_app_prefix(request: Request, path: str = ""):
+        """Bookmarks from the migration period, when the app lived under /app."""
+        q = f"?{request.url.query}" if request.url.query else ""
+        return RedirectResponse(f"/{path}{q}", 308)
 
     _mount_spa(app)
 

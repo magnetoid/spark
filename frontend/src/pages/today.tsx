@@ -38,7 +38,7 @@ function TodayBody({ data, tz }: { data: Today; tz: string }) {
   const n = data.needs_you;
   const needs = [
     { count: n.approvals, label: "to approve", icon: CheckCircle2, to: "/publishing", search: { view: "approvals" }, tone: "text-st-pending" },
-    { count: n.failed, label: n.failed === 1 ? "failed post" : "failed posts", icon: AlertTriangle, to: "/publishing", search: { view: "sent" }, tone: "text-st-failed" },
+    { count: n.failed, label: n.failed === 1 ? "failed post" : "failed posts", icon: AlertTriangle, to: "/publishing", search: { view: "failed" }, tone: "text-st-failed" },
     { count: n.drafts, label: n.drafts === 1 ? "draft waiting" : "drafts waiting", icon: FileText, to: "/publishing", search: { view: "drafts" }, tone: "text-ink-2" },
   ].filter((x) => x.count > 0);
 

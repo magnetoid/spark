@@ -3,9 +3,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "node:url";
 
-// The SPA lives under /app while the old server-rendered UI keeps /; the cutover phase
-// flips SPARK_SPA_BASE to "/" in both this build and the FastAPI route that serves it.
-const base = process.env.SPARK_SPA_BASE ?? "/app/";
+// The app owns "/"; SPARK_SPA_BASE exists for serving it under a prefix (must match the backend).
+const base = process.env.SPARK_SPA_BASE ?? "/";
 
 export default defineConfig({
   base,

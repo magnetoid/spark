@@ -14,11 +14,11 @@ pytestmark = pytest.mark.skipif(not DIST.exists(), reason="frontend/dist is not 
 
 
 async def _sign_in(page, server_url: str):
-    await page.goto(server_url + "/app/login")
+    await page.goto(server_url + "/login")
     await page.fill("#email", "e2e@example.com")
     await page.fill("#password", "sparkdev-e2e-1")
     await page.click("button[type=submit]")
-    await page.wait_for_url(re.compile(r"/app/?(\?.*)?$"))
+    await page.wait_for_url(re.compile(r"/(\?.*)?$"))
 
 
 async def test_spa_publishing_loop(page, server_url, seeded_brand):

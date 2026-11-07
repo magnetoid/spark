@@ -1,6 +1,7 @@
 /** Channels: connected accounts, and the ways to connect more. */
-import { useState, type FormEvent } from "react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, useState, type FormEvent } from "react";
+import { toast } from "sonner";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Pause, Play, Plug, Trash2 } from "lucide-react";
 import { useBrand, useSession } from "@/app/session";
 import { EmptyState, PageHeader } from "@/components/page";
@@ -25,6 +26,13 @@ export function ChannelsPage() {
   const canEdit = session?.user?.role !== "viewer";
   const isOwner = session?.user?.role === "owner";
   const [credFor, setCredFor] = useState<PlatformsOut["direct"][number] | null>(null);
+  const search = useSearch({ strict: false }) as { notice?: string; kind?: string };
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!search.notice) return;
+    (search.kind === "error" ? toast.error : toast.success)(search.notice);
+    void navigate({ to: ".", search: (p: Record<string, unknown>) => { const rest = { ...p }; delete rest.notice; delete rest.kind; return rest; }, replace: true });
+  }, [search.notice, search.kind, navigate]);
 
   return (
     <>
@@ -44,7 +52,7 @@ export function ChannelsPage() {
                 </div>
                 {canEdit && (
                   <div className="flex items-center gap-1">
-                    {a.provider === "zernio" && a.last_error && <Button asChild size="sm" variant="outline"><a href={`/accounts/zernio/connect/${a.platform}`}>Reconnect</a></Button>}
+                    {a.provider === "zernio" && a.last_error && <Button asChild size="sm" variant="outline"><a href={`/accounts/zernio/connect/${a.platform}?brand=${brand.id}`}>Reconnect</a></Button>}
                     <Button variant="ghost" size="sm" onClick={() => toggle.mutate(a.id)}>{a.is_active ? <><Pause className="size-4" />Pause</> : <><Play className="size-4" />Resume</>}</Button>
                     <Button variant="ghost" size="icon" className="size-8 text-ink-2" aria-label={`Remove ${a.handle}`}
                             onClick={() => { if (!confirm(`Remove ${a.handle} from ${brand.name}? Scheduled posts to it are dropped.`)) return;
@@ -69,7 +77,7 @@ export function ChannelsPage() {
             {platforms.zernio_ready && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                 {Object.entries(platforms.zernio).map(([key, label]) => (
-                  <a key={key} href={`/accounts/zernio/connect/${key}`} className="flex items-center justify-between rounded-card border border-line bg-surface px-3 py-2.5 text-sm hover:border-brand"><span className="flex items-center gap-2"><PlatformMark platform={key} size={16} />{label}</span><span className="text-xs text-ink-2">Connect</span></a>
+                  <a key={key} href={`/accounts/zernio/connect/${key}?brand=${brand.id}`} className="flex items-center justify-between rounded-card border border-line bg-surface px-3 py-2.5 text-sm hover:border-brand"><span className="flex items-center gap-2"><PlatformMark platform={key} size={16} />{label}</span><span className="text-xs text-ink-2">Connect</span></a>
                 ))}
               </div>
             )}
@@ -81,7 +89,7 @@ export function ChannelsPage() {
               {platforms.direct.map((p) => (
                 p.connect_mode === "credentials" || platforms.force_dry_run
                   ? <button key={p.name} type="button" onClick={() => setCredFor(p)} className="flex items-center justify-between rounded-card border border-line bg-surface px-3 py-2.5 text-left text-sm hover:border-brand"><span className="flex items-center gap-2"><PlatformMark platform={p.name} size={16} />{p.label}</span><span className="text-xs text-ink-2">Connect</span></button>
-                  : <a key={p.name} href={p.configured ? `/accounts/connect/${p.name}` : undefined} aria-disabled={!p.configured} title={p.configured ? undefined : "Developer app not configured on this server"}
+                  : <a key={p.name} href={p.configured ? `/accounts/connect/${p.name}?brand=${brand.id}` : undefined} aria-disabled={!p.configured} title={p.configured ? undefined : "Developer app not configured on this server"}
                        className={cn("flex items-center justify-between rounded-card border border-line bg-surface px-3 py-2.5 text-sm", p.configured ? "hover:border-brand" : "opacity-50")}><span className="flex items-center gap-2"><PlatformMark platform={p.name} size={16} />{p.label}</span><span className="text-xs text-ink-2">{p.configured ? "Connect" : "Not set up"}</span></a>
               ))}
             </div>

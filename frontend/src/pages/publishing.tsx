@@ -3,7 +3,7 @@
  * One page, one URL per view (?view=queue|calendar|drafts|approvals|sent).
  */
 import { useMemo, useState } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { ArrowUpToLine, CalendarDays, ChevronLeft, ChevronRight, Copy, GripVertical, Pencil, Plus, Send, Trash2, X } from "lucide-react";
 import { useBrand, useSession } from "@/app/session";
@@ -17,7 +17,7 @@ import { PlatformMark, platformLabel } from "@/lib/platforms";
 import { addDays, fmtDateTime, fmtDay, fmtTime, fromLocalInput, startOfWeek, toLocalInput, todayKey, zonedDateKey } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-const VIEWS = [["queue", "Queue"], ["calendar", "Calendar"], ["drafts", "Drafts"], ["approvals", "Approvals"], ["sent", "Sent"]] as const;
+const VIEWS = [["queue", "Queue"], ["calendar", "Calendar"], ["drafts", "Drafts"], ["approvals", "Approvals"], ["sent", "Sent"], ["failed", "Failed"]] as const;
 type View = (typeof VIEWS)[number][0];
 
 export function PublishingPage() {
@@ -41,10 +41,10 @@ export function PublishingPage() {
       </div>
       {isPending ? <Skeleton className="h-64" /> : accounts.length === 0 ? (
         <EmptyState icon={CalendarDays} title="No channels connected yet" body="Connect a social account and the queue fills with your posting slots."
-                    action={<Button asChild size="sm"><a href="/accounts">Connect a channel</a></Button>} />
+                    action={<Button asChild size="sm"><Link to="/channels" search={(p) => p}>Connect a channel</Link></Button>} />
       ) : view === "queue" ? <QueueView accounts={accounts} accountParam={search.account} onAccount={(id) => setSearch({ account: String(id) })} />
         : view === "calendar" ? <CalendarView accounts={accounts} mode={search.cal === "week" ? "week" : "month"} monthKey={search.month} campaign={search.campaign} onChange={setSearch} />
-        : <ListView status={view === "drafts" ? "draft" : view === "approvals" ? "pending_approval" : "published"} />}
+        : <ListView status={view === "drafts" ? "draft" : view === "approvals" ? "pending_approval" : view === "failed" ? "failed" : "published"} />}
     </>
   );
 }
@@ -99,7 +99,7 @@ function QueueView({ accounts, accountParam, onAccount }: { accounts: AccountOut
         {error && <p className="text-sm text-st-failed">{error.message}</p>}
         {isPending ? <Skeleton className="h-64" /> : days.length === 0 ? (
           <EmptyState icon={CalendarDays} title="No posting times set" body="The queue fills your weekly slots. Add some under Settings → Brand & team."
-                      action={<Button asChild size="sm" variant="outline"><a href="/settings#queue">Add slots</a></Button>} />
+                      action={<Button asChild size="sm" variant="outline"><Link to="/settings" search={(p) => ({ ...p, tab: "times" })}>Add slots</Link></Button>} />
         ) : (
           <DndContext sensors={sensors} onDragEnd={onDragEnd}>
             {days.map(([day, items]) => (
@@ -287,7 +287,7 @@ function Chip({ post, tz, week, onOpen }: { post: PostOut; tz: string; week: boo
 }
 
 // ---- lists --------------------------------------------------------------------------------
-function ListView({ status }: { status: "draft" | "pending_approval" | "published" }) {
+function ListView({ status }: { status: "draft" | "pending_approval" | "published" | "failed" }) {
   const brand = useBrand();
   const { data, isPending } = usePosts(brand.id, { status, limit: 100 });
   const actions = usePostActions(brand.id);
@@ -297,7 +297,7 @@ function ListView({ status }: { status: "draft" | "pending_approval" | "publishe
   if (isPending) return <Skeleton className="h-48" />;
   const items = data?.items ?? [];
   if (!items.length) {
-    const copy = { draft: ["No drafts", "Start a post and save it as a draft; it waits here."], pending_approval: ["Nothing waits for approval", "Posts from editors show up here when the brand requires approval."], published: ["Nothing sent yet", "Published posts appear here with their links."] }[status];
+    const copy = { draft: ["No drafts", "Start a post and save it as a draft; it waits here."], pending_approval: ["Nothing waits for approval", "Posts from editors show up here when the brand requires approval."], published: ["Nothing sent yet", "Published posts appear here with their links."], failed: ["Nothing failed", "Posts that could not be published after retrying show up here with the platform's error."] }[status];
     return <EmptyState icon={CalendarDays} title={copy[0]} body={copy[1]} action={status !== "published" ? <Button size="sm" onClick={() => composer.open()}>Write a post</Button> : undefined} />;
   }
   return (
@@ -310,12 +310,14 @@ function ListView({ status }: { status: "draft" | "pending_approval" | "publishe
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-2">
               <StatusBadge status={p.status} />
               {status === "published" && p.scheduled_at && <span className="tnum">{fmtDateTime(p.scheduled_at, brand.timezone)}</span>}
+              {status === "failed" && p.targets.filter((t) => t.error).map((t) => <span key={t.id} className="text-st-failed">{t.handle}: {t.error}</span>)}
               {status === "published" && p.targets.filter((t) => t.remote_url).map((t) => <a key={t.id} href={t.remote_url!} target="_blank" rel="noopener" className="underline">View on {platformLabel(t.platform)}</a>)}
               {status !== "published" && p.updated_at && <span className="tnum">updated {fmtDateTime(p.updated_at, brand.timezone)}</span>}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
             {status === "draft" && <Button size="sm" variant="outline" onClick={() => actions.place.mutate({ id: p.id, action: "next" })}>Share next</Button>}
+            {status === "failed" && <Button size="sm" onClick={() => actions.retry.mutate(p.id)}>Retry</Button>}
             {status === "pending_approval" && canApprove && <Button size="sm" onClick={() => actions.approve.mutate(p.id)}>Approve</Button>}
             {status === "published" && <IconBtn label="Reuse" onClick={() => composer.open({ fromPostId: p.id })}><Copy className="size-4" /></IconBtn>}
             {status !== "published" && <IconBtn label="Edit" onClick={() => composer.open({ postId: p.id })}><Pencil className="size-4" /></IconBtn>}

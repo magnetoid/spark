@@ -18,7 +18,10 @@ from spark.api.errors import ApiError, forbidden, login_required, not_found
 from spark.db import get_db
 from spark.models import Brand, Role, User
 from spark.services import tokens
-from spark.web.deps import CSRF_KEY, csrf_token
+from spark.web.deps import (  # the session cookie's CSRF token, shared with the public bio form
+    CSRF_KEY,
+    csrf_token,
+)
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 

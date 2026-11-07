@@ -66,7 +66,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild><a href="/brands/new">Add a brand</a></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/brands/new">Add a brand</Link></DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -86,7 +86,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="top" className="w-56">
-            <DropdownMenuItem asChild><a href="/me">Preferences</a></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to="/settings" search={(p) => ({ ...p, tab: "me" })}>Preferences</Link></DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-xs font-normal text-ink-2">Theme</DropdownMenuLabel>
             <DropdownMenuItem onSelect={() => changeTheme("light")}><Sun className="size-4" />Light {theme === "light" && <Check className="ml-auto size-4" />}</DropdownMenuItem>

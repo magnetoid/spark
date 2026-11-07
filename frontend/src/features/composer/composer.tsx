@@ -4,6 +4,7 @@
  */
 import { useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
 import { ImagePlus, Library, Sparkles, X } from "lucide-react";
 import { useBrand, useSession } from "@/app/session";
 import { Button } from "@/components/ui/button";
@@ -233,7 +234,7 @@ export function Composer({ initial, existing, onSaved, onCancel, compact }: {
             <span className="text-xs text-ink-2 tnum">{draft.selected.length} selected</span>
           </header>
           {active.length === 0 ? (
-            <p className="p-4 text-sm text-ink-2">No active channels. <a className="underline" href="/accounts">Connect one</a>.</p>
+            <p className="p-4 text-sm text-ink-2">No active channels. <Link className="underline" to="/channels" search={(p) => p}>Connect one</Link>.</p>
           ) : (
             <ul className="divide-y divide-line">
               {active.map((a) => {

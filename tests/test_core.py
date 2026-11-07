@@ -1,5 +1,4 @@
 import json
-import re
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -7,7 +6,7 @@ import pytest
 import respx
 from sqlalchemy import select
 
-from spark.models import Brand, Post, PostStatus, PostTarget, Role, SocialAccount, User
+from spark.models import Post, PostStatus, PostTarget, Role, SocialAccount, User
 from spark.platforms import PublishPayload, get_adapter
 from spark.platforms.bluesky import facets
 from spark.platforms.zernio import ZernioAdapter, from_zernio, to_zernio
@@ -143,34 +142,17 @@ async def test_next_free_slot_skips_taken(db, brand):
     assert second > first
 
 
-async def test_web_smoke(client, db, brand):
-    for path in ("/", "/compose", "/calendar", "/posts", "/accounts", "/analytics", "/links",
-                 "/contacts", "/email", "/bio", "/settings", "/campaigns", "/feeds", "/media"):
-        r = await client.get(path)
-        assert r.status_code == 200, (path, r.status_code, r.text[:300])
-    acc = await db.scalar(select(SocialAccount))
-    r = await client.post("/compose", data={"content": "Hello from a test", "action": "draft",
-                                            "account_ids": [str(acc.id)]})
-    assert r.status_code == 303
-    post = await db.scalar(select(Post))
-    assert post.content == "Hello from a test" and post.status == PostStatus.draft
-
-
 async def test_public_short_link_and_bio(client, db, brand):
-    r = await client.post("/links", data={"destination": "example.com/x", "utm_source": "t"})
-    assert r.status_code == 303
-    from spark.models import ShortLink
-
-    link = await db.scalar(select(ShortLink))
-    r = await client.get(f"/l/{link.code}")
+    r = await client.post(f"/api/v1/brands/{brand.id}/links", json={"destination": "example.com/x", "utm_source": "t"})
+    assert r.status_code == 201
+    code = r.json()["code"]
+    r = await client.get(f"/l/{code}")
     assert r.status_code == 302 and r.headers["location"].startswith("https://example.com/x?")
-    await client.get("/bio")  # creates the page
+    await client.get(f"/api/v1/brands/{brand.id}/bio")  # creates the page
     r = await client.get("/b/acme")
     assert r.status_code == 200 and "Acme" in r.text
     r = await client.post("/b/acme/subscribe", data={"email": "fan@example.com"})
     assert r.status_code == 200 and "on the list" in r.text
-    b = await db.get(Brand, brand.id)
-    assert b is not None
 
 
 async def test_prioritize_bumps_slot_posts(db, brand):
@@ -199,26 +181,6 @@ async def test_prioritize_bumps_slot_posts(db, brand):
     items = await scheduler.channel_queue(db, brand, acc)
     queued = [i["post"].content for i in items if i["post"]]
     assert queued[:2] == ["B", "A"]
-
-
-async def test_ideas_board_and_to_post(client, db, brand):
-    from spark.models import Idea
-
-    r = await client.post("/ideas", data={"title": "Launch thread", "body": "Three lessons from launch week",
-                                          "tags": "Launch, #tips, launch"})
-    assert r.status_code == 303
-    idea = await db.scalar(select(Idea))
-    assert idea.tags == ["launch", "tips"] and idea.status == "idea"
-    r = await client.post(f"/ideas/{idea.id}/move", data={"status": "drafting"},
-                          headers={"Accept": "application/json"})
-    assert r.status_code == 200
-    r = await client.post(f"/ideas/{idea.id}/to-post")
-    assert r.status_code == 303 and r.headers["location"].endswith("/edit")
-    await db.refresh(idea)
-    post = await db.get(Post, idea.post_id)
-    assert post.content == "Three lessons from launch week" and idea.status == "ready"
-    r = await client.get("/ideas")
-    assert r.status_code == 200 and "Launch thread" in r.text
 
 
 @respx.mock
@@ -288,113 +250,34 @@ async def test_zernio_inbox_filters_to_brand_accounts(monkeypatch):
     assert "Idempotency-Key" in reply.calls.last.request.headers
 
 
-async def test_hashtag_groups_and_templates(client, db, brand):
-    from spark.models import HashtagGroup, PostTemplate
-
-    r = await client.post("/settings/hashtags", data={"name": "Launch", "tags": "#launch, SaaS #launch marketing"})
-    assert r.status_code == 303
-    g = await db.scalar(select(HashtagGroup))
-    assert g.tags == ["launch", "SaaS", "marketing"] and g.text == "#launch #SaaS #marketing"
-    r = await client.post("/settings/templates", data={"name": "Tip", "body": "Tip: {{thing}}\n\nWhy it works.", "category": "tip"})
-    assert r.status_code == 303
-    t = await db.scalar(select(PostTemplate))
-    assert t.category == "tip"
-    r = await client.get("/compose")
-    assert r.status_code == 200 and "Insert hashtags" in r.text and '"hashtagGroups": [{"id"' in r.text
-    r = await client.get("/settings")
-    assert r.status_code == 200 and "#launch #SaaS #marketing" in r.text
-
-
 async def test_bio_links_are_tracked(client, db, brand):
     from spark.models import ShortLink
 
-    await client.get("/bio")
-    r = await client.post("/bio", data={"title": "Acme", "link_label": "Pricing", "link_url": "https://acme.example.com/pricing",
-                                        "is_published": "on", "capture_email": "on"})
-    assert r.status_code == 303
-    link = await db.scalar(select(ShortLink).where(ShortLink.title == "Pricing"))
+    body = {"title": "Acme", "theme": "light", "capture_email": True, "is_published": True,
+            "links": [{"label": "Pricing", "url": "https://acme.example.com/pricing"}]}
+    r = await client.put(f"/api/v1/brands/{brand.id}/bio", json=body)
+    assert r.status_code == 200, r.text
+    code = r.json()["links"][0]["code"]
+    link = await db.scalar(select(ShortLink).where(ShortLink.code == code))
     assert link and "utm_source=bio" in link.destination
     r = await client.get("/b/acme")
-    assert f'href="/l/{link.code}"' in r.text
-    r = await client.get(f"/l/{link.code}")
-    assert r.status_code == 302
-    await db.refresh(link)
-    assert link.clicks == 1
-    # Re-saving the same link keeps the same code (and its click history)
-    await client.post("/bio", data={"title": "Acme", "link_label": "Pricing", "link_url": "https://acme.example.com/pricing",
-                                    "link_code": link.code, "is_published": "on"})
-    r = await client.get("/bio")
-    assert r.status_code == 200 and link.code in r.text and "1 link clicks" in r.text
+    assert f'href="/l/{code}"' in r.text
+    assert (await client.get(f"/l/{code}")).status_code == 302
+    # re-saving the same link keeps the code (and its click history)
+    r = await client.put(f"/api/v1/brands/{brand.id}/bio", json={**body, "links": [{**body["links"][0], "code": code}]})
+    assert r.json()["links"][0]["code"] == code and r.json()["links"][0]["clicks"] == 1 and r.json()["total_clicks"] == 1
 
 
 async def test_csrf_required(client, db, brand):
     saved = client.headers.pop("X-CSRF-Token")
-    r = await client.post("/links", data={"destination": "https://example.com"})
-    assert r.status_code == 403
+    r = await client.post(f"/api/v1/brands/{brand.id}/links", json={"destination": "https://example.com"})
+    assert r.status_code == 403 and r.json()["code"] == "csrf"
     client.headers["X-CSRF-Token"] = saved
-    r = await client.post("/links", data={"destination": "https://example.com"})
-    assert r.status_code == 303
-    r = await client.get("/api/palette")
-    assert r.status_code == 200 and any(i["label"] == "Queue" for i in r.json())
-
-
-async def test_csrf_form_field_without_header(client, db, brand):
-    token = client.headers.pop("X-CSRF-Token")
-    r = await client.post("/links", data={"destination": "https://example.com/f", "csrf": token})
-    assert r.status_code == 303
-    files = {"files": ("pic.png", b"\x89PNG\r\n\x1a\n" + b"0" * 32, "image/png")}
-    r = await client.post("/media", data={"csrf": token}, files=files)
-    assert r.status_code == 303
-    client.headers["X-CSRF-Token"] = token
-
-
-async def test_compose_modal_and_hx_save(client, db, brand):
-    acc = await db.scalar(select(SocialAccount))
-    r = await client.get(f"/compose/modal?account={acc.id}&at=2030-01-01T10:00")
-    assert r.status_code == 200 and "composer(" in r.text and 'hx-post="/compose"' in r.text
-    assert "<html" not in r.text  # a partial, not a page
-    r = await client.post("/compose", data={"content": "From the modal", "action": "draft",
-                                            "account_ids": [str(acc.id)]}, headers={"HX-Request": "true"})
-    assert r.status_code == 204 and r.headers.get("HX-Reswap") == "none"
-    trig = json.loads(r.headers["HX-Trigger"])
-    assert trig["toast"]["message"] == "Draft saved" and trig["post-saved"]["account_ids"] == [acc.id]
-
-
-async def test_autosave_hidden_until_saved(client, db, brand):
-    acc = await db.scalar(select(SocialAccount))
-    r = await client.post("/compose/autosave", json={"content": "half-written", "account_ids": [acc.id]})
-    pid = r.json()["post_id"]
-    r = await client.get("/posts")
-    assert "half-written" not in r.text
-    r = await client.get("/compose/modal")
-    assert "Resume unfinished post" in r.text
-    r = await client.post("/compose/autosave", json={"post_id": pid, "content": "half-written, more"})
-    assert r.json()["post_id"] == pid
-    r = await client.post("/compose", data={"post_id": str(pid), "content": "finished", "action": "draft",
-                                            "account_ids": [str(acc.id)]}, headers={"HX-Request": "true"})
-    assert r.status_code == 204
-    post = await db.get(Post, pid)
-    await db.refresh(post)
-    assert post.is_autosave is False and post.content == "finished"
-    r = await client.get("/posts")
-    assert "finished" in r.text
-
-
-async def test_compose_from_idea_and_reuse(client, db, brand):
-    from spark.models import Idea
-
-    acc = await db.scalar(select(SocialAccount))
-    await client.post("/ideas", data={"title": "Idea title", "body": "Idea body text", "source_url": "https://x.io"})
-    idea = await db.scalar(select(Idea))
-    r = await client.get(f"/compose/modal?idea_id={idea.id}")
-    assert "Idea body text" in r.text and 'name="idea_id"' in r.text
-    r = await client.post("/compose", data={"content": "Idea body text", "action": "draft", "idea_id": str(idea.id),
-                                            "account_ids": [str(acc.id)]}, headers={"HX-Request": "true"})
-    assert r.status_code == 204
-    await db.refresh(idea)
-    assert idea.post_id and idea.status == "ready"
-    r = await client.get(f"/compose/modal?from_post={idea.post_id}")
-    assert "Idea body text" in r.text and f'"selected": [{acc.id}]' in r.text
+    assert (await client.post(f"/api/v1/brands/{brand.id}/links", json={"destination": "https://example.com"})).status_code == 201
+    # the public bio form still takes the token as a form field
+    await client.get(f"/api/v1/brands/{brand.id}/bio")
+    r = await client.post("/b/acme/subscribe", data={"email": "f@example.com", "csrf": saved})
+    assert r.status_code == 200
 
 
 def test_every_write_route_requires_a_role():
@@ -404,10 +287,7 @@ def test_every_write_route_requires_a_role():
     from spark.main import app
     from spark.web import deps
 
-    allow = {"/login", "/setup", "/logout", "/b/{slug}/subscribe", "/e/u/{tok}", "/me/prefs", "/me", "/me/password",
-             "/webhooks/zernio", "/ideas/{idea_id}/move",
-             # personal API tokens: any signed-in user manages their own (viewers get read-only tools)
-             "/settings/connectors/mcp/tokens", "/settings/connectors/mcp/tokens/{token_id}/delete"}
+    allow = {"/b/{slug}/subscribe", "/e/u/{tok}", "/webhooks/zernio"}  # public by design
     offenders = []
     for r in app.routes:
         if not isinstance(r, APIRoute) or not (r.methods & {"POST", "PUT", "PATCH", "DELETE"}):
@@ -415,14 +295,14 @@ def test_every_write_route_requires_a_role():
         if r.path in allow:
             continue
         calls = {d.call for d in r.dependant.dependencies}
-        if not (calls & {deps.editor, deps.owner}):
+        if not (calls & {deps.editor}):
             offenders.append(r.path)
     assert offenders == [], offenders
 
 
 async def test_rate_limit_and_security_headers(client, db, brand, monkeypatch):
-    r = await client.get("/queue")
-    assert r.headers.get("X-Content-Type-Options") == "nosniff" and "Content-Security-Policy" in r.headers
+    r = await client.get("/api/v1/session")
+    assert r.headers.get("X-Content-Type-Options") == "nosniff" and "script-src 'self'" in r.headers["Content-Security-Policy"]
     from spark import main as m
 
     m._buckets.clear()
@@ -431,14 +311,6 @@ async def test_rate_limit_and_security_headers(client, db, brand, monkeypatch):
     assert 429 in codes and codes[0] == 404
     m._buckets.clear()
 
-
-async def test_prefs_and_onboarding(client, db, brand):
-    r = await client.get("/")
-    assert "Get Spark posting" in r.text
-    r = await client.post("/me/prefs", json={"onboarding_dismissed": True, "ignored": 1})
-    assert r.json() == {"onboarding_dismissed": True}
-    r = await client.get("/")
-    assert "Get Spark posting" not in r.text
 
 
 # ---- Phase E: notifications, preferences, webhooks ------------------------------------
@@ -508,32 +380,9 @@ async def test_weekly_digest(db, brand):
     assert "Your week on social" in mail["subject"] and "Coming up" in mail["html"]
 
 
-async def test_preferences_page_and_save(client, db, brand):
-    r = await client.get("/me")
-    assert r.status_code == 200 and "Weekly digest" in r.text
-    r = await client.post("/me", data={"name": "Owner Two", "email": "owner@example.com", "digest_weekly": "true",
-                                       "default_action": "next"})
-    assert r.status_code == 303
-    user = await db.scalar(select(User))
-    await db.refresh(user)
-    assert user.name == "Owner Two"
-    assert user.prefs["default_action"] == "next" and user.prefs["notify_failed"] is False
-    # composer honours the default action; shortcuts flag lands on <html>
-    r = await client.get("/compose")
-    assert "x-data=\"{mode:'next'}\"" in r.text and 'data-shortcuts="off"' in r.text
-    r = await client.post("/me/password", data={"current": "wrong", "new": "longenough123"})
-    assert r.status_code == 303
-    r = await client.post("/me/password", data={"current": "password123", "new": "longenough123"})
-    await db.refresh(user)
-    from spark.security import verify_password
-
-    assert verify_password(user.password_hash, "longenough123")
-
-
 def _signed(body: dict) -> tuple[bytes, dict]:
     import hashlib
     import hmac
-    import json
 
     from spark.services.webhooks import webhook_secret
 
@@ -667,47 +516,6 @@ async def test_notify_approvals_again_after_resubmit(db, brand):
 
 # ---- Settings → Connectors and the MCP server ------------------------------------------
 
-async def test_connectors_pages_render(client):
-    r = await client.get("/settings/connectors")
-    assert r.status_code == 200
-    names = [n for n in ("Zernio", "Claude AI", "Email delivery", "MCP access", "Direct platform apps") if n in r.text]
-    assert names[0] == "Zernio" and len(names) == 5
-    assert r.text.index("Zernio") < r.text.index("Claude AI")  # Zernio is the first connector
-    for key in ("zernio", "anthropic", "email", "mcp", "direct"):
-        assert (await client.get(f"/settings/connectors/{key}")).status_code == 200, key
-    assert (await client.get("/settings/connectors/nope")).status_code == 404
-    assert "Connectors" in (await client.get("/settings")).text  # tabs on Brand & team
-
-
-async def test_connector_saved_value_overrides_env_and_clears(client, db):
-    from spark.config import get_settings
-    from spark.models import ConnectorSetting
-
-    assert not get_settings().zernio_api_key
-    r = await client.post("/settings/connectors/zernio", data={"zernio_api_key": "sk_live_secret_123456",
-                                                               "zernio_base_url": get_settings().zernio_base_url})
-    assert r.status_code == 303
-    assert get_settings().zernio_api_key == "sk_live_secret_123456"
-    row = await db.get(ConnectorSetting, "zernio_api_key")
-    assert row and "sk_live" not in row.value  # encrypted at rest
-    page = (await client.get("/settings/connectors/zernio")).text
-    assert "sk_live_secret_123456" not in page and "saved in Spark" in page
-    # a blank secret keeps the saved value
-    await client.post("/settings/connectors/zernio", data={"zernio_api_key": ""})
-    assert get_settings().zernio_api_key == "sk_live_secret_123456"
-    # removing it falls back to the environment (empty in tests)
-    await client.post("/settings/connectors/zernio", data={"clear_zernio_api_key": "1"})
-    assert not get_settings().zernio_api_key
-
-
-async def test_connectors_are_owner_only(client, db):
-    user = await db.scalar(select(User))
-    user.role = Role.editor
-    await db.commit()
-    r = await client.post("/settings/connectors/zernio", data={"zernio_api_key": "sk_x"})
-    assert r.status_code == 403
-
-
 async def _mcp_call(client, token, method, params=None):
     headers = {"Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2025-06-18"}
     if token:
@@ -751,11 +559,10 @@ async def mcp(client):
 
 
 async def _new_token(client) -> str:
-    r = await client.post("/settings/connectors/mcp/tokens", data={"name": "Claude Code"})
-    assert r.status_code == 303
-    page = (await client.get("/settings/connectors/mcp")).text
-    token = re.search(r'value="(spk_[^"]+)"', page).group(1)
-    assert token not in (await client.get("/settings/connectors/mcp")).text  # shown once only
+    r = await client.post("/api/v1/me/tokens", json={"name": "Claude Code"})
+    assert r.status_code == 201, r.text
+    token = r.json()["token"]
+    assert token not in (await client.get("/api/v1/me/tokens")).text  # only the hash is stored
     return token
 
 
@@ -770,7 +577,7 @@ async def test_mcp_needs_a_valid_token(mcp, db):
     assert {"create_post", "list_posts", "approve_post", "get_analytics"} <= names
     t = await db.scalar(select(ApiToken))
     assert t.token_hash != token and t.last_used_at is not None
-    await mcp.post(f"/settings/connectors/mcp/tokens/{t.id}/delete")
+    assert (await mcp.delete(f"/api/v1/me/tokens/{t.id}")).status_code == 204
     assert (await _mcp_call(mcp, token, "tools/list")).status_code == 401
 
 

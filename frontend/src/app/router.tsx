@@ -22,6 +22,7 @@ import { AudiencePage } from "@/pages/audience";
 import { ChannelsPage } from "@/pages/channels";
 import { SettingsPage } from "@/pages/settings";
 import { InboxPage } from "@/pages/inbox";
+import { NewBrandPage } from "@/pages/new-brand";
 import { sessionQuery } from "@/app/session";
 
 interface RouterContext {
@@ -30,8 +31,8 @@ interface RouterContext {
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: () => <Outlet />,
-  validateSearch: (s: Record<string, unknown>): { brand?: string; view?: string; account?: string; cal?: string; month?: string; campaign?: string; tab?: string; at?: string; connector?: string } =>
-    Object.fromEntries(Object.entries(s).filter(([k, v]) => ["brand", "view", "account", "cal", "month", "campaign", "tab", "at", "connector"].includes(k) && typeof v === "string" && v)) as { brand?: string },
+  validateSearch: (s: Record<string, unknown>): { brand?: string; view?: string; account?: string; cal?: string; month?: string; campaign?: string; tab?: string; at?: string; connector?: string; notice?: string; kind?: string } =>
+    Object.fromEntries(Object.entries(s).filter(([k, v]) => ["brand", "view", "account", "cal", "month", "campaign", "tab", "at", "connector", "notice", "kind"].includes(k) && typeof v === "string" && v)) as { brand?: string },
 });
 
 const loginRoute = createRoute({
@@ -51,6 +52,7 @@ const shellRoute = createRoute({
     const session = await context.queryClient.ensureQueryData(sessionQuery);
     if (session.needs_setup) throw redirect({ to: "/setup" });
     if (!session.user) throw redirect({ to: "/login", search: { next: location.href } });
+    if (session.brands.length === 0 && !location.pathname.startsWith("/brands/new")) throw redirect({ to: "/brands/new" });
     return { session };
   },
   component: AppShell,
@@ -64,6 +66,7 @@ export const routeTree = rootRoute.addChildren([
   setupRoute,
   shellRoute.addChildren([
     page("/", TodayPage),
+    page("/brands/new", NewBrandPage),
     page("/publishing", PublishingPage),
     page("/compose", ComposePage),
     page("/posts/$postId/edit", EditPostPage),

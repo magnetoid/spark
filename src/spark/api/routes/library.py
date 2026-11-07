@@ -21,7 +21,7 @@ from spark.api.schemas import (
 from spark.db import get_db
 from spark.models import HashtagGroup, Media, PostTemplate
 from spark.services import media as media_svc
-from spark.web.brands import _parse_tags as parse_hashtags
+from spark.services.text import parse_hashtags
 
 router = APIRouter(tags=["library"])
 B = "/brands/{brand_id}"

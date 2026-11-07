@@ -21,7 +21,7 @@ export function SetupPage() {
       const s = unwrap(await api.POST("/auth/setup", { body: form }));
       setCsrfToken(s.csrf_token);
       qc.setQueryData(sessionQuery.queryKey, s);
-      window.location.assign("/brands/new");
+      window.location.assign(import.meta.env.BASE_URL.replace(/\/$/, "") + "/brands/new");
     } catch {
       setError("Could not create the account. Use at least 8 characters for the password.");
       setBusy(false);

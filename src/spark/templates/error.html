@@ -1,4 +1,24 @@
-{% extends "base.html" %}
-{% block title %}{{ code }} · Spark{% endblock %}
-{% block content %}<h1 class="text-2xl font-semibold">{{ code }}</h1><p class="text-mute mt-2">{{ message }}</p><a href="/" class="btn mt-6" data-variant="outline">Back to overview</a>{% endblock %}
-{% block auth %}<h1 class="text-2xl font-semibold">{{ code }}</h1><p class="text-mute mt-2">{{ message }}</p><a href="/login" class="btn mt-6" data-variant="outline">Sign in</a>{% endblock %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ code }} · Spark</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font: 15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; background: #f7f8fa; color: #171a21; }
+    @media (prefers-color-scheme: dark) { body { background: #16181d; color: #eceef2; } }
+    main { max-width: 28rem; padding: 2rem; text-align: center; }
+    h1 { font-size: 3rem; margin: 0 0 .25rem; }
+    p { margin: 0 0 1.5rem; opacity: .7; }
+    a { display: inline-block; padding: .5rem 1rem; border-radius: 6px; background: #f2a516; color: #171a21; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{{ code }}</h1>
+    <p>{{ message }}</p>
+    <a href="/">Back to Spark</a>
+  </main>
+</body>
+</html>
