@@ -392,16 +392,28 @@ class ZernioAdapter(PlatformAdapter):
         """Latest follower count per Zernio account id from /accounts/follower-stats (analytics add-on).
         Rows carry accountId plus followers/followersCount and a date; the newest row per account wins."""
         data = (await self._req("GET", "/accounts/follower-stats", params={"accountIds": ",".join(sorted(account_ids))})).json()
-        rows = data.get("data") or data.get("stats") or (data if isinstance(data, list) else [])
+        rows: list = []
+        body = data.get("data", data.get("stats")) if isinstance(data, dict) else data
+        if isinstance(body, dict):  # {"<accountId>": {...}} or {"stats": [...]}
+            inner = body.get("stats") or body.get("data")
+            rows = list(inner) if isinstance(inner, list) else [{"accountId": k, **v} for k, v in body.items() if isinstance(v, dict)]
+        elif isinstance(body, list):
+            rows = body
         out: dict[str, tuple[str, int]] = {}
         for r in rows:
-            aid = r.get("accountId")
+            if not isinstance(r, dict):
+                continue  # the add-on answers with plain ids when it has no stats
+            aid = r.get("accountId") or r.get("account_id")
             n = r.get("followers", r.get("followersCount", r.get("count")))
             if aid not in account_ids or n is None:
                 continue
+            try:
+                n = int(n)
+            except (TypeError, ValueError):
+                continue
             day = str(r.get("date") or r.get("day") or "")
             if aid not in out or day >= out[aid][0]:
-                out[aid] = (day, int(n))
+                out[aid] = (day, n)
         return {k: v[1] for k, v in out.items()}
 
     async def mentions(self, account_ids: set[str], limit: int = 50) -> list[dict]:

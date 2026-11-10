@@ -99,3 +99,20 @@ async def test_follower_snapshots_use_zernio_when_it_answers(api, db, brand, mon
     assert rows[z.id].followers == 5600 and rows[z.id].source == "zernio"
     other = next(s for aid, s in rows.items() if aid != z.id)
     assert other.source == "spark"
+
+
+@respx.mock
+async def test_follower_stats_tolerates_odd_shapes(monkeypatch):
+    """Zernio answered /accounts/follower-stats with strings in `data` on production; nothing may crash."""
+    from spark.platforms.zernio import ZernioAdapter
+
+    monkeypatch.setattr(get_settings(), "zernio_api_key", "sk_test")
+    z = ZernioAdapter()
+    for payload in ({"data": ["z-li", "z-ig"]}, {"data": "nope"}, {"stats": None}, [], {"data": {"z-li": {"followers": 7, "date": "2026-11-09"}}},
+                    {"data": [{"accountId": "z-li", "followers": 9, "date": "2026-11-10"}, {"accountId": "z-li", "followersCount": 8, "date": "2026-11-01"}, "junk"]}):
+        respx.get("https://zernio.com/api/v1/accounts/follower-stats").mock(return_value=httpx.Response(200, json=payload))
+        out = await z.follower_stats({"z-li", "z-ig"})
+        assert isinstance(out, dict)
+    assert out == {"z-li": 9}
+    respx.get("https://zernio.com/api/v1/accounts/follower-stats").mock(return_value=httpx.Response(200, json={"data": {"z-li": {"followers": 7, "date": "2026-11-09"}}}))
+    assert await z.follower_stats({"z-li"}) == {"z-li": 7}
