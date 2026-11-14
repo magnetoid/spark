@@ -110,6 +110,12 @@ async def collect_metrics(ctx) -> int:
         return await analytics.collect_metrics(db)
 
 
+async def collect_account_metrics(ctx, account_id: int) -> int:
+    """Zernio said this account's numbers were just synced: read its posts that are due."""
+    async with SessionLocal() as db:
+        return await analytics.collect_metrics(db, account_id=account_id)
+
+
 async def poll_feeds(ctx) -> int:
     try:
         ai = ContentAI()
@@ -215,13 +221,13 @@ class WorkerSettings:
     on_startup = load_connectors
     on_job_start = load_connectors
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)
-    functions = [publish_now, send_email_campaign, follow_agent_run]
+    functions = [publish_now, send_email_campaign, follow_agent_run, collect_account_metrics]
     cron_jobs = [
         cron(publish_due, second={0, 30}, run_at_startup=True),
         cron(send_scheduled_emails, second=15),
         cron(recover_stuck, minute={0, 15, 30, 45}),
         cron(poll_feeds, minute={5, 35}),
-        cron(collect_metrics, hour={0, 6, 12, 18}, minute=20),
+        cron(collect_metrics, minute={20}),  # hourly; each post is read only when due
         cron(recycle_evergreen, hour={6}, minute=10),
         cron(start_weekly_plans, hour={7}, minute=5),
         cron(sweep_agent_runs, minute=set(range(1, 60, 5))),

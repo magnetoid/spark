@@ -8,10 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spark.api import deps
 from spark.api.errors import ApiError, not_found
-from spark.api.schemas import CampaignFull, CampaignIn, CampaignUpdate
+from spark.api.routes.links import _link
+from spark.api.schemas import CampaignFull, CampaignIn, CampaignOut, CampaignSummary, CampaignUpdate
 from spark.db import get_db
 from spark.models import Campaign
 from spark.services import campaigns as svc
+from spark.services import tracking
 from spark.services.ai import AIUnavailable
 
 router = APIRouter(tags=["campaigns"])
@@ -140,3 +142,40 @@ async def delete_campaign(
     await db.delete(c)
     await db.commit()
     return Response(status_code=204)
+
+
+async def _own(db: AsyncSession, ctx: deps.BrandCtx, campaign_id: int) -> Campaign:
+    c = await db.get(Campaign, campaign_id)
+    if not c or c.brand_id != ctx.brand.id:
+        raise not_found("No such campaign")
+    return c
+
+
+@router.get(B + "/campaigns/{campaign_id}/summary", response_model=CampaignSummary)
+async def campaign_summary(
+    campaign_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.brand_ctx),
+):
+    """Posts, reach, engagement and link clicks for one campaign, all time."""
+    c = await _own(db, ctx, campaign_id)
+    s = await tracking.campaign_summary(db, ctx.brand, c)
+    return CampaignSummary(
+        campaign=CampaignOut.model_validate(c),
+        **{**s, "links": [_link(l) for l in s["links"]]},
+    )
+
+
+@router.get(B + "/campaigns/{campaign_id}/export.csv")
+async def campaign_csv(
+    campaign_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.brand_ctx),
+):
+    c = await _own(db, ctx, campaign_id)
+    slug = "".join(ch if ch.isalnum() else "-" for ch in c.name.lower()).strip("-") or "campaign"
+    return Response(
+        await tracking.campaign_csv(db, c),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{ctx.brand.slug}-{slug}.csv"'},
+    )

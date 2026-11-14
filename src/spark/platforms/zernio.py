@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 import httpx
 
@@ -23,13 +24,63 @@ from spark.platforms.base import (
     ConnectedAccount,
     Limits,
     MetricsSnapshot,
+    NotAvailable,
     PlatformAdapter,
     PlatformError,
     PublishPayload,
     PublishResult,
+    RateLimited,
 )
 
 log = logging.getLogger(__name__)
+
+# How far back post numbers are read; Spark stops reading a post 30 days after it went out
+METRICS_WINDOW_DAYS = 31
+
+# What each network reports, from Zernio's analytics table. Zernio sends 0 for a number the
+# network does not report; Spark keeps those empty instead, so 0 always means a real zero.
+# Bluesky reposts arrive as shares and Reddit upvotes as likes.
+REPORTS: dict[str, set[str]] = {
+    "instagram": {"impressions", "reach", "likes", "comments", "shares", "saves", "views"},
+    "facebook": {"impressions", "likes", "comments", "shares", "clicks", "views"},
+    "linkedin": {"impressions", "reach", "likes", "comments", "shares", "clicks", "saves"},
+    "tiktok": {"likes", "comments", "shares", "views"},
+    "youtube": {"likes", "comments", "views"},
+    "x": {"impressions", "likes", "comments", "shares", "saves", "clicks", "views"},
+    "pinterest": {"impressions", "saves", "clicks"},
+    "threads": {"likes", "comments", "shares", "views"},
+    "bluesky": {"likes", "comments", "shares"},
+    "snapchat": {"views", "reach", "shares"},
+    "reddit": {"likes", "comments"},
+    "googlebusiness": set(),
+}
+
+
+def snapshot_from(remote_id: str, platform: str, a: dict) -> MetricsSnapshot:
+    """One Zernio analytics object as a snapshot: saves, views and reach kept apart, and
+    numbers the network does not report left empty."""
+    reports = REPORTS.get(platform)
+
+    def num(key: str) -> int:
+        return int(a.get(key) or 0)
+
+    def maybe(key: str) -> int | None:
+        if reports is not None and key not in reports:
+            return None
+        return num(key)
+
+    return MetricsSnapshot(
+        remote_id=remote_id,
+        impressions=num("impressions"),
+        likes=num("likes"),
+        comments=num("comments"),
+        shares=num("shares"),
+        clicks=num("clicks"),
+        reach=maybe("reach"),
+        views=maybe("views"),
+        saves=maybe("saves"),
+    )
+
 
 # spark key -> zernio key (identity when absent)
 TO_ZERNIO = {"x": "twitter"}
@@ -81,6 +132,7 @@ class ZernioAdapter(PlatformAdapter):
     def __init__(self, http: httpx.AsyncClient | None = None, platform: str = "x"):
         super().__init__(http)
         self.platform = platform
+        self.calls = 0  # requests made by fetch_metrics, for the per-run budget
         meta = ZERNIO_PLATFORMS.get(platform)
         if meta:
             self.label = f"{meta.label} (Zernio)"
@@ -657,34 +709,60 @@ class ZernioAdapter(PlatformAdapter):
         return None
 
     async def fetch_metrics(self, account, remote_ids: list[str]) -> list[MetricsSnapshot]:
-        out = []
-        for rid in remote_ids:
+        """Pages through the account's posts made through Zernio, newest first, until every
+        asked-for post is found. Zernio answers from its own store (synced about hourly), so
+        this costs no network quota; `self.calls` counts the requests for Spark's budget."""
+        wanted, out = set(remote_ids), []
+        platform = account.platform
+        page, pages = 1, 1
+        since = (datetime.now(UTC) - timedelta(days=METRICS_WINDOW_DAYS)).date().isoformat()
+        while wanted and page <= pages:
             resp = await self.http.get(
-                self._url("/analytics"), headers=self._headers(), params={"postId": rid}
+                self._url("/analytics"),
+                headers=self._headers(),
+                params={
+                    "accountId": account.external_id,
+                    "source": "late",
+                    "fromDate": since,
+                    "sortBy": "date",
+                    "order": "desc",
+                    "view": "summary",
+                    "limit": 50,
+                    "page": page,
+                },
             )
-            if resp.status_code in (202, 404, 424):
-                continue  # sync pending / unknown / all platforms failed
-            try:
-                self.check(resp)
-            except PlatformError as e:
-                log.info("Zernio analytics %s: %s", rid, e)
-                continue
+            self.calls += 1
+            if resp.status_code == 429:
+                try:
+                    wait = int(float(resp.headers.get("Retry-After") or 60))
+                except ValueError:
+                    wait = 60
+                raise RateLimited("Zernio asked Spark to slow down (429)", retry_after=wait)
+            if resp.status_code == 402:
+                raise NotAvailable(
+                    "Zernio answered 402: this plan has no Analytics add-on, so post numbers "
+                    "cannot be read. Add it in Zernio, or move to a usage-based plan."
+                )
+            self.check(resp)
             data = resp.json()
-            a = data.get("analytics") or {}
-            if not a and data.get("platformAnalytics"):
-                a = (
-                    next(iter(data["platformAnalytics"].values()), {})
-                    if isinstance(data["platformAnalytics"], dict)
-                    else (data["platformAnalytics"][0] or {})
+            pages = int((data.get("pagination") or {}).get("pages") or 1)
+            for item in data.get("posts") or []:
+                rid = next(
+                    (i for i in (item.get("latePostId"), item.get("_id")) if i in wanted), None
                 )
-            out.append(
-                MetricsSnapshot(
-                    remote_id=rid,
-                    impressions=int(a.get("impressions") or a.get("views") or 0),
-                    likes=int(a.get("likes") or 0),
-                    comments=int(a.get("comments") or 0),
-                    shares=int(a.get("shares") or 0) + int(a.get("saves") or 0),
-                    clicks=int(a.get("clicks") or 0),
-                )
-            )
+                if rid is None:
+                    continue
+                wanted.discard(rid)
+                a = next(
+                    (
+                        pa.get("analytics") or {}
+                        for pa in item.get("platformAnalytics") or []
+                        if pa.get("accountId") == account.external_id
+                    ),
+                    None,
+                ) or (item.get("analytics") or {})
+                snap = snapshot_from(rid, platform, a)
+                snap.url = item.get("platformPostUrl")
+                out.append(snap)
+            page += 1
         return out

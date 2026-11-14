@@ -144,11 +144,13 @@ async def save_post(
         )
         media_ids = [i for i in media_ids if i in own]
 
+    made: list = []
+
     async def short(text: str | None) -> str | None:
         if not text or not brand.auto_shorten_links:
             return text
         return await shorten_in_text(
-            db, brand, text, source="spark", campaign=utm, campaign_id=campaign_id
+            db, brand, text, source="spark", campaign=utm, campaign_id=campaign_id, created=made
         )
 
     content = (await short(content.strip())) or ""
@@ -187,6 +189,10 @@ async def save_post(
         keep.append(t)
     post.targets = keep
     await db.flush()
+    for short_link in made:
+        short_link.post_id = post.id
+    if made:
+        await db.flush()
     await db.refresh(post, ["targets"])
     return post
 

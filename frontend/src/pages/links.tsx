@@ -1,10 +1,11 @@
 /** Links: tracked short links with UTM tags, and the link-in-bio page. */
 import { useState, type FormEvent } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { Copy, ExternalLink, GripVertical, Link2, Plus, Trash2 } from "lucide-react";
+import { BarChart3, Copy, ExternalLink, GripVertical, Link2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useBrand, usePerms } from "@/app/session";
 import { EmptyState, PageHeader } from "@/components/page";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,9 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useBio, useCreateLink, useDeleteLink, useLinks, useLists, useSaveBio, type BioOut } from "@/features/api4";
+import { useBio, useCreateLink, useDeleteLink, useLinks, useLists, useSaveBio, type BioOut, type LinkOut } from "@/features/api4";
+import { LinkDetails } from "@/features/links/tracker";
+import { BACK_HALF, withUtm } from "@/features/links/utm";
 import { useCampaigns, useMedia } from "@/features/posts/api";
-import { fmtDay } from "@/lib/time";
+import { fmtDay, fromLocalInput, zonedDateKey } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 export function LinksPage() {
@@ -23,7 +26,7 @@ export function LinksPage() {
   const tab = search.tab === "bio" ? "bio" : "links";
   return (
     <>
-      <PageHeader title="Links" description="Short links that count clicks, and the page behind the link in your bio." />
+      <PageHeader title="Links" description="Short links that show where each click came from, and the page behind the link in your bio." />
       <div role="tablist" className="mb-5 flex gap-1 border-b border-line">
         {[["links", "Short links"], ["bio", "Bio page"]].map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => void navigate({ to: ".", search: (p) => ({ ...p, tab: k }) })}
@@ -35,6 +38,8 @@ export function LinksPage() {
   );
 }
 
+const EMPTY = { destination: "", code: "", title: "", source: "", medium: "", campaign: "", content: "", term: "", expires: "", campaignId: "none" };
+
 function ShortLinks() {
   const brand = useBrand();
   const { data, isPending } = useLinks(brand.id);
@@ -42,32 +47,50 @@ function ShortLinks() {
   const create = useCreateLink(brand.id);
   const remove = useDeleteLink(brand.id);
   const { canEdit } = usePerms();
+  const [f, setF] = useState(EMPTY);
+  const [open, setOpen] = useState<LinkOut | null>(null);
+  const set = (k: keyof typeof EMPTY) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
+  const camp = campaigns.find((c) => String(c.id) === f.campaignId);
+  // The same order the server uses: what you type, then the campaign's name, then the brand's default
+  const campaignTag = f.campaign.trim() || camp?.utm_campaign || brand.utm_campaign || "";
+  const preview = withUtm(f.destination, { source: f.source, medium: f.medium, campaign: campaignTag, content: f.content, term: f.term });
+  const badCode = f.code !== "" && !BACK_HALF.test(f.code);
+  const base = `${location.origin.replace(/^https?:\/\//, "")}/l/`;
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const form = e.currentTarget;
+    if (badCode) return;
+    const t = (v: string) => v.trim() || null;
     create.mutate({
-      destination: String(fd.get("destination")), title: String(fd.get("title")) || null, utm_source: String(fd.get("utm_source")) || null,
-      utm_medium: String(fd.get("utm_medium")) || null, utm_campaign: String(fd.get("utm_campaign")) || null, utm_content: String(fd.get("utm_content")) || null,
-      campaign_id: fd.get("campaign_id") && fd.get("campaign_id") !== "none" ? Number(fd.get("campaign_id")) : null,
-    }, { onSuccess: () => form.reset() });
+      destination: f.destination, title: t(f.title), code: t(f.code),
+      utm_source: t(f.source), utm_medium: t(f.medium), utm_campaign: t(f.campaign), utm_content: t(f.content), utm_term: t(f.term),
+      campaign_id: camp ? camp.id : null,
+      expires_at: f.expires ? fromLocalInput(`${f.expires}T23:59`, brand.timezone) : null,
+    }, { onSuccess: () => setF(EMPTY) });
   };
+  // Links in sync with the dialog after an edit
+  const current = open ? data?.items.find((l) => l.id === open.id) ?? open : null;
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      <section className="lg:col-span-2">
+      <section className="min-w-0 lg:col-span-2">
         {isPending ? <Skeleton className="h-48" /> : !data?.items.length ? (
-          <EmptyState icon={Link2} title="No short links yet" body="Short links track clicks and carry UTM tags, so Analytics shows what each post drove." />
+          <EmptyState icon={Link2} title="No short links yet" body="Short links count clicks per day, channel, post and referrer, and carry UTM tags so your web analytics sees each campaign." />
         ) : (
           <ul className="divide-y divide-line rounded-card border border-line bg-surface">
             {data.items.map((l) => (
               <li key={l.id} className="flex items-start gap-3 px-4 py-3 text-sm">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2"><a href={l.short_url} target="_blank" rel="noopener" className="font-medium hover:underline">{l.short_url.replace(/^https?:\/\//, "")}</a>
-                    <button type="button" className="text-ink-2 hover:text-ink" aria-label="Copy short link" onClick={() => { void navigator.clipboard.writeText(l.short_url); toast.success("Copied"); }}><Copy className="size-3.5" /></button></div>
+                  <div className="flex flex-wrap items-center gap-2"><a href={l.short_url} target="_blank" rel="noopener" className="font-medium hover:underline">{l.short_url.replace(/^https?:\/\//, "")}</a>
+                    <button type="button" className="text-ink-2 hover:text-ink" aria-label="Copy short link" onClick={() => { void navigator.clipboard.writeText(l.short_url); toast.success("Copied"); }}><Copy className="size-3.5" /></button>
+                    {l.expired ? <Badge variant="outline" className="text-st-failed">Expired</Badge> : l.expires_at ? <Badge variant="outline">Until {fmtDay(zonedDateKey(l.expires_at, brand.timezone), { day: "numeric", month: "short" })}</Badge> : null}
+                    {l.post_id && <Badge variant="outline">From a post</Badge>}
+                    {l.campaign_id && campaigns.find((c) => c.id === l.campaign_id) && <Badge variant="outline">{campaigns.find((c) => c.id === l.campaign_id)?.name}</Badge>}
+                  </div>
                   <div className="truncate text-xs text-ink-2" title={l.destination}>{l.title ? `${l.title} · ` : ""}{l.destination}</div>
                   {l.created_at && <div className="text-xs text-ink-2">{fmtDay(l.created_at.slice(0, 10), { day: "numeric", month: "short", year: "numeric" })}</div>}
                 </div>
-                <div className="text-right"><div className="font-semibold tnum">{l.clicks}</div><div className="text-xs text-ink-2">clicks</div></div>
+                <button type="button" onClick={() => setOpen(l)} className="rounded-control px-2 py-1 text-right hover:bg-hover" aria-label={`Clicks and QR code for ${l.short_url}`}>
+                  <div className="font-semibold tnum">{l.clicks}</div><div className="flex items-center gap-1 text-xs text-ink-2"><BarChart3 className="size-3" />clicks</div>
+                </button>
                 {canEdit && <Button variant="ghost" size="icon" className="size-8 text-ink-2" aria-label="Delete link" onClick={() => confirm("Delete this link? It stops redirecting.") && remove.mutate(l.id)}><Trash2 className="size-4" /></Button>}
               </li>
             ))}
@@ -75,24 +98,39 @@ function ShortLinks() {
         )}
       </section>
       {canEdit && (
-        <form onSubmit={submit} className="space-y-3 self-start rounded-card border border-line bg-surface p-4">
+        <form onSubmit={submit} className="min-w-0 space-y-3 self-start rounded-card border border-line bg-surface p-4">
           <h2 className="font-semibold">New short link</h2>
-          <div className="space-y-1.5"><Label htmlFor="l-dest">Destination</Label><Input id="l-dest" name="destination" required placeholder="example.com/page" /></div>
-          <div className="space-y-1.5"><Label htmlFor="l-title">Title</Label><Input id="l-title" name="title" placeholder="Optional, for you" /></div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1.5"><Label htmlFor="l-src">utm_source</Label><Input id="l-src" name="utm_source" placeholder="newsletter" /></div>
-            <div className="space-y-1.5"><Label htmlFor="l-med">utm_medium</Label><Input id="l-med" name="utm_medium" placeholder="email" /></div>
-            <div className="space-y-1.5"><Label htmlFor="l-camp">utm_campaign</Label><Input id="l-camp" name="utm_campaign" placeholder={brand.name.toLowerCase()} /></div>
-            <div className="space-y-1.5"><Label htmlFor="l-content">utm_content</Label><Input id="l-content" name="utm_content" /></div>
+          <div className="space-y-1.5"><Label htmlFor="l-dest">Destination</Label><Input id="l-dest" value={f.destination} onChange={set("destination")} required placeholder="example.com/page" /></div>
+          <div className="space-y-1.5"><Label htmlFor="l-code">Short link</Label>
+            <div className="flex items-center rounded-control border border-line bg-surface focus-within:ring-2 focus-within:ring-brand/40">
+              <span className="truncate pl-3 text-sm text-ink-2" title={base}>{base}</span>
+              <input id="l-code" value={f.code} onChange={set("code")} placeholder="random" aria-invalid={badCode} aria-describedby="l-code-help" className="h-9 min-w-0 flex-1 bg-transparent pr-3 text-sm outline-none" />
+            </div>
+            <p id="l-code-help" className={cn("text-xs", badCode ? "text-st-failed" : "text-ink-2")}>{badCode ? "Use 2 to 64 letters, digits, - or _, starting with a letter or digit." : "Leave empty for a random code."}</p>
           </div>
+          <div className="space-y-1.5"><Label htmlFor="l-title">Title</Label><Input id="l-title" value={f.title} onChange={set("title")} placeholder="Optional, for you" /></div>
           {campaigns.length > 0 && (
             <div className="space-y-1.5"><Label>Campaign</Label>
-              <Select name="campaign_id" defaultValue="none"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">None</SelectItem>{campaigns.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent></Select>
+              <Select value={f.campaignId} onValueChange={(v) => setF((x) => ({ ...x, campaignId: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">None</SelectItem>{campaigns.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent></Select>
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={create.isPending}><Plus className="size-4" />Create link</Button>
+          <fieldset className="space-y-2">
+            <legend className="mb-1 text-sm font-medium">UTM tags</legend>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5"><Label htmlFor="l-src" className="text-xs">Source</Label><Input id="l-src" value={f.source} onChange={set("source")} placeholder="newsletter" /></div>
+              <div className="space-y-1.5"><Label htmlFor="l-med" className="text-xs">Medium</Label><Input id="l-med" value={f.medium} onChange={set("medium")} placeholder="email" /></div>
+              <div className="space-y-1.5"><Label htmlFor="l-camp" className="text-xs">Campaign</Label><Input id="l-camp" value={f.campaign} onChange={set("campaign")} placeholder={camp?.utm_campaign || brand.utm_campaign || "autumn-sale"} /></div>
+              <div className="space-y-1.5"><Label htmlFor="l-content" className="text-xs">Content</Label><Input id="l-content" value={f.content} onChange={set("content")} placeholder="header-button" /></div>
+              <div className="col-span-2 space-y-1.5"><Label htmlFor="l-term" className="text-xs">Term</Label><Input id="l-term" value={f.term} onChange={set("term")} placeholder="Paid search keyword, rarely needed" /></div>
+            </div>
+            {preview && <p className="break-all rounded-control bg-paper px-2 py-1.5 text-xs text-ink-2"><span className="font-medium text-ink">Sends people to </span>{preview}</p>}
+            <p className="text-xs text-ink-2">Links in posts get the channel as source and the post as content automatically.</p>
+          </fieldset>
+          <div className="space-y-1.5"><Label htmlFor="l-exp">Stops working after</Label><Input id="l-exp" type="date" value={f.expires} onChange={set("expires")} /><p className="text-xs text-ink-2">Optional. After this day the link shows that it has expired.</p></div>
+          <Button type="submit" className="w-full" disabled={create.isPending || badCode}><Plus className="size-4" />Create link</Button>
         </form>
       )}
+      <LinkDetails link={current} onClose={() => setOpen(null)} />
     </div>
   );
 }

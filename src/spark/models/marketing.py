@@ -93,10 +93,15 @@ class ShortLink(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     brand_id: Mapped[int] = mapped_column(ForeignKey("brands.id", ondelete="CASCADE"), index=True)
-    code: Mapped[str] = mapped_column(String(16), unique=True, index=True)
+    code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     destination: Mapped[str] = mapped_column(String(2000))
     title: Mapped[str | None] = mapped_column(String(200))
     campaign_id: Mapped[int | None] = mapped_column(ForeignKey("campaigns.id", ondelete="SET NULL"))
+    # The post whose text the link was made from, when Spark shortened it while saving a post.
+    post_id: Mapped[int | None] = mapped_column(
+        ForeignKey("posts.id", ondelete="SET NULL"), index=True
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     clicks: Mapped[int] = mapped_column(Integer, default=0)
 
 
@@ -110,6 +115,10 @@ class LinkClick(Base):
     clicked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     referrer: Mapped[str | None] = mapped_column(String(1000))
     user_agent: Mapped[str | None] = mapped_column(String(500))
+    # The published post the click came from (its link carried /l/{code}/{target_id}).
+    target_id: Mapped[int | None] = mapped_column(
+        ForeignKey("post_targets.id", ondelete="SET NULL"), index=True
+    )
 
 
 class HashtagGroup(TimestampMixin, Base):

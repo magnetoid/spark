@@ -370,7 +370,8 @@ async def test_bio_links_are_tracked(client, db, brand):
     assert link and "utm_source=bio" in link.destination
     r = await client.get("/b/acme")
     assert f'href="/l/{code}"' in r.text
-    assert (await client.get(f"/l/{code}")).status_code == 302
+    browser = {"user-agent": "Mozilla/5.0 (Macintosh)"}  # scripts and previews are not counted
+    assert (await client.get(f"/l/{code}", headers=browser)).status_code == 302
     # re-saving the same link keeps the code (and its click history)
     r = await client.put(
         f"/api/v1/brands/{brand.id}/bio",

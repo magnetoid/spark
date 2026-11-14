@@ -6,7 +6,7 @@ from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spark.db import get_db
@@ -18,31 +18,69 @@ from spark.models import (
     EmailSend,
     LinkClick,
     Media,
+    PostTarget,
     ShortLink,
+    SocialAccount,
 )
 from spark.security import token
+from spark.services.links import is_bot, set_utm
+from spark.services.publisher import as_utc
 from spark.web.deps import templates
 
 router = APIRouter()
 PIXEL = base64.b64decode("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")
 
 
-@router.get("/l/{code}")
-async def short_link(code: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def _find_link(db: AsyncSession, code: str) -> ShortLink | None:
     link = await db.scalar(select(ShortLink).where(ShortLink.code == code))
+    if link is None:  # chosen back-halves are unique without regard to case
+        link = await db.scalar(select(ShortLink).where(func.lower(ShortLink.code) == code.lower()))
+    return link
+
+
+async def _follow(db: AsyncSession, request: Request, code: str, target_id: int | None) -> Response:
+    link = await _find_link(db, code)
     if not link:
         return HTMLResponse("<h1>Link not found</h1>", 404)
-    link.clicks += 1
-    db.add(
-        LinkClick(
-            link_id=link.id,
-            clicked_at=datetime.now(UTC),
-            referrer=request.headers.get("referer", "")[:1000] or None,
-            user_agent=request.headers.get("user-agent", "")[:500] or None,
+    expires = as_utc(link.expires_at)
+    if expires and expires <= datetime.now(UTC):
+        return HTMLResponse("<h1>This link has expired</h1>", 410)
+    destination = link.destination
+    target = await db.get(PostTarget, target_id) if target_id else None
+    account = await db.get(SocialAccount, target.account_id) if target else None
+    if account is None or account.brand_id != link.brand_id:
+        target = None
+    else:
+        destination = set_utm(
+            destination, source=account.platform, content=f"post-{target.post_id}"
         )
-    )
-    await db.commit()
-    return RedirectResponse(link.destination, 302)
+    agent = request.headers.get("user-agent", "")
+    if not is_bot(agent):
+        link.clicks += 1
+        db.add(
+            LinkClick(
+                link_id=link.id,
+                target_id=target.id if target else None,
+                clicked_at=datetime.now(UTC),
+                referrer=request.headers.get("referer", "")[:1000] or None,
+                user_agent=agent[:500] or None,
+            )
+        )
+        await db.commit()
+    return RedirectResponse(destination, 302, headers={"Cache-Control": "no-store"})
+
+
+@router.get("/l/{code}")
+async def short_link(code: str, request: Request, db: AsyncSession = Depends(get_db)):
+    return await _follow(db, request, code, None)
+
+
+@router.get("/l/{code}/{target_id}")
+async def short_link_from_post(
+    code: str, target_id: str, request: Request, db: AsyncSession = Depends(get_db)
+):
+    # A mangled suffix still reaches the destination; it just isn't tied to a post.
+    return await _follow(db, request, code, int(target_id) if target_id.isdigit() else None)
 
 
 @router.get("/e/o/{tok}.gif")

@@ -35,6 +35,15 @@ async def overview(
         engagement_rate_pct=round(data["engagement_rate"], 2),
         link_clicks=data["link_clicks"],
         totals=data["totals"],
+        reach=data["reach"],
+        views=data["views"],
+        saves=data["saves"],
+        saves_in_shares=data["saves_in_shares"],
+        by_type=data["by_type"],
+        by_pillar=data["by_pillar"],
+        by_slot=data["by_slot"],
+        history=await analytics.history(db, ctx.brand.id, days=days),
+        metrics_status=await analytics.metrics_status(db),
         change_pct={
             "impressions": prev["impressions"],
             "engagements": prev["engagements"],
@@ -79,5 +88,5 @@ async def overview(
 async def refresh(
     db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)
 ):
-    n = await analytics.collect_metrics(db, brand_id=ctx.brand.id)
+    n = await analytics.collect_metrics(db, brand_id=ctx.brand.id, force=True)
     return {"collected": n, "message": f"Pulled {n} metric snapshot(s)"}

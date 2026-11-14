@@ -79,6 +79,9 @@ class Settings(BaseSettings):
     publish_max_attempts: int = 3
     force_dry_run: bool = False
 
+    # Analytics: the most provider requests one metrics run may make (Zernio counts pages)
+    metrics_max_calls_per_run: int = 200
+
     # Zernio (https://docs.zernio.com) — one key connects every platform it supports
     zernio_api_key: str | None = None
     zernio_base_url: str = "https://zernio.com/api/v1"

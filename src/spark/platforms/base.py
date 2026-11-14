@@ -36,6 +36,21 @@ class AuthExpired(PlatformError):
         super().__init__(message, retryable=False, answered=answered)
 
 
+class RateLimited(PlatformError):
+    """The provider asked us to slow down. `retry_after` is in seconds."""
+
+    def __init__(self, message: str, *, retry_after: int = 60):
+        super().__init__(message, retryable=True)
+        self.retry_after = retry_after
+
+
+class NotAvailable(PlatformError):
+    """The provider's plan does not include this (for example Zernio analytics: 402)."""
+
+    def __init__(self, message: str):
+        super().__init__(message, retryable=False)
+
+
 @dataclass(frozen=True)
 class Limits:
     max_chars: int
@@ -60,6 +75,11 @@ class MetricsSnapshot:
     comments: int = 0
     shares: int = 0
     clicks: int = 0
+    # None = the network does not report it
+    reach: int | None = None
+    views: int | None = None
+    saves: int | None = None
+    url: str | None = None  # the post on the network, when the provider tells it
 
 
 @dataclass

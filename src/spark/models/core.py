@@ -144,6 +144,16 @@ class ConnectorSetting(Base):
     updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
+class AppState(Base):
+    """Small pieces of install-wide state the worker keeps between runs (not settings)."""
+
+    __tablename__ = "app_state"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class ApiToken(TimestampMixin, Base):
     """Personal access token for the MCP server and other API clients. Only a hash is stored."""
 

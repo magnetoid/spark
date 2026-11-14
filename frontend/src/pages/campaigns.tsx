@@ -1,7 +1,7 @@
 /** Campaigns: a goal and a window for a set of posts, optionally planned by AI. */
 import { useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Megaphone, Plus, Sparkles, Trash2 } from "lucide-react";
+import { BarChart3, Megaphone, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useBrand, usePerms, useSession } from "@/app/session";
 import { EmptyState, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useCampaignsFull, useCreateCampaign, useDeleteCampaign, useUpdateCampaign, type CampaignFull } from "@/features/api4";
+import { CampaignResults } from "@/features/links/tracker";
 import { useAccounts } from "@/features/posts/api";
 import { PlatformMark } from "@/lib/platforms";
 import { fmtDay } from "@/lib/time";
@@ -19,6 +20,7 @@ export function CampaignsPage() {
   const brand = useBrand();
   const { data = [], isPending } = useCampaignsFull(brand.id);
   const [editing, setEditing] = useState<CampaignFull | "new" | null>(null);
+  const [results, setResults] = useState<CampaignFull | null>(null);
   const remove = useDeleteCampaign(brand.id);
   const { canEdit } = usePerms();
   return (
@@ -50,13 +52,17 @@ export function CampaignsPage() {
                   <div className="flex justify-between text-xs text-ink-2 tnum"><span>{done} of {total} published</span><span>{c.counts.scheduled} scheduled · {c.counts.draft} drafts{c.counts.failed ? ` · ${c.counts.failed} failed` : ""}</span></div>
                   <div className="mt-1 h-1.5 overflow-hidden rounded bg-hover"><div className="h-full" style={{ width: total ? `${(done / total) * 100}%` : 0, background: c.color }} /></div>
                 </div>
-                <Link to="/publishing" search={(p) => ({ ...p, view: "calendar", campaign: String(c.id) })} className="mt-3 inline-block text-sm text-ink-2 hover:text-ink hover:underline">Open in the calendar</Link>
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <Button variant="outline" size="sm" onClick={() => setResults(c)}><BarChart3 className="size-4" />Results</Button>
+                  <Link to="/publishing" search={(p) => ({ ...p, view: "calendar", campaign: String(c.id) })} className="text-sm text-ink-2 hover:text-ink hover:underline">Open in the calendar</Link>
+                </div>
               </li>
             );
           })}
         </ul>
       )}
       <CampaignDialog editing={editing} onClose={() => setEditing(null)} />
+      <CampaignResults campaign={results} onClose={() => setResults(null)} />
     </>
   );
 }

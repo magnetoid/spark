@@ -751,6 +751,38 @@ class TopPost(BaseModel):
     published_at: datetime | None
 
 
+class Breakdown(BaseModel):
+    key: str
+    posts: int  # the sample size: judge the rate by it
+    engagements: int
+    seen: int
+    engagement_rate_pct: float
+
+
+class SlotBreakdown(BaseModel):
+    account_id: int
+    platform: str
+    weekday: int  # 0 = Monday, in the brand's timezone
+    hour: int
+    posts: int
+    engagements: int
+    seen: int
+    engagement_rate_pct: float
+
+
+class HistoryPoint(BaseModel):
+    day: str
+    impressions: int  # what that day added
+    views: int
+    engagements: int
+
+
+class MetricsStatus(BaseModel):
+    state: Literal["ok", "paused", "unavailable"]
+    message: str | None = None
+    until: datetime | None = None
+
+
 class AnalyticsOut(BaseModel):
     days: int
     published: int
@@ -768,6 +800,16 @@ class AnalyticsOut(BaseModel):
     link_clicks_series: list[dict[str, Any]]
     top: list[TopPost]
     best_times: list[dict[str, Any]]
+    # None: no network in this range reports the number
+    reach: int | None = None
+    views: int | None = None
+    saves: int | None = None
+    saves_in_shares: bool = False  # some rows were read before saves were kept apart
+    by_type: list[Breakdown] = []
+    by_pillar: list[Breakdown] = []
+    by_slot: list[SlotBreakdown] = []
+    history: list[HistoryPoint] = []
+    metrics_status: MetricsStatus = MetricsStatus(state="ok")
 
 
 class AiPlanIn(BaseModel):
@@ -806,6 +848,16 @@ class LinkIn(BaseModel):
     utm_medium: str | None = None
     utm_campaign: str | None = None
     utm_content: str | None = None
+    utm_term: str | None = None
+    campaign_id: int | None = None
+    # The back-half of the short link, as in /l/autumn-sale. Random when empty.
+    code: str | None = Field(None, pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$")
+    expires_at: datetime | None = None
+
+
+class LinkUpdate(BaseModel):
+    title: str | None = None
+    expires_at: datetime | None = None
     campaign_id: int | None = None
 
 
@@ -815,9 +867,51 @@ class LinkOut(Out):
     destination: str
     title: str | None
     campaign_id: int | None
+    post_id: int | None = None
     clicks: int
     short_url: str
+    expires_at: datetime | None = None
+    expired: bool = False
     created_at: datetime | None
+
+
+class ClickCount(BaseModel):
+    key: str
+    clicks: int
+
+
+class DayClicks(BaseModel):
+    day: date
+    clicks: int
+
+
+class PostClicks(BaseModel):
+    post_id: int
+    excerpt: str
+    clicks: int
+
+
+class LinkStats(BaseModel):
+    link: LinkOut
+    days: int
+    total: int
+    by_day: list[DayClicks]
+    by_platform: list[ClickCount]
+    by_post: list[PostClicks]
+    by_referrer: list[ClickCount]
+
+
+class CampaignSummary(BaseModel):
+    campaign: CampaignOut
+    posts: int
+    published: int
+    seen: int
+    engagements: int
+    engagement_rate_pct: float | None
+    link_clicks: int
+    links: list[LinkOut]
+    by_platform: list[ClickCount]
+    by_day: list[DayClicks]
 
 
 class LinkPage(BaseModel):

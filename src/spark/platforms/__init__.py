@@ -13,9 +13,11 @@ from spark.platforms import (  # noqa: F401  (import registers adapters)
 )
 from spark.platforms.base import (
     AuthExpired,
+    NotAvailable,
     PlatformAdapter,
     PlatformError,
     PublishPayload,
+    RateLimited,
     adapter_for,
     get_adapter,
     registry,
@@ -23,6 +25,8 @@ from spark.platforms.base import (
 
 __all__ = [
     "AuthExpired",
+    "NotAvailable",
+    "RateLimited",
     "adapter_for",
     "PlatformAdapter",
     "PlatformError",

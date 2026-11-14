@@ -234,10 +234,20 @@ class Metric(Base):
     comments: Mapped[int] = mapped_column(Integer, default=0)
     shares: Mapped[int] = mapped_column(Integer, default=0)
     clicks: Mapped[int] = mapped_column(Integer, default=0)
+    # Empty (NULL) when the network does not report the number, or the row predates it.
+    # Rows read before these existed count saves inside `shares`.
+    reach: Mapped[int | None] = mapped_column(Integer)
+    views: Mapped[int | None] = mapped_column(Integer)
+    saves: Mapped[int | None] = mapped_column(Integer)
 
     @property
     def engagements(self) -> int:
-        return self.likes + self.comments + self.shares + self.clicks
+        return self.likes + self.comments + self.shares + (self.saves or 0) + self.clicks
+
+    @property
+    def seen(self) -> int:
+        """What the engagement rate divides by: impressions, else views, else reach."""
+        return self.impressions or self.views or self.reach or 0
 
 
 class WebhookEvent(Base):

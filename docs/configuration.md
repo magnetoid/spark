@@ -37,6 +37,7 @@ environment, so you can start with an empty `.env` for those and fill them in fr
 | `SPARK_ZERNIO_BASE_URL` | `https://zernio.com/api/v1` | **Connectors.** Change only if Zernio tells you to. |
 | `SPARK_ZERNIO_WEBHOOK_SECRET` | derived | The secret Zernio signs its webhooks with. Leave it empty: Spark derives one from `SPARK_SECRET_KEY` and registers the webhook itself when an owner presses **Enable webhooks** on the Zernio card in **Settings → Connectors**. |
 | `SPARK_PUBLISH_MAX_ATTEMPTS` | `3` | How often a post is tried on one channel before it is marked failed. |
+| `SPARK_METRICS_MAX_CALLS_PER_RUN` | `200` | The most requests one metrics run may send to the networks or Zernio. Posts younger than 48 hours are read every run, posts 2 to 7 days old once a day, and posts 7 to 30 days old every third day. |
 | `SPARK_FORCE_DRY_RUN` | `false` | `true` publishes nothing: every channel acts like a test channel. Use it on a copy of a live install. |
 
 Bluesky, Mastodon and Telegram need no outside account: connect them under **Channels** with

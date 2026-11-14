@@ -582,6 +582,14 @@
             "title": "Best Times",
             "type": "array"
           },
+          "by_pillar": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Pillar",
+            "type": "array"
+          },
           "by_platform": {
             "additionalProperties": {
               "additionalProperties": {
@@ -591,6 +599,22 @@
             },
             "title": "By Platform",
             "type": "object"
+          },
+          "by_slot": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SlotBreakdown"
+            },
+            "title": "By Slot",
+            "type": "array"
+          },
+          "by_type": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Breakdown"
+            },
+            "title": "By Type",
+            "type": "array"
           },
           "change_pct": {
             "additionalProperties": {
@@ -626,6 +650,14 @@
             "title": "Followers",
             "type": "integer"
           },
+          "history": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HistoryPoint"
+            },
+            "title": "History",
+            "type": "array"
+          },
           "impressions": {
             "title": "Impressions",
             "type": "integer"
@@ -642,9 +674,42 @@
             "title": "Link Clicks Series",
             "type": "array"
           },
+          "metrics_status": {
+            "$ref": "#/components/schemas/MetricsStatus",
+            "default": {
+              "state": "ok"
+            }
+          },
           "published": {
             "title": "Published",
             "type": "integer"
+          },
+          "reach": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reach"
+          },
+          "saves": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saves"
+          },
+          "saves_in_shares": {
+            "default": false,
+            "title": "Saves In Shares",
+            "type": "boolean"
           },
           "scheduled": {
             "title": "Scheduled",
@@ -670,6 +735,17 @@
             },
             "title": "Totals",
             "type": "object"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
           }
         },
         "required": [
@@ -1362,6 +1438,39 @@
         "title": "BrandUpdate",
         "type": "object"
       },
+      "Breakdown": {
+        "properties": {
+          "engagement_rate_pct": {
+            "title": "Engagement Rate Pct",
+            "type": "number"
+          },
+          "engagements": {
+            "title": "Engagements",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "posts": {
+            "title": "Posts",
+            "type": "integer"
+          },
+          "seen": {
+            "title": "Seen",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "posts",
+          "engagements",
+          "seen",
+          "engagement_rate_pct"
+        ],
+        "title": "Breakdown",
+        "type": "object"
+      },
       "CampaignFull": {
         "properties": {
           "color": {
@@ -1521,6 +1630,152 @@
           "name"
         ],
         "title": "CampaignIn",
+        "type": "object"
+      },
+      "CampaignOut": {
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "ends_on": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "starts_on": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts On"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "goal",
+          "utm_campaign",
+          "starts_on",
+          "ends_on"
+        ],
+        "title": "CampaignOut",
+        "type": "object"
+      },
+      "CampaignSummary": {
+        "properties": {
+          "by_day": {
+            "items": {
+              "$ref": "#/components/schemas/DayClicks"
+            },
+            "title": "By Day",
+            "type": "array"
+          },
+          "by_platform": {
+            "items": {
+              "$ref": "#/components/schemas/ClickCount"
+            },
+            "title": "By Platform",
+            "type": "array"
+          },
+          "campaign": {
+            "$ref": "#/components/schemas/CampaignOut"
+          },
+          "engagement_rate_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engagement Rate Pct"
+          },
+          "engagements": {
+            "title": "Engagements",
+            "type": "integer"
+          },
+          "link_clicks": {
+            "title": "Link Clicks",
+            "type": "integer"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/LinkOut"
+            },
+            "title": "Links",
+            "type": "array"
+          },
+          "posts": {
+            "title": "Posts",
+            "type": "integer"
+          },
+          "published": {
+            "title": "Published",
+            "type": "integer"
+          },
+          "seen": {
+            "title": "Seen",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "campaign",
+          "posts",
+          "published",
+          "seen",
+          "engagements",
+          "engagement_rate_pct",
+          "link_clicks",
+          "links",
+          "by_platform",
+          "by_day"
+        ],
+        "title": "CampaignSummary",
         "type": "object"
       },
       "CampaignUpdate": {
@@ -1799,6 +2054,24 @@
           "values"
         ],
         "title": "ChannelSettingsOut",
+        "type": "object"
+      },
+      "ClickCount": {
+        "properties": {
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "clicks"
+        ],
+        "title": "ClickCount",
         "type": "object"
       },
       "CommentIn": {
@@ -2226,6 +2499,25 @@
           "label"
         ],
         "title": "CredentialField",
+        "type": "object"
+      },
+      "DayClicks": {
+        "properties": {
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          }
+        },
+        "required": [
+          "day",
+          "clicks"
+        ],
+        "title": "DayClicks",
         "type": "object"
       },
       "DeliveryList": {
@@ -2982,6 +3274,34 @@
           "text"
         ],
         "title": "HashtagsIn",
+        "type": "object"
+      },
+      "HistoryPoint": {
+        "properties": {
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "engagements": {
+            "title": "Engagements",
+            "type": "integer"
+          },
+          "impressions": {
+            "title": "Impressions",
+            "type": "integer"
+          },
+          "views": {
+            "title": "Views",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "impressions",
+          "views",
+          "engagements"
+        ],
+        "title": "HistoryPoint",
         "type": "object"
       },
       "IdeaBoard": {
@@ -4099,10 +4419,34 @@
             ],
             "title": "Campaign Id"
           },
+          "code": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
           "destination": {
             "minLength": 3,
             "title": "Destination",
             "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
           },
           "title": {
             "anyOf": [
@@ -4158,6 +4502,17 @@
               }
             ],
             "title": "Utm Source"
+          },
+          "utm_term": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Term"
           }
         },
         "required": [
@@ -4203,9 +4558,37 @@
             "title": "Destination",
             "type": "string"
           },
+          "expired": {
+            "default": false,
+            "title": "Expired",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
+          },
+          "post_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Id"
           },
           "short_url": {
             "title": "Short Url",
@@ -4250,6 +4633,100 @@
           "items"
         ],
         "title": "LinkPage",
+        "type": "object"
+      },
+      "LinkStats": {
+        "properties": {
+          "by_day": {
+            "items": {
+              "$ref": "#/components/schemas/DayClicks"
+            },
+            "title": "By Day",
+            "type": "array"
+          },
+          "by_platform": {
+            "items": {
+              "$ref": "#/components/schemas/ClickCount"
+            },
+            "title": "By Platform",
+            "type": "array"
+          },
+          "by_post": {
+            "items": {
+              "$ref": "#/components/schemas/PostClicks"
+            },
+            "title": "By Post",
+            "type": "array"
+          },
+          "by_referrer": {
+            "items": {
+              "$ref": "#/components/schemas/ClickCount"
+            },
+            "title": "By Referrer",
+            "type": "array"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "link": {
+            "$ref": "#/components/schemas/LinkOut"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "link",
+          "days",
+          "total",
+          "by_day",
+          "by_platform",
+          "by_post",
+          "by_referrer"
+        ],
+        "title": "LinkStats",
+        "type": "object"
+      },
+      "LinkUpdate": {
+        "properties": {
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "LinkUpdate",
         "type": "object"
       },
       "ListIn": {
@@ -4732,6 +5209,47 @@
           "role"
         ],
         "title": "MemberUpdate",
+        "type": "object"
+      },
+      "MetricsStatus": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "state": {
+            "enum": [
+              "ok",
+              "paused",
+              "unavailable"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "MetricsStatus",
         "type": "object"
       },
       "MoveIn": {
@@ -5230,6 +5748,29 @@
           }
         },
         "title": "PollIn",
+        "type": "object"
+      },
+      "PostClicks": {
+        "properties": {
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "post_id": {
+            "title": "Post Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "post_id",
+          "excerpt",
+          "clicks"
+        ],
+        "title": "PostClicks",
         "type": "object"
       },
       "PostImportIn": {
@@ -6792,6 +7333,54 @@
           "posts"
         ],
         "title": "ShareLinkOut",
+        "type": "object"
+      },
+      "SlotBreakdown": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "engagement_rate_pct": {
+            "title": "Engagement Rate Pct",
+            "type": "number"
+          },
+          "engagements": {
+            "title": "Engagements",
+            "type": "integer"
+          },
+          "hour": {
+            "title": "Hour",
+            "type": "integer"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "posts": {
+            "title": "Posts",
+            "type": "integer"
+          },
+          "seen": {
+            "title": "Seen",
+            "type": "integer"
+          },
+          "weekday": {
+            "title": "Weekday",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "account_id",
+          "platform",
+          "weekday",
+          "hour",
+          "posts",
+          "engagements",
+          "seen",
+          "engagement_rate_pct"
+        ],
+        "title": "SlotBreakdown",
         "type": "object"
       },
       "SlotIn": {
@@ -10067,6 +10656,107 @@
         ]
       }
     },
+    "/brands/{brand_id}/campaigns/{campaign_id}/export.csv": {
+      "get": {
+        "operationId": "campaign_csv_brands__brand_id__campaigns__campaign_id__export_csv_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Campaign Csv",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/brands/{brand_id}/campaigns/{campaign_id}/summary": {
+      "get": {
+        "description": "Posts, reach, engagement and link clicks for one campaign, all time.",
+        "operationId": "campaign_summary_brands__brand_id__campaigns__campaign_id__summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Campaign Summary",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
     "/brands/{brand_id}/channels/{account_id}/grid": {
       "get": {
         "description": "The channel as a profile grid: newest first, scheduled posts ahead of published ones, each with its first image.",
@@ -12679,6 +13369,128 @@
           }
         },
         "summary": "Delete Link",
+        "tags": [
+          "links"
+        ]
+      },
+      "patch": {
+        "operationId": "update_link_brands__brand_id__links__link_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "required": true,
+            "schema": {
+              "title": "Link Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Link",
+        "tags": [
+          "links"
+        ]
+      }
+    },
+    "/brands/{brand_id}/links/{link_id}/stats": {
+      "get": {
+        "operationId": "link_stats_brands__brand_id__links__link_id__stats_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "required": true,
+            "schema": {
+              "title": "Link Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Link Stats",
         "tags": [
           "links"
         ]

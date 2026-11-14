@@ -3,12 +3,17 @@
 import logging
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from spark.config import get_settings
 from spark.models import (
+    AppState,
+    Brand,
+    ContentPillar,
     LinkClick,
     Metric,
     Post,
@@ -17,32 +22,93 @@ from spark.models import (
     ShortLink,
     SocialAccount,
 )
-from spark.platforms import PlatformError, adapter_for
+from spark.platforms import NotAvailable, PlatformError, RateLimited, adapter_for
+from spark.platforms.zernio import REPORTS as zernio_reports
 from spark.services.publisher import as_utc
 
 log = logging.getLogger(__name__)
 
 
+# How often a published post is read, by age: young posts change fast, old ones barely
+YOUNG = timedelta(hours=48)
+WEEK = timedelta(days=7)
+DAILY_GAP = timedelta(hours=20)  # "once a day", with room for cron jitter
+THIRD_DAY_GAP = timedelta(hours=68)
+STATE_KEY = "metrics"
+
+
+def metrics_due(published_at: datetime, last_read: datetime | None, now: datetime) -> bool:
+    """Under 48 hours: every run. 2 to 7 days: once a day. 7 to 30 days: every third day."""
+    if last_read is None:
+        return True
+    age, gap = now - as_utc(published_at), now - as_utc(last_read)
+    if age < YOUNG:
+        return True
+    if age < WEEK:
+        return gap >= DAILY_GAP
+    return gap >= THIRD_DAY_GAP
+
+
+async def _get_state(db: AsyncSession) -> AppState:
+    row = await db.get(AppState, STATE_KEY)
+    if row is None:
+        row = AppState(key=STATE_KEY, value={}, updated_at=datetime.now(UTC))
+        db.add(row)
+    return row
+
+
+def _set_state(row: AppState, **changes) -> None:
+    row.value = {k: v for k, v in {**(row.value or {}), **changes}.items() if v is not None}
+    row.updated_at = datetime.now(UTC)
+
+
+async def metrics_status(db: AsyncSession, now: datetime | None = None) -> dict:
+    """ok, paused (a provider asked to wait) or unavailable (the plan has no analytics)."""
+    now = now or datetime.now(UTC)
+    row = await db.get(AppState, STATE_KEY)
+    v = (row.value if row else None) or {}
+    until = datetime.fromisoformat(v["paused_until"]) if v.get("paused_until") else None
+    if until and until > now:
+        return {"state": "paused", "message": v.get("pause_reason"), "until": until}
+    if v.get("unavailable"):
+        return {"state": "unavailable", "message": v["unavailable"], "until": None}
+    return {"state": "ok", "message": None, "until": None}
+
+
 async def collect_metrics(
-    db: AsyncSession, max_age_days: int = 30, brand_id: int | None = None
+    db: AsyncSession,
+    max_age_days: int = 30,
+    brand_id: int | None = None,
+    *,
+    account_id: int | None = None,
+    force: bool = False,
+    now: datetime | None = None,
 ) -> int:
-    since = datetime.now(UTC) - timedelta(days=max_age_days)
-    scope = (
-        [
+    """Read the numbers of published posts that are due (see `metrics_due`; `force` reads all),
+    keeping one row per post per day. Stops at the call budget, on a 429 (and waits as long as
+    asked) and on a 402 (the plan has no analytics). Returns the number of posts read."""
+    now = now or datetime.now(UTC)
+    state = await _get_state(db)
+    status = await metrics_status(db, now)
+    if status["state"] == "paused":
+        log.info("Metrics paused until %s", status["until"])
+        return 0
+    scope = []
+    if brand_id:
+        scope.append(
             PostTarget.account_id.in_(
                 select(SocialAccount.id).where(SocialAccount.brand_id == brand_id)
             )
-        ]
-        if brand_id
-        else []
-    )
+        )
+    if account_id:
+        scope.append(PostTarget.account_id == account_id)
     rows = (
         (
             await db.execute(
                 select(PostTarget).where(
                     *scope,
                     PostTarget.status == PostStatus.published,
-                    PostTarget.published_at >= since,
+                    PostTarget.published_at >= now - timedelta(days=max_age_days),
                     PostTarget.remote_id.is_not(None),
                 )
             )
@@ -50,40 +116,84 @@ async def collect_metrics(
         .scalars()
         .all()
     )
+    if not rows:
+        return 0
+    ids = [t.id for t in rows]
+    last_read = dict(
+        (
+            await db.execute(
+                select(Metric.target_id, func.max(Metric.captured_at))
+                .where(Metric.target_id.in_(ids))
+                .group_by(Metric.target_id)
+            )
+        ).all()
+    )
     by_account: dict[int, list[PostTarget]] = defaultdict(list)
     for t in rows:
-        by_account[t.account_id].append(t)
-    now, saved = datetime.now(UTC), 0
-    for account_id, targets in by_account.items():
-        account = await db.get(SocialAccount, account_id)
+        if force or metrics_due(t.published_at, last_read.get(t.id), now):
+            by_account[t.account_id].append(t)
+
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    budget, used, saved = get_settings().metrics_max_calls_per_run, 0, 0
+    for acc_id, targets in by_account.items():
+        if used >= budget:
+            log.info("Metrics call budget (%s) reached; the rest waits for the next run", budget)
+            break
+        account = await db.get(SocialAccount, acc_id)
         if not account or not account.is_active:
             continue
         adapter = adapter_for(account)
         try:
             snaps = await adapter.fetch_metrics(account, [t.remote_id for t in targets])
-            # Zernio resolves native URLs after publish; backfill the ones we lack
+            # Zernio resolves native URLs after publish; the analytics list carries them
+            urls = {s.remote_id: s.url for s in snaps if s.url}
+            for t in targets:
+                if not t.remote_url and urls.get(t.remote_id):
+                    t.remote_url = urls[t.remote_id]
             if account.provider == "zernio":
-                for t in targets:
-                    if not t.remote_url and hasattr(adapter, "resolve_url"):
-                        t.remote_url = await adapter.resolve_url(t.remote_id)
+                if state.value.get("unavailable"):
+                    _set_state(state, unavailable="")
+        except RateLimited as e:
+            until = now + timedelta(seconds=max(e.retry_after, 1))
+            _set_state(state, paused_until=until.isoformat(), pause_reason=str(e))
+            log.warning("Metrics paused until %s: %s", until, e)
+            break
+        except NotAvailable as e:
+            _set_state(state, unavailable=str(e))
+            log.warning("Metrics not available: %s", e)
+            break
         except PlatformError as e:
-            log.warning("Metrics for account %s failed: %s", account_id, e)
+            log.warning("Metrics for account %s failed: %s", acc_id, e)
             continue
-        by_remote = {t.remote_id: t for t in targets}
-        for s in snaps:
-            if t := by_remote.get(s.remote_id):
-                db.add(
-                    Metric(
-                        target_id=t.id,
-                        captured_at=now,
-                        impressions=s.impressions,
-                        likes=s.likes,
-                        comments=s.comments,
-                        shares=s.shares,
-                        clicks=s.clicks,
+        finally:
+            used += getattr(adapter, "calls", None) or len(targets)
+        today = {
+            m.target_id: m
+            for m in (
+                await db.execute(
+                    select(Metric)
+                    .where(
+                        Metric.target_id.in_([t.id for t in targets]),
+                        Metric.captured_at >= day_start,
                     )
+                    .order_by(Metric.captured_at)
                 )
-                saved += 1
+            ).scalars()
+        }
+        by_remote = {t.remote_id: t for t in targets}
+        for snap in snaps:
+            t = by_remote.get(snap.remote_id)
+            if t is None:
+                continue
+            m = today.get(t.id)
+            if m is None:
+                m = Metric(target_id=t.id)
+                db.add(m)
+            m.captured_at = now
+            for f in ("impressions", "likes", "comments", "shares", "clicks"):
+                setattr(m, f, getattr(snap, f))
+            m.reach, m.views, m.saves = snap.reach, snap.views, snap.saves
+            saved += 1
     await db.commit()
     return saved
 
@@ -122,10 +232,11 @@ async def compare(db: AsyncSession, brand_id: int, days: int = 30) -> dict:
     since, prev_since = now - timedelta(days=days), now - timedelta(days=2 * days)
 
     def totals(rows) -> dict:
-        t = dict(impressions=0, engagements=0, posts=0)
+        t = dict(impressions=0, engagements=0, posts=0, seen=0)
         for m, _target, _acc in rows:
             t["impressions"] += m.impressions
             t["engagements"] += m.engagements
+            t["seen"] += m.seen
             t["posts"] += 1
         return t
 
@@ -148,25 +259,110 @@ async def compare(db: AsyncSession, brand_id: int, days: int = 30) -> dict:
         "impressions": _pct(cur["impressions"], prev["impressions"]),
         "engagements": _pct(cur["engagements"], prev["engagements"]),
         "published_prev": published_prev,
-        "rate": (cur["engagements"] / cur["impressions"] * 100) if cur["impressions"] else 0,
-        "rate_prev": (prev["engagements"] / prev["impressions"] * 100)
-        if prev["impressions"]
-        else 0,
+        "rate": rate(cur["engagements"], cur["seen"]),
+        "rate_prev": rate(prev["engagements"], prev["seen"]),
     }
+
+
+def rate(engagements: int, seen: int) -> float:
+    """Engagement rate in percent: engagements over impressions, else views, else reach,
+    decided per post (`Metric.seen`) and added up, the same way for every network."""
+    return round(engagements / seen * 100, 2) if seen else 0.0
+
+
+def _group(rows, key) -> list[dict]:
+    """Posts, engagements and rate per group, biggest sample first; `key` -> label or None."""
+    acc: dict[str, dict] = defaultdict(lambda: dict(posts=0, engagements=0, seen=0))
+    for m, t, a in rows:
+        k = key(m, t, a)
+        if k is None:
+            continue
+        g = acc[k]
+        g["posts"] += 1
+        g["engagements"] += m.engagements
+        g["seen"] += m.seen
+    out = [
+        {"key": k, **v, "engagement_rate_pct": rate(v["engagements"], v["seen"])}
+        for k, v in acc.items()
+    ]
+    return sorted(out, key=lambda r: (-r["posts"], r["key"]))
+
+
+async def history(db: AsyncSession, brand_id: int, days: int = 30) -> list[dict]:
+    """What each day added: per post, the day's last reading minus the reading before it,
+    summed over the brand's posts. Needs one reading a day per post (`collect_metrics`)."""
+    now = datetime.now(UTC)
+    since = now - timedelta(days=days)
+    rows = (
+        await db.execute(
+            select(Metric)
+            .join(PostTarget, PostTarget.id == Metric.target_id)
+            .join(SocialAccount, SocialAccount.id == PostTarget.account_id)
+            .where(
+                SocialAccount.brand_id == brand_id,
+                Metric.captured_at >= since - timedelta(days=1),
+            )
+            .order_by(Metric.target_id, Metric.captured_at)
+        )
+    ).scalars()
+    last_of_day: dict[int, dict[str, Metric]] = defaultdict(dict)
+    for m in rows:
+        last_of_day[m.target_id][as_utc(m.captured_at).date().isoformat()] = m
+    axis = [(since + timedelta(days=i + 1)).date().isoformat() for i in range(days)]
+    gains = {d: dict(impressions=0, views=0, engagements=0) for d in axis}
+    for per_day in last_of_day.values():
+        prev = None
+        for day in sorted(per_day):
+            m = per_day[day]
+            if day in gains:
+                g = gains[day]
+                g["impressions"] += m.impressions - (prev.impressions if prev else 0)
+                g["views"] += (m.views or 0) - ((prev.views or 0) if prev else 0)
+                g["engagements"] += m.engagements - (prev.engagements if prev else 0)
+            prev = m
+    return [{"day": d, **gains[d]} for d in axis]
 
 
 async def overview(db: AsyncSession, brand_id: int, days: int = 30) -> dict:
     since = datetime.now(UTC) - timedelta(days=days)
     rows = await _latest_metrics(db, brand_id, since)
+    brand = await db.get(Brand, brand_id)
+    zone = ZoneInfo(brand.timezone if brand and brand.timezone else "UTC")
+    pillars = dict(
+        (
+            await db.execute(
+                select(ContentPillar.id, ContentPillar.name).where(
+                    ContentPillar.brand_id == brand_id
+                )
+            )
+        ).all()
+    )
     totals = dict(impressions=0, likes=0, comments=0, shares=0, clicks=0)
-    by_platform: dict[str, dict] = defaultdict(lambda: dict(impressions=0, engagements=0, posts=0))
+    wide: dict[str, int | None] = dict(reach=None, views=None, saves=None)
+    seen = 0
+    saves_in_shares = False
+    by_platform: dict[str, dict] = defaultdict(
+        lambda: dict(impressions=0, views=0, engagements=0, posts=0)
+    )
     by_day: dict[str, dict] = defaultdict(lambda: dict(impressions=0, engagements=0))
     top = []
     for m, t, a in rows:
         for k in totals:
             totals[k] += getattr(m, k)
+        for k in wide:
+            v = getattr(m, k)
+            if v is not None:
+                wide[k] = (wide[k] or 0) + v
+        seen += m.seen
+        if (
+            m.saves is None
+            and a.provider == "zernio"
+            and "saves" in zernio_reports.get(a.platform, set())
+        ):
+            saves_in_shares = True
         p = by_platform[a.platform]
         p["impressions"] += m.impressions
+        p["views"] += m.views or 0
         p["engagements"] += m.engagements
         p["posts"] += 1
         day = as_utc(t.published_at).date().isoformat()
@@ -174,6 +370,23 @@ async def overview(db: AsyncSession, brand_id: int, days: int = 30) -> dict:
         by_day[day]["engagements"] += m.engagements
         top.append((m.engagements, t, a, m))
     top.sort(key=lambda r: r[0], reverse=True)
+
+    def slot(m, t, a):
+        local = as_utc(t.published_at).astimezone(zone)
+        return f"{a.id}|{a.platform}|{local.weekday()}|{local.hour}"
+
+    by_slot = []
+    for g in _group(rows, slot):
+        acc_id, platform, weekday, hour = g.pop("key").split("|")
+        by_slot.append(
+            {
+                "account_id": int(acc_id),
+                "platform": platform,
+                "weekday": int(weekday),
+                "hour": int(hour),
+                **g,
+            }
+        )
 
     published = await db.scalar(
         select(func.count(PostTarget.id))
@@ -204,20 +417,26 @@ async def overview(db: AsyncSession, brand_id: int, days: int = 30) -> dict:
         .join(ShortLink, ShortLink.id == LinkClick.link_id)
         .where(ShortLink.brand_id == brand_id, LinkClick.clicked_at >= since)
     )
-    engagements = totals["likes"] + totals["comments"] + totals["shares"] + totals["clicks"]
+    engagements = sum(m.engagements for m, _t, _a in rows)
     days_axis = [(since + timedelta(days=i + 1)).date().isoformat() for i in range(days)]
     return {
         "totals": totals,
+        **wide,
         "engagements": engagements,
-        "engagement_rate": (engagements / totals["impressions"] * 100)
-        if totals["impressions"]
-        else 0,
+        "engagement_rate": rate(engagements, seen),
+        "saves_in_shares": saves_in_shares,
         "published": published or 0,
         "scheduled": scheduled or 0,
         "failed": failed or 0,
         "followers": followers or 0,
         "link_clicks": link_clicks or 0,
         "by_platform": dict(by_platform),
+        "by_type": _group(rows, lambda m, t, a: t.post_type or "post"),
+        "by_pillar": _group(
+            rows,
+            lambda m, t, a: pillars.get(t.post.pillar_id, "No pillar") if t.post else None,
+        ),
+        "by_slot": by_slot,
         "series": {
             "days": days_axis,
             "impressions": [by_day[d]["impressions"] for d in days_axis],

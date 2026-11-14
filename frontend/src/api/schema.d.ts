@@ -501,6 +501,43 @@ export interface paths {
         patch: operations["update_campaign_brands__brand_id__campaigns__campaign_id__patch"];
         trace?: never;
     };
+    "/brands/{brand_id}/campaigns/{campaign_id}/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Campaign Csv */
+        get: operations["campaign_csv_brands__brand_id__campaigns__campaign_id__export_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/campaigns/{campaign_id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Campaign Summary
+         * @description Posts, reach, engagement and link clicks for one campaign, all time.
+         */
+        get: operations["campaign_summary_brands__brand_id__campaigns__campaign_id__summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/brands/{brand_id}/channels/{account_id}/grid": {
         parameters: {
             query?: never;
@@ -1078,6 +1115,24 @@ export interface paths {
         post?: never;
         /** Delete Link */
         delete: operations["delete_link_brands__brand_id__links__link_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Link */
+        patch: operations["update_link_brands__brand_id__links__link_id__patch"];
+        trace?: never;
+    };
+    "/brands/{brand_id}/links/{link_id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Link Stats */
+        get: operations["link_stats_brands__brand_id__links__link_id__stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2490,12 +2545,27 @@ export interface components {
             best_times: {
                 [key: string]: unknown;
             }[];
+            /**
+             * By Pillar
+             * @default []
+             */
+            by_pillar: components["schemas"]["Breakdown"][];
             /** By Platform */
             by_platform: {
                 [key: string]: {
                     [key: string]: number;
                 };
             };
+            /**
+             * By Slot
+             * @default []
+             */
+            by_slot: components["schemas"]["SlotBreakdown"][];
+            /**
+             * By Type
+             * @default []
+             */
+            by_type: components["schemas"]["Breakdown"][];
             /** Change Pct */
             change_pct: {
                 [key: string]: number | null;
@@ -2510,6 +2580,11 @@ export interface components {
             failed: number;
             /** Followers */
             followers: number;
+            /**
+             * History
+             * @default []
+             */
+            history: components["schemas"]["HistoryPoint"][];
             /** Impressions */
             impressions: number;
             /** Link Clicks */
@@ -2518,8 +2593,23 @@ export interface components {
             link_clicks_series: {
                 [key: string]: unknown;
             }[];
+            /**
+             * @default {
+             *       "state": "ok"
+             *     }
+             */
+            metrics_status: components["schemas"]["MetricsStatus"];
             /** Published */
             published: number;
+            /** Reach */
+            reach?: number | null;
+            /** Saves */
+            saves?: number | null;
+            /**
+             * Saves In Shares
+             * @default false
+             */
+            saves_in_shares: boolean;
             /** Scheduled */
             scheduled: number;
             /** Series */
@@ -2530,6 +2620,8 @@ export interface components {
             totals: {
                 [key: string]: number;
             };
+            /** Views */
+            views?: number | null;
         };
         /** AssignIn */
         AssignIn: {
@@ -2754,6 +2846,19 @@ export interface components {
             /** Website */
             website?: string | null;
         };
+        /** Breakdown */
+        Breakdown: {
+            /** Engagement Rate Pct */
+            engagement_rate_pct: number;
+            /** Engagements */
+            engagements: number;
+            /** Key */
+            key: string;
+            /** Posts */
+            posts: number;
+            /** Seen */
+            seen: number;
+        };
         /** CampaignFull */
         CampaignFull: {
             /** Color */
@@ -2798,6 +2903,45 @@ export interface components {
             starts_on?: string | null;
             /** Utm Campaign */
             utm_campaign?: string | null;
+        };
+        /** CampaignOut */
+        CampaignOut: {
+            /** Color */
+            color: string;
+            /** Ends On */
+            ends_on: string | null;
+            /** Goal */
+            goal: string | null;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Starts On */
+            starts_on: string | null;
+            /** Utm Campaign */
+            utm_campaign: string | null;
+        };
+        /** CampaignSummary */
+        CampaignSummary: {
+            /** By Day */
+            by_day: components["schemas"]["DayClicks"][];
+            /** By Platform */
+            by_platform: components["schemas"]["ClickCount"][];
+            campaign: components["schemas"]["CampaignOut"];
+            /** Engagement Rate Pct */
+            engagement_rate_pct: number | null;
+            /** Engagements */
+            engagements: number;
+            /** Link Clicks */
+            link_clicks: number;
+            /** Links */
+            links: components["schemas"]["LinkOut"][];
+            /** Posts */
+            posts: number;
+            /** Published */
+            published: number;
+            /** Seen */
+            seen: number;
         };
         /** CampaignUpdate */
         CampaignUpdate: {
@@ -2889,6 +3033,13 @@ export interface components {
             values: {
                 [key: string]: string;
             };
+        };
+        /** ClickCount */
+        ClickCount: {
+            /** Clicks */
+            clicks: number;
+            /** Key */
+            key: string;
         };
         /** CommentIn */
         CommentIn: {
@@ -3043,6 +3194,16 @@ export interface components {
             label: string;
             /** Name */
             name: string;
+        };
+        /** DayClicks */
+        DayClicks: {
+            /** Clicks */
+            clicks: number;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
         };
         /** DeliveryList */
         DeliveryList: {
@@ -3276,6 +3437,17 @@ export interface components {
         HashtagsIn: {
             /** Text */
             text: string;
+        };
+        /** HistoryPoint */
+        HistoryPoint: {
+            /** Day */
+            day: string;
+            /** Engagements */
+            engagements: number;
+            /** Impressions */
+            impressions: number;
+            /** Views */
+            views: number;
         };
         /** IdeaBoard */
         IdeaBoard: {
@@ -3627,8 +3799,12 @@ export interface components {
         LinkIn: {
             /** Campaign Id */
             campaign_id?: number | null;
+            /** Code */
+            code?: string | null;
             /** Destination */
             destination: string;
+            /** Expires At */
+            expires_at?: string | null;
             /** Title */
             title?: string | null;
             /** Utm Campaign */
@@ -3639,6 +3815,8 @@ export interface components {
             utm_medium?: string | null;
             /** Utm Source */
             utm_source?: string | null;
+            /** Utm Term */
+            utm_term?: string | null;
         };
         /** LinkOut */
         LinkOut: {
@@ -3652,8 +3830,17 @@ export interface components {
             created_at: string | null;
             /** Destination */
             destination: string;
+            /**
+             * Expired
+             * @default false
+             */
+            expired: boolean;
+            /** Expires At */
+            expires_at?: string | null;
             /** Id */
             id: number;
+            /** Post Id */
+            post_id?: number | null;
             /** Short Url */
             short_url: string;
             /** Title */
@@ -3663,6 +3850,31 @@ export interface components {
         LinkPage: {
             /** Items */
             items: components["schemas"]["LinkOut"][];
+        };
+        /** LinkStats */
+        LinkStats: {
+            /** By Day */
+            by_day: components["schemas"]["DayClicks"][];
+            /** By Platform */
+            by_platform: components["schemas"]["ClickCount"][];
+            /** By Post */
+            by_post: components["schemas"]["PostClicks"][];
+            /** By Referrer */
+            by_referrer: components["schemas"]["ClickCount"][];
+            /** Days */
+            days: number;
+            link: components["schemas"]["LinkOut"];
+            /** Total */
+            total: number;
+        };
+        /** LinkUpdate */
+        LinkUpdate: {
+            /** Campaign Id */
+            campaign_id?: number | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /** ListIn */
         ListIn: {
@@ -3833,6 +4045,18 @@ export interface components {
              * @enum {string}
              */
             role: "owner" | "editor" | "viewer" | "client";
+        };
+        /** MetricsStatus */
+        MetricsStatus: {
+            /** Message */
+            message?: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ok" | "paused" | "unavailable";
+            /** Until */
+            until?: string | null;
         };
         /** MoveIn */
         MoveIn: {
@@ -4017,6 +4241,15 @@ export interface components {
              * @default
              */
             question: string;
+        };
+        /** PostClicks */
+        PostClicks: {
+            /** Clicks */
+            clicks: number;
+            /** Excerpt */
+            excerpt: string;
+            /** Post Id */
+            post_id: number;
         };
         /** PostImportIn */
         PostImportIn: {
@@ -4531,6 +4764,25 @@ export interface components {
             prefix: string;
             /** Url Hint */
             url_hint: string;
+        };
+        /** SlotBreakdown */
+        SlotBreakdown: {
+            /** Account Id */
+            account_id: number;
+            /** Engagement Rate Pct */
+            engagement_rate_pct: number;
+            /** Engagements */
+            engagements: number;
+            /** Hour */
+            hour: number;
+            /** Platform */
+            platform: string;
+            /** Posts */
+            posts: number;
+            /** Seen */
+            seen: number;
+            /** Weekday */
+            weekday: number;
         };
         /** SlotIn */
         SlotIn: {
@@ -6234,6 +6486,70 @@ export interface operations {
             };
         };
     };
+    campaign_csv_brands__brand_id__campaigns__campaign_id__export_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    campaign_summary_brands__brand_id__campaigns__campaign_id__summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     channel_grid_brands__brand_id__channels__account_id__grid_get: {
         parameters: {
             query?: {
@@ -7826,6 +8142,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_link_brands__brand_id__links__link_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_stats_brands__brand_id__links__link_id__stats_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                link_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkStats"];
+                };
             };
             /** @description Validation Error */
             422: {

@@ -11,6 +11,7 @@ from spark.config import get_settings
 from spark.models import Media, Post, PostStatus, PostTarget, SocialAccount
 from spark.platforms import AuthExpired, PlatformError, PublishPayload, adapter_for
 from spark.services import channel_health, outbox
+from spark.services.links import mark_for_target
 
 log = logging.getLogger(__name__)
 
@@ -46,12 +47,17 @@ async def build_payload(db: AsyncSession, target: PostTarget) -> PublishPayload:
     if options.get("ai_generated") is None:
         # Nobody said either way: media made by the image model is labelled where a label exists
         options["ai_generated"] = any(m.source == "generated" for m in media)
+
+    # Spark short links carry the target id, so each click shows the post and channel it came from
+    def mark(text: str | None) -> str | None:
+        return mark_for_target(text, target.id)
+
     return PublishPayload(
-        text=target.text,
+        text=mark(target.text),
         media=media,
-        link=post.link,
-        first_comment=(target.first_comment or "").strip() or None,
-        thread=[t for t in (target.thread or []) if str(t).strip()],
+        link=mark(post.link),
+        first_comment=mark((target.first_comment or "").strip() or None),
+        thread=[mark(t) for t in (target.thread or []) if str(t).strip()],
         post_type=target.post_type or "post",
         options=options,
         idempotency_key=f"spark-t{target.id}-e{target.publish_epoch or 0}",

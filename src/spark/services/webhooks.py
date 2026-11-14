@@ -37,6 +37,7 @@ ZERNIO_EVENTS = [
     "account.connected",
     "account.disconnected",
     "account.permissions_changed",
+    "analytics.synced",
     "comment.received",
     "message.received",
     "review.new",
@@ -184,6 +185,15 @@ async def handle_zernio_event(db: AsyncSession, payload: dict) -> str:
         channel_health.check(db, acc)
         await db.commit()
         return "disconnected"
+
+    if event == "analytics.synced":
+        acc = await _account(db, (payload.get("account") or {}).get("accountId"))
+        if not acc:
+            return "unknown-account"
+        from spark.services import jobs
+
+        await jobs.enqueue("collect_account_metrics", acc.id)
+        return "metrics-queued"
 
     if event == "account.permissions_changed":
         a = payload.get("account") or {}

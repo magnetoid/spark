@@ -560,7 +560,7 @@ async def test_metrics_refresh_is_scoped(api, db, brand, monkeypatch):
 
     seen = {}
 
-    async def fake(db, max_age_days=30, brand_id=None):
+    async def fake(db, max_age_days=30, brand_id=None, **kw):
         seen["brand_id"] = brand_id
         return 0
 

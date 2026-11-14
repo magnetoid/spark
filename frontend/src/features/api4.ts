@@ -57,6 +57,19 @@ export const useDeleteCampaign = (b: number) => useAction(async (id: number) => 
 // ---- links + feeds -------------------------------------------------------------------------
 export const useLinks = (b: number) => useQuery({ queryKey: ["links", b], queryFn: async () => unwrap(await api.GET("/brands/{brand_id}/links", bp(b))) });
 export const useCreateLink = (b: number) => useAction(async (body: S["LinkIn"]) => unwrap(await api.POST("/brands/{brand_id}/links", { ...bp(b), body })), [["links", b]], "Short link created");
+export type LinkStats = S["LinkStats"];
+export type CampaignSummary = S["CampaignSummary"];
+export const useUpdateLink = (b: number) => useAction(async ({ id, body }: { id: number; body: S["LinkUpdate"] }) =>
+  unwrap(await api.PATCH("/brands/{brand_id}/links/{link_id}", { params: { path: { brand_id: b, link_id: id } }, body })), [["links", b]], "Link saved");
+export const useLinkStats = (b: number, id: number | null, days = 30) => useQuery({
+  queryKey: ["links", b, id, "stats", days], enabled: id !== null,
+  queryFn: async () => unwrap(await api.GET("/brands/{brand_id}/links/{link_id}/stats", { params: { path: { brand_id: b, link_id: id ?? 0 }, query: { days } } })),
+});
+export const useCampaignSummary = (b: number, id: number | null) => useQuery({
+  queryKey: ["campaigns", b, id, "summary"], enabled: id !== null,
+  queryFn: async () => unwrap(await api.GET("/brands/{brand_id}/campaigns/{campaign_id}/summary", { params: { path: { brand_id: b, campaign_id: id ?? 0 } } })),
+});
+export const campaignCsvUrl = (b: number, id: number) => `/api/v1/brands/${b}/campaigns/${id}/export.csv`;
 export const useDeleteLink = (b: number) => useAction(async (id: number) => unwrap(await api.DELETE("/brands/{brand_id}/links/{link_id}", { params: { path: { brand_id: b, link_id: id } } })), [["links", b]], "Link deleted");
 export const useFeeds = (b: number) => useQuery({ queryKey: ["feeds", b], queryFn: async () => unwrap(await api.GET("/brands/{brand_id}/feeds", bp(b))) });
 export const useCreateFeed = (b: number) => useAction(async (body: S["FeedIn"]) => unwrap(await api.POST("/brands/{brand_id}/feeds", { ...bp(b), body })), [["feeds", b]], "Feed added. New items create drafts from the next check on.");
