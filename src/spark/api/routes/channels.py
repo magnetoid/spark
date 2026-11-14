@@ -11,6 +11,9 @@ from spark.api import deps
 from spark.api.errors import ApiError, not_found
 from spark.api.schemas import (
     AccountOut,
+    ChannelSettingField,
+    ChannelSettingsIn,
+    ChannelSettingsOut,
     ConnectResult,
     CredentialField,
     GridItem,
@@ -18,6 +21,7 @@ from spark.api.schemas import (
     ImportResult,
     PlatformOut,
     PlatformsOut,
+    SettingOption,
 )
 from spark.config import get_settings
 from spark.db import get_db
@@ -25,6 +29,7 @@ from spark.models import Media, Post, PostStatus, PostTarget, SocialAccount
 from spark.platforms import PlatformError, adapter_for, get_adapter, registry
 from spark.platforms.zernio import ZERNIO_PLATFORMS, ZernioAdapter
 from spark.services import accounts as svc
+from spark.services import channel_settings
 from spark.services.publisher import as_utc
 
 router = APIRouter(tags=["channels"])
@@ -179,6 +184,47 @@ async def toggle(
 ):
     acc = await _account(db, ctx, account_id)
     acc.is_active = not acc.is_active
+    await db.commit()
+    return AccountOut.of(acc)
+
+
+@router.get(B + "/accounts/{account_id}/settings", response_model=ChannelSettingsOut)
+async def get_settings_for(
+    account_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.brand_ctx),
+):
+    """What can be set on this channel, with the choices (Pinterest boards come from Zernio)."""
+    acc = await _account(db, ctx, account_id)
+    return ChannelSettingsOut(
+        fields=[
+            ChannelSettingField(
+                key=v.field.key,
+                label=v.field.label,
+                kind=v.field.kind,
+                help=v.field.help,
+                default=v.field.default,
+                options=[SettingOption(value=o, label=label) for o, label in v.options],
+            )
+            for v in await channel_settings.choices(acc)
+        ],
+        values=channel_settings.values(acc),
+    )
+
+
+@router.patch(B + "/accounts/{account_id}", response_model=AccountOut)
+async def update_settings(
+    account_id: int,
+    body: ChannelSettingsIn,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
+    """Change the settings publishing reads: board, subreddit, who can see posts."""
+    acc = await _account(db, ctx, account_id)
+    try:
+        channel_settings.update(acc, body.settings)
+    except channel_settings.InvalidSetting as e:
+        raise ApiError(422, "invalid_setting", str(e)) from e
     await db.commit()
     return AccountOut.of(acc)
 

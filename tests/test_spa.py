@@ -61,7 +61,7 @@ async def test_api_routes_win_over_the_fallback(client, tmp_path, monkeypatch):
     assert (
         (await client.get("/api/v1/session")).headers["content-type"].startswith("application/json")
     )
-    assert (await client.get("/healthz")).json() == {"ok": True}
+    assert (await client.get("/healthz")).json()["ok"] is True
     assert (await client.get("/api/v1/nope")).status_code == 404
 
 

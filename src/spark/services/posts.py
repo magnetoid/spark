@@ -152,9 +152,10 @@ async def save_post(
         )
 
     content = (await short(content.strip())) or ""
+    link = (await short((link or "").strip())) or None
     post.content, post.link, post.media_ids, post.campaign_id = (
         content,
-        link or None,
+        link,
         list(media_ids),
         campaign_id,
     )

@@ -23,14 +23,17 @@ if TYPE_CHECKING:
 class PlatformError(Exception):
     """Publishing/API failure. `retryable=False` marks permanent failures."""
 
-    def __init__(self, message: str, *, retryable: bool = True):
+    def __init__(self, message: str, *, retryable: bool = True, answered: bool = False):
         super().__init__(message)
         self.retryable = retryable
+        # True when the network took the request and answered that the post failed. A retry
+        # then needs a fresh idempotency key; after a timeout or a 5xx it must reuse the old one.
+        self.answered = answered
 
 
 class AuthExpired(PlatformError):
-    def __init__(self, message: str = "Access token expired or revoked"):
-        super().__init__(message, retryable=False)
+    def __init__(self, message: str = "Access token expired or revoked", *, answered: bool = False):
+        super().__init__(message, retryable=False, answered=answered)
 
 
 @dataclass(frozen=True)
@@ -90,6 +93,8 @@ class PublishPayload:
     # ai_generated (bool), paid_partnership (bool), collaborators ([handle]),
     # poll ({question, options, days}). An adapter reads only the keys it lists in `option_keys`.
     options: dict = field(default_factory=dict)
+    # Same value for every attempt at the same logical post; adapters that support it send it
+    idempotency_key: str | None = None
 
     def media_path(self, m: Media) -> Path:
         return get_settings().media_dir / m.path

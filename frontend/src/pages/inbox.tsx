@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useMembers } from "@/features/collab/api";
 import {
-  INTENT_LABEL, KIND_LABEL, useAssignItem, useInboxItem, useInboxItems, useLikeItem, useReplyItem, useSavedReplies, useSetItemStatus, useSuggestReplies,
+  INTENT_LABEL, KIND_LABEL, useAssignItem, useDiscardDraft, useInboxItem, useInboxItems, useLikeItem, useReplyItem, useSavedReplies, useSetItemStatus, useSuggestReplies,
   useSyncInbox, type InboxFilters, type InboxItem,
 } from "@/features/inbox/api";
 import { PlatformMark } from "@/lib/platforms";
@@ -149,6 +149,7 @@ function ThreadPane({ id, onClose }: { id: number; onClose: () => void }) {
   const assign = useAssignItem(brand.id);
   const suggest = useSuggestReplies(brand.id);
   const like = useLikeItem(brand.id);
+  const discard = useDiscardDraft(brand.id);
   const [text, setText] = useState("");
   const [seeded, setSeeded] = useState<number | null>(null);
   const it = data?.item;
@@ -204,7 +205,7 @@ function ThreadPane({ id, onClose }: { id: number; onClose: () => void }) {
         <form onSubmit={send} className="space-y-2 border-t border-line p-3">
           {it.draft_reply && text === it.draft_reply && (
             <div className="flex items-center gap-2 rounded-control border border-st-pending/40 bg-st-pending/5 px-2.5 py-1.5 text-xs">
-              <Sparkles className="size-3.5 text-st-pending" />{it.draft_rule ? `The rule “${it.draft_rule.name}” prepared this reply.` : "A rule prepared this reply."} Send it, edit it, or <button type="button" className="underline" onClick={() => status.mutate({ id: it.id, status: "open" })}>discard</button>.
+              <Sparkles className="size-3.5 text-st-pending" />{it.draft_rule ? `The rule “${it.draft_rule.name}” prepared this reply.` : "A rule prepared this reply."} Send it, edit it, or <button type="button" className="underline" onClick={() => discard.mutate(it.id, { onSuccess: () => setText("") })}>discard</button>.
             </div>
           )}
           {(it.suggestions.length > 0 || ai) && (

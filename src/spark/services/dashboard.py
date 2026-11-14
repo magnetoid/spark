@@ -8,8 +8,8 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from spark.models import Brand, Post, PostStatus
-from spark.services import analytics, scheduler
+from spark.models import Brand, Post, PostStatus, SocialAccount
+from spark.services import analytics, channel_health, scheduler
 from spark.services import inbox as inbox_svc
 from spark.services.publisher import as_utc
 
@@ -85,7 +85,16 @@ async def today(db: AsyncSession, brand: Brand) -> dict:
     needs_you = {
         "approvals": await count(PostStatus.pending_approval),
         "failed": await count(PostStatus.failed),
-        "drafts": await count(PostStatus.draft),
+        # plan drafts have their own line ("plan_ready"); counting them here showed them twice
+        "drafts": await db.scalar(
+            select(func.count(Post.id)).where(
+                Post.brand_id == brand.id,
+                Post.is_autosave.is_(False),
+                Post.status == PostStatus.draft,
+                Post.agent_run_id.is_(None),
+            )
+        )
+        or 0,
         "plan_ready": await db.scalar(
             select(func.count(Post.id)).where(
                 Post.brand_id == brand.id,
@@ -96,6 +105,13 @@ async def today(db: AsyncSession, brand: Brand) -> dict:
         )
         or 0,
         "replies": await inbox_svc.open_count(db, brand.id),
+        "channels": sum(
+            1
+            for a in (
+                await db.execute(select(SocialAccount).where(SocialAccount.brand_id == brand.id))
+            ).scalars()
+            if channel_health.health(a) in ("reconnect", "expiring")
+        ),
     }
 
     data = await analytics.overview(db, brand.id, days=7)

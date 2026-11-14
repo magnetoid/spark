@@ -59,7 +59,7 @@ export function draftFromPost(post: PostOut, media: MediaOut[], toLocal: (iso: s
   });
 }
 
-export function useComposerState(initial: ComposerDraft, brandId: number, accounts: AccountOut[], autosave: boolean) {
+export function useComposerState(initial: ComposerDraft, brandId: number, accounts: AccountOut[], autosave: boolean, onAutosaved?: (postId: number) => void) {
   const [draft, dispatch] = useReducer((d: ComposerDraft, patch: Patch) => ({ ...d, ...(typeof patch === "function" ? patch(d) : patch) }), initial);
   const [serverProblems, setProblems] = useState<Record<string, string[]>>({});
   const [serverWarnings, setWarnings] = useState<Record<string, string[]>>({});
@@ -106,6 +106,7 @@ export function useComposerState(initial: ComposerDraft, brandId: number, accoun
           })),
         });
         if (r.post_id && r.post_id !== draft.postId) dispatch({ postId: r.post_id });
+        if (r.post_id) onAutosaved?.(r.post_id);
         setSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
       } catch { /* offline: try again on the next change */ }
     }, 2000);

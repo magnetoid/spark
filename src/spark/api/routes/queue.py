@@ -6,10 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spark.api import deps
 from spark.api.errors import not_found
-from spark.api.schemas import AccountOut, PostOut, QueueItem, QueueOut, SlotOut
+from spark.api.schemas import (
+    AccountOut,
+    ChannelNext,
+    PostOut,
+    PublishingHealthOut,
+    QueueItem,
+    QueueOut,
+    SlotOut,
+)
 from spark.db import get_db
 from spark.models import Post, PostStatus, PostTarget, SocialAccount
-from spark.services import scheduler
+from spark.services import publishing_health, scheduler
 
 router = APIRouter(tags=["queue"])
 
@@ -81,3 +89,16 @@ async def channel_queue(
         ],
         counts=counts,
     )
+
+
+@router.get("/brands/{brand_id}/publishing/health", response_model=PublishingHealthOut)
+async def publishing_health_summary(
+    db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)
+):
+    """Success rates, why posts failed, and what goes out next on each channel."""
+    s = await publishing_health.summary(db, ctx.brand)
+    s["channels"] = [
+        ChannelNext(account=AccountOut.of(c["account"]), next_scheduled_at=c["next_scheduled_at"])
+        for c in s["channels"]
+    ]
+    return PublishingHealthOut(**s)

@@ -2,7 +2,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Pause, Play, Plug, Trash2 } from "lucide-react";
+import { Pause, Play, Plug, Settings2, Trash2 } from "lucide-react";
 import { useBrand, usePerms } from "@/app/session";
 import { EmptyState, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useConnectCredentials, usePlatforms, useRemoveAccount, useToggleAccount, useZernioImport, type PlatformsOut } from "@/features/api4";
-import { useAccounts } from "@/features/posts/api";
+import { useAccounts, type AccountOut } from "@/features/posts/api";
+import { ChannelSettingsDialog, HealthBadge, PLATFORMS_WITH_SETTINGS, reconnectHref } from "@/features/channels/health";
 import { PlatformMark, platformLabel } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ export function ChannelsPage() {
   const { canEdit } = usePerms();
   const { canManage: isOwner } = usePerms();
   const [credFor, setCredFor] = useState<PlatformsOut["direct"][number] | null>(null);
+  const [settingsFor, setSettingsFor] = useState<AccountOut | null>(null);
   const search = useSearch({ strict: false }) as { notice?: string; kind?: string };
   const navigate = useNavigate();
   useEffect(() => {
@@ -47,11 +49,13 @@ export function ChannelsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 font-medium"><PlatformMark platform={a.platform} size={12} />{a.display_name || a.handle}<span className="font-normal text-ink-2">@{a.handle.replace(/^@/, "")}</span></div>
                   <div className="text-xs text-ink-2">{platformLabel(a.platform)} · {a.provider === "zernio" ? "via Zernio" : "direct"}{a.followers != null && ` · ${a.followers.toLocaleString()} followers`}{!a.is_active && " · paused"}</div>
+                  <HealthBadge account={a} timezone={brand.timezone} className="mt-1" />
                   {a.last_error && <div className="mt-0.5 text-xs text-st-failed">{a.last_error}</div>}
                 </div>
                 {canEdit && (
                   <div className="flex items-center gap-1">
-                    {a.provider === "zernio" && a.last_error && <Button asChild size="sm" variant="outline"><a href={`/accounts/zernio/connect/${a.platform}?brand=${brand.id}`}>Reconnect</a></Button>}
+                    {(a.health === "reconnect" || a.health === "expiring" || (a.provider === "zernio" && a.last_error)) && <Button asChild size="sm" variant="outline"><a href={reconnectHref(a, brand.id)}>Reconnect</a></Button>}
+                    {PLATFORMS_WITH_SETTINGS.has(a.platform) && <Button variant="ghost" size="icon" className="size-8 text-ink-2" aria-label={`Settings for ${a.handle}`} onClick={() => setSettingsFor(a)}><Settings2 className="size-4" /></Button>}
                     <Button variant="ghost" size="sm" onClick={() => toggle.mutate(a.id)}>{a.is_active ? <><Pause className="size-4" />Pause</> : <><Play className="size-4" />Resume</>}</Button>
                     <Button variant="ghost" size="icon" className="size-8 text-ink-2" aria-label={`Remove ${a.handle}`}
                             onClick={() => { if (!confirm(`Remove ${a.handle} from ${brand.name}? Scheduled posts to it are dropped.`)) return;
@@ -96,6 +100,7 @@ export function ChannelsPage() {
         </div>
       )}
       <CredentialsDialog platform={credFor} onClose={() => setCredFor(null)} />
+      <ChannelSettingsDialog key={settingsFor?.id ?? 0} account={settingsFor} brandId={brand.id} onClose={() => setSettingsFor(null)} />
     </>
   );
 }

@@ -39,6 +39,10 @@ class SocialAccount(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     followers: Mapped[int | None] = mapped_column(Integer)
     last_error: Mapped[str | None] = mapped_column(Text)
+    # Channel health: when the connection was last checked, and which alert was last sent
+    # ("reconnect", "expiring:7", "expiring:3", "expiring:1"), so each is sent once.
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    alerted_for: Mapped[str | None] = mapped_column(String(24))
 
     brand: Mapped["Brand"] = relationship(back_populates="accounts")  # noqa: F821
 
@@ -168,6 +172,10 @@ class PostTarget(TimestampMixin, Base):
     remote_id: Mapped[str | None] = mapped_column(String(255))
     remote_url: Mapped[str | None] = mapped_column(String(1000))
     attempts: Mapped[int] = mapped_column(Integer, default=0)
+    # Part of the idempotency key sent to the publisher. It stays the same across timeouts and
+    # stuck-job recovery (so a post that went out is never sent twice) and moves on only after
+    # the network answered with a failure (Zernio would replay that failure for the same key).
+    publish_epoch: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error: Mapped[str | None] = mapped_column(Text)
     # When the team was emailed about this target's final failure (None = not yet)

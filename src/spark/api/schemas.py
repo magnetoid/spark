@@ -210,9 +210,18 @@ class AccountOut(Out):
     followers: int | None
     last_error: str | None
     capabilities: Capabilities
+    # ok | expiring | reconnect | paused
+    health: Literal["ok", "expiring", "reconnect", "paused"] = "ok"
+    settings: dict[
+        str, str
+    ] = {}  # the channel settings publishing reads (board, subreddit, privacy)
+    expires_at: datetime | None = None  # when access runs out unless someone reconnects
+    checked_at: datetime | None = None
 
     @classmethod
     def of(cls, a: SocialAccount) -> AccountOut:
+        from spark.services import channel_health, channel_settings
+
         caps = channel_capabilities(a)
         return cls(
             id=a.id,
@@ -225,6 +234,10 @@ class AccountOut(Out):
             followers=a.followers,
             last_error=a.last_error,
             capabilities=Capabilities(**{k: caps[k] for k in Capabilities.model_fields}),
+            health=channel_health.health(a),
+            settings=channel_settings.values(a),
+            expires_at=channel_health.expires_at(a),
+            checked_at=as_utc(a.checked_at) if a.checked_at else None,
         )
 
 
@@ -337,12 +350,68 @@ class TimelineItem(BaseModel):
     channels: list[TimelineChannel]
 
 
+class SettingOption(BaseModel):
+    value: str
+    label: str
+
+
+class ChannelSettingField(BaseModel):
+    key: str
+    label: str
+    kind: Literal["choice", "text"]
+    help: str
+    default: str | None
+    options: list[SettingOption]
+
+
+class ChannelSettingsOut(BaseModel):
+    fields: list[ChannelSettingField]
+    values: dict[str, str]
+
+
+class ChannelSettingsIn(BaseModel):
+    settings: dict[str, str | None]
+
+
+class PublishRate(BaseModel):
+    published: int
+    failed: int
+    success_rate_pct: float | None  # None when nothing was published or failed
+
+
+class FailureReason(BaseModel):
+    reason: str
+    count: int
+
+
+class ChannelFailures(BaseModel):
+    account_id: int
+    handle: str
+    platform: str
+    failed: int
+
+
+class ChannelNext(BaseModel):
+    account: AccountOut
+    next_scheduled_at: datetime | None
+
+
+class PublishingHealthOut(BaseModel):
+    week: PublishRate
+    month: PublishRate
+    failures_by_reason: list[FailureReason]  # last 30 days
+    failures_by_channel: list[ChannelFailures]  # last 30 days
+    channels: list[ChannelNext]
+    stuck: int  # publishing for more than 30 minutes; the worker puts them back in the queue
+
+
 class NeedsYou(BaseModel):
     approvals: int
     failed: int
     drafts: int
     plan_ready: int = 0  # drafts the agent proposed, waiting in the plan tray
     replies: int = 0  # open inbox items
+    channels: int = 0  # channels that need reconnecting or whose access runs out within 7 days
 
 
 class WeekPoint(BaseModel):

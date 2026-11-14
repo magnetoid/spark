@@ -556,6 +556,24 @@ class CannotReply(Exception):
     pass
 
 
+async def mark_read(
+    db: AsyncSession, item: InboxItem, adapter: ZernioAdapter | None = None
+) -> bool:
+    """Tell the network a conversation was read, so it stops showing as unread there too.
+    Best effort: a failure here never blocks the reply or the status change."""
+    if item.kind != "message" or not item.thread_id:
+        return False
+    acc = await db.get(SocialAccount, item.account_id)
+    if acc is None or acc.provider != "zernio":
+        return False
+    try:
+        await (adapter or ZernioAdapter()).mark_read(item.thread_id, acc.external_id)
+    except Exception:  # noqa: BLE001 - network, Zernio down, key removed
+        log.warning("Could not mark conversation %s read", item.thread_id, exc_info=True)
+        return False
+    return True
+
+
 async def reply(
     db: AsyncSession,
     brand: Brand,
@@ -580,6 +598,7 @@ async def reply(
         elif item.kind == "message":
             res = await adapter.send_message(item.thread_id or "", acc.external_id, text)
             new_ext = (res.get("data") or {}).get("messageId") or f"spark-{item.id}"
+            await mark_read(db, item, adapter)
         elif item.kind == "review":
             await adapter.reply_review(item.external_id, acc.external_id, text)
             new_ext = None

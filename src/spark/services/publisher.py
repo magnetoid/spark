@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from spark.config import get_settings
 from spark.models import Media, Post, PostStatus, PostTarget, SocialAccount
 from spark.platforms import AuthExpired, PlatformError, PublishPayload, adapter_for
-from spark.services import outbox
+from spark.services import channel_health, outbox
 
 log = logging.getLogger(__name__)
 
@@ -54,6 +54,7 @@ async def build_payload(db: AsyncSession, target: PostTarget) -> PublishPayload:
         thread=[t for t in (target.thread or []) if str(t).strip()],
         post_type=target.post_type or "post",
         options=options,
+        idempotency_key=f"spark-t{target.id}-e{target.publish_epoch or 0}",
     )
 
 
@@ -133,9 +134,15 @@ async def publish_target(db: AsyncSession, target_id: int) -> PostTarget:
         target.next_attempt_at = None
         account.last_error = None
     except AuthExpired as e:
+        _next_epoch(target, e)
         _fail(target, str(e))
         account.last_error = f"Reconnect needed: {e}"
+        if account.provider == "zernio":
+            # Publishing stays blocked until Zernio says the channel is connected again
+            account.extra = {**(account.extra or {}), "needs_reconnection": True}
+        channel_health.check(db, account)
     except PlatformError as e:
+        _next_epoch(target, e)
         _retry_or_fail(target, str(e), e.retryable)
     except Exception as e:  # network errors, bugs in adapters
         log.exception("Publishing target %s failed", target_id)
@@ -148,6 +155,11 @@ async def publish_target(db: AsyncSession, target_id: int) -> PostTarget:
 
     await events.publish("posts", account.brand_id, ids=[target.post_id])
     return target
+
+
+def _next_epoch(target: PostTarget, e: PlatformError) -> None:
+    if e.answered:
+        target.publish_epoch = (target.publish_epoch or 0) + 1
 
 
 def _fail(target: PostTarget, error: str) -> None:

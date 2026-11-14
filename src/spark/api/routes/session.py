@@ -33,6 +33,7 @@ ALLOWED_PREFS = {
     "shortcuts",
     "notify_failed",
     "notify_approvals",
+    "notify_channels",
     "digest_weekly",
     "theme",
     "sidebar_collapsed",

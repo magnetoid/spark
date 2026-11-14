@@ -106,6 +106,18 @@ export const useZernioImport = (b: number) => useAction(async () => unwrap(await
   (r) => r.imported ? `Imported ${r.imported} account(s) from Zernio` : "Zernio has no connected accounts yet");
 export const useToggleAccount = (b: number) => useAction(async (id: number) => unwrap(await api.POST("/brands/{brand_id}/accounts/{account_id}/toggle", { params: { path: { brand_id: b, account_id: id } } })), [["accounts", b], ["queue", b]],
   (r) => r.is_active ? `${r.handle} resumed` : `${r.handle} paused`);
+const ap = (b: number, id: number) => ({ params: { path: { brand_id: b, account_id: id } } });
+export const useChannelSettings = (b: number, id: number | null) => useQuery({
+  queryKey: ["channel-settings", b, id ?? 0], enabled: id !== null,
+  queryFn: async () => unwrap(await api.GET("/brands/{brand_id}/accounts/{account_id}/settings", ap(b, id!))),
+});
+export const useSaveChannelSettings = (b: number) => useAction(async ({ id, settings }: { id: number; settings: Record<string, string | null> }) =>
+  unwrap(await api.PATCH("/brands/{brand_id}/accounts/{account_id}", { ...ap(b, id), body: { settings } })), [["accounts", b], ["channel-settings", b]], "Channel settings saved");
+export const usePublishingHealth = (b: number) => useQuery({
+  queryKey: ["publishing-health", b], staleTime: 60_000,
+  queryFn: async () => unwrap(await api.GET("/brands/{brand_id}/publishing/health", bp(b))),
+});
+export type ChannelSettingField = S["ChannelSettingField"];
 export const useRemoveAccount = (b: number) => useAction(async ({ id, disconnect }: { id: number; disconnect?: boolean }) =>
   unwrap(await api.DELETE("/brands/{brand_id}/accounts/{account_id}", { params: { path: { brand_id: b, account_id: id }, query: { disconnect } } })), [["accounts", b], ["queue", b]], "Channel removed");
 

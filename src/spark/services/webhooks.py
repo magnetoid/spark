@@ -21,8 +21,8 @@ from sqlalchemy.orm import selectinload
 from spark.config import get_settings
 from spark.models import Brand, Post, PostStatus, PostTarget, SocialAccount, WebhookEvent
 from spark.platforms.zernio import from_zernio
+from spark.services import channel_health, outbox
 from spark.services import inbox as inbox_svc
-from spark.services import outbox
 
 log = logging.getLogger(__name__)
 
@@ -181,6 +181,7 @@ async def handle_zernio_event(db: AsyncSession, payload: dict) -> str:
             return "unknown-account"
         acc.is_active = False
         acc.last_error = f"Disconnected in Zernio ({a.get('disconnectionType') or 'unknown'}{': ' + a['reason'] if a.get('reason') else ''}). Reconnect to resume."
+        channel_health.check(db, acc)
         await db.commit()
         return "disconnected"
 
@@ -223,6 +224,10 @@ async def handle_zernio_event(db: AsyncSession, payload: dict) -> str:
         acc.display_name = a.get("displayName") or acc.display_name
         acc.is_active = True
         acc.last_error = None
+        # Publishing refuses a channel Zernio flagged; a fresh connection lifts the flag
+        acc.extra = {**(acc.extra or {}), "needs_reconnection": False}
+        await db.flush()
+        channel_health.check(db, acc)
         await db.commit()
         return "connected"
 

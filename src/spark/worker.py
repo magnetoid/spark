@@ -165,6 +165,24 @@ async def send_notifications(ctx) -> int:
         return sent
 
 
+async def worker_beat(ctx) -> None:
+    """Every minute: tell /healthz and the setup checklist that the worker runs."""
+    from spark.services import heartbeat
+
+    try:
+        await heartbeat.beat()
+    except Exception:
+        log.warning("Could not write the worker heartbeat", exc_info=True)
+
+
+async def sync_channels(ctx) -> int:
+    """Hourly: ask Zernio which channels need reconnecting or run out soon; alert once."""
+    from spark.services import channel_health
+
+    async with SessionLocal() as db:
+        return await channel_health.sync_channels(db)
+
+
 async def deliver_outbox(ctx) -> int:
     """Events on their way out: chat messages now, webhook deliveries queued and sent."""
     async with SessionLocal() as db:
@@ -214,6 +232,8 @@ class WorkerSettings:
         cron(classify_inbox, minute=set(range(2, 60, 5))),
         cron(send_notifications, second=50),
         cron(deliver_outbox, second={5, 20, 35}),
+        cron(sync_channels, minute={27}),
+        cron(worker_beat, second={0}, run_at_startup=True),
         cron(prune_webhook_log, hour={3}, minute=40),
         cron(send_weekly_digest, weekday=0, hour=7, minute=0),  # Mondays 07:00 UTC
     ]

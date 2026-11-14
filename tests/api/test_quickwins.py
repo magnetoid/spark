@@ -211,6 +211,7 @@ async def test_the_chat_connector_test_button_says_where_the_message_went(api, p
         "chat_on_failed": True,
         "chat_on_review": True,
         "chat_on_published": False,
+        "chat_on_channel": True,
     }
     slack = respx.post(SLACK).mock(return_value=httpx.Response(200, text="ok"))
 

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, CalendarPlus, CheckCircle2, FileText, MessageSquareText, Sparkles, Sunrise } from "lucide-react";
+import { AlertTriangle, CalendarPlus, CheckCircle2, FileText, MessageSquareText, Plug, Sparkles, Sunrise } from "lucide-react";
 import { useBrand } from "@/app/session";
 import { api, unwrap } from "@/lib/api";
 import type { components } from "@/api/schema";
@@ -40,6 +40,7 @@ function TodayBody({ data, tz }: { data: Today; tz: string }) {
   const needs = [
     { count: n.approvals, label: "to approve", icon: CheckCircle2, to: "/publishing", search: { view: "approvals" }, tone: "text-st-pending" },
     { count: n.failed, label: n.failed === 1 ? "failed post" : "failed posts", icon: AlertTriangle, to: "/publishing", search: { view: "failed" }, tone: "text-st-failed" },
+    { count: n.channels ?? 0, label: n.channels === 1 ? "channel to reconnect" : "channels to reconnect", icon: Plug, to: "/channels", search: {}, tone: "text-st-failed" },
     { count: n.replies ?? 0, label: n.replies === 1 ? "reply waiting" : "replies waiting", icon: MessageSquareText, to: "/inbox", search: {}, tone: "text-st-scheduled" },
     { count: n.plan_ready ?? 0, label: n.plan_ready === 1 ? "post in the plan to review" : "posts in the plan to review", icon: Sparkles, to: "/publishing", search: { view: "plan" }, tone: "text-brand" },
     { count: n.drafts, label: n.drafts === 1 ? "draft waiting" : "drafts waiting", icon: FileText, to: "/publishing", search: { view: "drafts" }, tone: "text-ink-2" },

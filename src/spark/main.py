@@ -262,7 +262,27 @@ def create_app() -> FastAPI:
 
     @app.get("/healthz")
     async def healthz():
-        return {"ok": True}
+        """Up when the database answers. Redis and the worker are reported, not required, so
+        a restarting worker never takes the site down; monitors can alert on worker_seen_s."""
+        from sqlalchemy import text
+
+        from spark.db import SessionLocal
+        from spark.services import heartbeat
+
+        try:
+            async with SessionLocal() as db:
+                await db.execute(text("SELECT 1"))
+            db_ok = True
+        except Exception:
+            db_ok = False
+        body = {
+            "ok": db_ok,
+            "db": db_ok,
+            "redis": await heartbeat.redis_ok(),
+            "worker_seen_s": await heartbeat.seen_seconds(),
+            "version": heartbeat.version(),
+        }
+        return JSONResponse(body, 200 if db_ok else 503)
 
     @app.get("/app", include_in_schema=False)
     @app.get("/app/{path:path}", include_in_schema=False)

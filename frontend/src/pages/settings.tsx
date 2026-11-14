@@ -381,11 +381,11 @@ function MeTab() {
   const update = useUpdateMe();
   const password = useChangePassword();
   const [theme, setThemeState] = useState<ThemeMode>(readTheme);
-  const prefs = { notify_failed: true, notify_approvals: true, digest_weekly: true, default_action: "queue", shortcuts: true, ...(user.prefs as Record<string, unknown>) };
+  const prefs = { notify_failed: true, notify_approvals: true, notify_channels: true, digest_weekly: true, default_action: "queue", shortcuts: true, ...(user.prefs as Record<string, unknown>) };
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    update.mutate({ name: String(fd.get("name")), email: String(fd.get("email")), prefs: { notify_failed: fd.get("notify_failed") === "on", notify_approvals: fd.get("notify_approvals") === "on", digest_weekly: fd.get("digest_weekly") === "on", default_action: String(fd.get("default_action")), shortcuts: fd.get("shortcuts") === "on" } });
+    update.mutate({ name: String(fd.get("name")), email: String(fd.get("email")), prefs: { notify_failed: fd.get("notify_failed") === "on", notify_approvals: fd.get("notify_approvals") === "on", notify_channels: fd.get("notify_channels") === "on", digest_weekly: fd.get("digest_weekly") === "on", default_action: String(fd.get("default_action")), shortcuts: fd.get("shortcuts") === "on" } });
   };
   return (
     <div className="grid gap-8 lg:grid-cols-3">
@@ -397,6 +397,7 @@ function MeTab() {
           <section className="space-y-3"><h2 className="font-semibold">Email notifications</h2>
             {!session.features.email && <p className="rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-2">Email is in console mode on this server: notifications are logged, not delivered. An owner sets up delivery under Connectors.</p>}
             {user.role !== "viewer" && <label className="flex items-start gap-3 text-sm"><Switch name="notify_failed" defaultChecked={Boolean(prefs.notify_failed)} /><span>A post failed to publish<span className="block text-xs text-ink-2">After the last retry, with the platform's error.</span></span></label>}
+            {user.role !== "viewer" && <label className="flex items-start gap-3 text-sm"><Switch name="notify_channels" defaultChecked={Boolean(prefs.notify_channels)} /><span>A channel needs reconnecting<span className="block text-xs text-ink-2">When it stops working, and 7, 3 and 1 days before its access runs out.</span></span></label>}
             {user.role === "owner" && <label className="flex items-start gap-3 text-sm"><Switch name="notify_approvals" defaultChecked={Boolean(prefs.notify_approvals)} /><span>A post waits for my approval<span className="block text-xs text-ink-2">Once per post, when editors schedule something.</span></span></label>}
             <label className="flex items-start gap-3 text-sm"><Switch name="digest_weekly" defaultChecked={Boolean(prefs.digest_weekly)} /><span>Weekly digest<span className="block text-xs text-ink-2">Monday morning: last week's numbers per brand, top posts, what's coming up.</span></span></label></section>
           <section className="space-y-3"><h2 className="font-semibold">Composer</h2>

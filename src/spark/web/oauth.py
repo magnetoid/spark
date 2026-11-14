@@ -48,6 +48,12 @@ async def _brand(request: Request, db: AsyncSession, user: User | None = None) -
     return await db.scalar(select(Brand).order_by(Brand.id).limit(1))
 
 
+def _no_brand(request: Request):
+    if request.query_params.get("brand"):
+        return _back("You are not a member of that brand", "error")
+    return _back("Create a brand first", "error")
+
+
 @router.get("/accounts/connect/{platform}")
 async def connect(
     platform: str,
@@ -57,9 +63,7 @@ async def connect(
 ):
     brand = await _brand(request, db, user)
     if brand is None:
-        return _back("You are not a member of that brand", "error")
-    if brand is None:
-        return _back("Create a brand first", "error")
+        return _no_brand(request)
     try:
         adapter = get_adapter(platform)
     except KeyError:
@@ -126,9 +130,7 @@ async def zernio_connect(
 ):
     brand = await _brand(request, db, user)
     if brand is None:
-        return _back("You are not a member of that brand", "error")
-    if brand is None:
-        return _back("Create a brand first", "error")
+        return _no_brand(request)
     adapter = ZernioAdapter.for_platform(platform)
     if not adapter.is_configured():
         return _back("Add the Zernio API key under Settings → Connectors first", "error", brand)

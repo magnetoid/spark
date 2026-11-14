@@ -279,6 +279,7 @@ CONNECTORS: tuple[Connector, ...] = (
             Field("chat_on_failed", "Posts that failed to publish", "bool"),
             Field("chat_on_review", "New reviews", "bool"),
             Field("chat_on_published", "Published posts", "bool"),
+            Field("chat_on_channel", "Channels that need reconnecting or are running out", "bool"),
         ),
         tags=("Notifications",),
     ),

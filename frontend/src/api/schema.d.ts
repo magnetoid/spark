@@ -160,6 +160,30 @@ export interface paths {
         delete: operations["remove_brands__brand_id__accounts__account_id__delete"];
         options?: never;
         head?: never;
+        /**
+         * Update Settings
+         * @description Change the settings publishing reads: board, subreddit, who can see posts.
+         */
+        patch: operations["update_settings_brands__brand_id__accounts__account_id__patch"];
+        trace?: never;
+    };
+    "/brands/{brand_id}/accounts/{account_id}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Settings For
+         * @description What can be set on this channel, with the choices (Pinterest boards come from Zernio).
+         */
+        get: operations["get_settings_for_brands__brand_id__accounts__account_id__settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -847,6 +871,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/brands/{brand_id}/inbox/items/{item_id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Discard Draft
+         * @description Throw away the reply a rule prepared; the item stays open.
+         */
+        delete: operations["discard_draft_brands__brand_id__inbox_items__item_id__draft_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/brands/{brand_id}/inbox/items/{item_id}/like": {
         parameters: {
             query?: never;
@@ -1494,6 +1538,26 @@ export interface paths {
         put?: never;
         /** Unschedule */
         post: operations["unschedule_brands__brand_id__posts__post_id__unschedule_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/publishing/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Publishing Health Summary
+         * @description Success rates, why posts failed, and what goes out next on each channel.
+         */
+        get: operations["publishing_health_summary_brands__brand_id__publishing_health_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2222,12 +2286,22 @@ export interface components {
             /** Avatar Url */
             avatar_url: string | null;
             capabilities: components["schemas"]["Capabilities"];
+            /** Checked At */
+            checked_at?: string | null;
             /** Display Name */
             display_name: string | null;
+            /** Expires At */
+            expires_at?: string | null;
             /** Followers */
             followers: number | null;
             /** Handle */
             handle: string;
+            /**
+             * Health
+             * @default ok
+             * @enum {string}
+             */
+            health: "ok" | "expiring" | "reconnect" | "paused";
             /** Id */
             id: number;
             /** Is Active */
@@ -2238,6 +2312,13 @@ export interface components {
             platform: string;
             /** Provider */
             provider: string;
+            /**
+             * Settings
+             * @default {}
+             */
+            settings: {
+                [key: string]: string;
+            };
         };
         /** ActivityOut */
         ActivityOut: {
@@ -2738,6 +2819,57 @@ export interface components {
             /** Threadable */
             threadable: boolean;
         };
+        /** ChannelFailures */
+        ChannelFailures: {
+            /** Account Id */
+            account_id: number;
+            /** Failed */
+            failed: number;
+            /** Handle */
+            handle: string;
+            /** Platform */
+            platform: string;
+        };
+        /** ChannelNext */
+        ChannelNext: {
+            account: components["schemas"]["AccountOut"];
+            /** Next Scheduled At */
+            next_scheduled_at: string | null;
+        };
+        /** ChannelSettingField */
+        ChannelSettingField: {
+            /** Default */
+            default: string | null;
+            /** Help */
+            help: string;
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "choice" | "text";
+            /** Label */
+            label: string;
+            /** Options */
+            options: components["schemas"]["SettingOption"][];
+        };
+        /** ChannelSettingsIn */
+        ChannelSettingsIn: {
+            /** Settings */
+            settings: {
+                [key: string]: string | null;
+            };
+        };
+        /** ChannelSettingsOut */
+        ChannelSettingsOut: {
+            /** Fields */
+            fields: components["schemas"]["ChannelSettingField"][];
+            /** Values */
+            values: {
+                [key: string]: string;
+            };
+        };
         /** CommentIn */
         CommentIn: {
             /** Body */
@@ -2984,6 +3116,13 @@ export interface components {
             scheduled_at?: string | null;
             /** Subject */
             subject?: string | null;
+        };
+        /** FailureReason */
+        FailureReason: {
+            /** Count */
+            count: number;
+            /** Reason */
+            reason: string;
         };
         /** FeedIn */
         FeedIn: {
@@ -3686,6 +3825,11 @@ export interface components {
         NeedsYou: {
             /** Approvals */
             approvals: number;
+            /**
+             * Channels
+             * @default 0
+             */
+            channels: number;
             /** Drafts */
             drafts: number;
             /** Failed */
@@ -3977,6 +4121,28 @@ export interface components {
              */
             targets: components["schemas"]["TargetIn"][];
         };
+        /** PublishRate */
+        PublishRate: {
+            /** Failed */
+            failed: number;
+            /** Published */
+            published: number;
+            /** Success Rate Pct */
+            success_rate_pct: number | null;
+        };
+        /** PublishingHealthOut */
+        PublishingHealthOut: {
+            /** Channels */
+            channels: components["schemas"]["ChannelNext"][];
+            /** Failures By Channel */
+            failures_by_channel: components["schemas"]["ChannelFailures"][];
+            /** Failures By Reason */
+            failures_by_reason: components["schemas"]["FailureReason"][];
+            month: components["schemas"]["PublishRate"];
+            /** Stuck */
+            stuck: number;
+            week: components["schemas"]["PublishRate"];
+        };
         /** QueueItem */
         QueueItem: {
             post: components["schemas"]["PostOut"] | null;
@@ -4236,6 +4402,13 @@ export interface components {
              */
             two_factor_setup_required: boolean;
             user: components["schemas"]["UserOut"] | null;
+        };
+        /** SettingOption */
+        SettingOption: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
         };
         /** SetupIn */
         SetupIn: {
@@ -5188,6 +5361,74 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_settings_brands__brand_id__accounts__account_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_settings_for_brands__brand_id__accounts__account_id__settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelSettingsOut"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -6966,6 +7207,36 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InboxItemOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discard_draft_brands__brand_id__inbox_items__item_id__draft_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -8763,6 +9034,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PostResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publishing_health_summary_brands__brand_id__publishing_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishingHealthOut"];
                 };
             };
             /** @description Validation Error */

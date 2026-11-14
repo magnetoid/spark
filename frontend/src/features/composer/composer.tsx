@@ -39,8 +39,9 @@ const ACTIONS: { key: Action; label: string; button: string }[] = [
   { key: "draft", label: "Save draft", button: "Save draft" },
 ];
 
-export function Composer({ initial, existing, onSaved, onCancel, compact }: {
+export function Composer({ initial, existing, onSaved, onCancel, compact, onAutosaved }: {
   initial: ComposerDraft; existing?: PostOut | null; onSaved: (post: PostOut, action: Action) => void; onCancel?: () => void; compact?: boolean;
+  onAutosaved?: (postId: number) => void;
 }) {
   const brand = useBrand();
   const { data: session } = useSession();
@@ -50,7 +51,7 @@ export function Composer({ initial, existing, onSaved, onCancel, compact }: {
   const { data: templates = [] } = useTemplates(brand.id);
   const { data: hashtagGroups = [] } = useHashtagGroups(brand.id);
   const active = accounts.filter((a) => a.is_active);
-  const s = useComposerState(initial, brand.id, accounts, true);
+  const s = useComposerState(initial, brand.id, accounts, true, onAutosaved);
   const { draft, set } = s;
   const actions = usePostActions(brand.id);
   const [picker, setPicker] = useState(false);

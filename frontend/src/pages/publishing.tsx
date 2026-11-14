@@ -15,6 +15,7 @@ import { ReviewLinksBar } from "@/features/collab/panels";
 import { PlanView } from "@/features/agent/panels";
 import { ChannelGrid } from "@/features/media/panels";
 import { ImportCsvButton } from "@/features/planning/panels";
+import { PublishingHealthCard } from "@/features/channels/publishing-health";
 import { useComposer } from "@/features/composer/composer-host";
 import { useAccounts, useCampaigns, usePostActions, usePosts, useQueue, type AccountOut, type PostOut, type QueueOut } from "@/features/posts/api";
 import { PlatformMark, platformLabel } from "@/lib/platforms";
@@ -49,7 +50,10 @@ export function PublishingPage() {
       ) : view === "queue" ? <QueueView accounts={accounts} accountParam={search.account} onAccount={(id) => setSearch({ account: String(id) })} />
         : view === "plan" ? <PlanView />
         : view === "calendar" ? <CalendarView accounts={accounts} mode={search.cal === "week" ? "week" : "month"} monthKey={search.month} campaign={search.campaign} onChange={setSearch} />
-        : <ListView status={view === "drafts" ? "draft" : view === "approvals" ? "pending_approval" : view === "failed" ? "failed" : "published"} />}
+        : <>
+            {(view === "failed" || view === "sent") && <PublishingHealthCard brandId={brand.id} timezone={brand.timezone} />}
+            <ListView status={view === "drafts" ? "draft" : view === "approvals" ? "pending_approval" : view === "failed" ? "failed" : "published"} />
+          </>}
     </>
   );
 }

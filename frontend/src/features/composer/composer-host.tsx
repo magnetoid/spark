@@ -14,6 +14,7 @@ import { toLocalInput } from "@/lib/time";
 import { fetchAutosave, keys, usePostActions, type IdeaOut, type MediaOut, type PostOut } from "@/features/posts/api";
 import { Composer } from "@/features/composer/composer";
 import { draftFromPost, emptyDraft, type Action, type ComposerDraft } from "@/features/composer/use-composer-state";
+import { composerKey, offerResume, startFrom, type ResumeChoice } from "@/features/composer/resume";
 
 export interface OpenOptions {
   postId?: number;
@@ -80,8 +81,17 @@ export function ComposerLoader({ opts, onDone, compact = true }: { opts: OpenOpt
     enabled: mediaIds.length > 0,
   });
   const wantsResume = !sourceId && !opts.idea && !opts.at && !opts.account;
-  const { data: resume } = useQuery({ queryKey: keys.autosave(brand.id), queryFn: () => fetchAutosave(brand.id), enabled: wantsResume, staleTime: 0 });
-  const [dismissed, setDismissed] = useState(false);
+  // Read once, when the composer opens: the post typed here is autosaved too, and must never
+  // come back as "unfinished" while it is being written.
+  const [offer, setOffer] = useState<PostOut | null>(null);
+  const [choice, setChoice] = useState<ResumeChoice>("pending");
+  const [ownId, setOwnId] = useState<number | null>(null);
+  useEffect(() => {
+    if (!wantsResume) return;
+    let live = true;
+    fetchAutosave(brand.id).then((p) => { if (live) setOffer(p ?? null); }).catch(() => { /* no offer */ });
+    return () => { live = false; };
+  }, [wantsResume, brand.id]);
 
   if ((sourceId !== null && loadingPost) || (mediaIds.length > 0 && loadingMedia)) {
     return <div className="space-y-4 p-6"><Skeleton className="h-8 w-40" /><Skeleton className="h-40" /><Skeleton className="h-24" /></div>;
@@ -95,35 +105,24 @@ export function ComposerLoader({ opts, onDone, compact = true }: { opts: OpenOpt
   else initial = emptyDraft({ selected: opts.account ? [opts.account] : [], action: opts.at ? "schedule" : "queue", scheduledAt: opts.at ?? "" });
 
   const onSaved = (saved: PostOut, action: Action) => { opts.onSaved?.(saved, action); onDone(); };
+  const resume = { offer, choice, ownId };
 
   return (
     <div className={compact ? "p-4 sm:p-6" : ""}>
-      {wantsResume && resume && !dismissed && resume.id !== initial.postId && (
+      {offer && offerResume(resume, initial.postId ?? null) && (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-card border border-line bg-brand-soft/60 px-4 py-3 text-sm">
           <div className="min-w-0 flex-1">
             <div className="font-medium">Resume unfinished post?</div>
-            <div className="truncate text-ink-2">“{resume.content || "(no text)"}”</div>
+            <div className="truncate text-ink-2">“{offer.content || "(no text)"}”</div>
           </div>
-          <ResumeButtons id={resume.id} onResume={() => { setDismissed(true); }} onDiscard={() => { actions.remove.mutate(resume.id); setDismissed(true); }} />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setChoice("resumed")}>Resume</Button>
+            <Button size="sm" variant="outline" onClick={() => { actions.remove.mutate(offer.id); setChoice("discarded"); }}>Discard</Button>
+          </div>
         </div>
       )}
-      <Composer key={resumeKey(initial, resume, dismissed)} initial={resumedDraft(initial, resume, dismissed, toLocal, media)} existing={opts.postId ? post : null}
-                onSaved={onSaved} onCancel={onDone} compact={compact} />
+      <Composer key={composerKey(resume, initial.postId)} initial={startFrom(resume, initial, (p) => draftFromPost(p, media, toLocal))}
+                existing={opts.postId ? post : null} onSaved={onSaved} onCancel={onDone} compact={compact} onAutosaved={setOwnId} />
     </div>
   );
-}
-
-function ResumeButtons({ onResume, onDiscard }: { id: number; onResume: () => void; onDiscard: () => void }) {
-  return <div className="flex gap-2"><Button size="sm" onClick={onResume}>Resume</Button><Button size="sm" variant="outline" onClick={onDiscard}>Discard</Button></div>;
-}
-
-// Resume = the dismissed flag flips and the autosaved post becomes the draft being edited.
-function resumeKey(initial: ComposerDraft, resume: PostOut | null | undefined, dismissed: boolean) {
-  return dismissed && resume ? `resume-${resume.id}` : `fresh-${initial.postId ?? "new"}`;
-}
-function resumedDraft(initial: ComposerDraft, resume: PostOut | null | undefined, dismissed: boolean, toLocal: (iso: string | null) => string, media: MediaOut[]) {
-  if (dismissed && resume && resume.status === "draft" && !initial.postId && document.activeElement?.textContent !== "Discard") {
-    return draftFromPost(resume, media, toLocal);
-  }
-  return initial;
 }

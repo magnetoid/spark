@@ -17,6 +17,18 @@
           "capabilities": {
             "$ref": "#/components/schemas/Capabilities"
           },
+          "checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
           "display_name": {
             "anyOf": [
               {
@@ -27,6 +39,18 @@
               }
             ],
             "title": "Display Name"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
           },
           "followers": {
             "anyOf": [
@@ -41,6 +65,17 @@
           },
           "handle": {
             "title": "Handle",
+            "type": "string"
+          },
+          "health": {
+            "default": "ok",
+            "enum": [
+              "ok",
+              "expiring",
+              "reconnect",
+              "paused"
+            ],
+            "title": "Health",
             "type": "string"
           },
           "id": {
@@ -69,6 +104,14 @@
           "provider": {
             "title": "Provider",
             "type": "string"
+          },
+          "settings": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "title": "Settings",
+            "type": "object"
           }
         },
         "required": [
@@ -1606,6 +1649,158 @@
         "title": "Capabilities",
         "type": "object"
       },
+      "ChannelFailures": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "handle",
+          "platform",
+          "failed"
+        ],
+        "title": "ChannelFailures",
+        "type": "object"
+      },
+      "ChannelNext": {
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/AccountOut"
+          },
+          "next_scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Scheduled At"
+          }
+        },
+        "required": [
+          "account",
+          "next_scheduled_at"
+        ],
+        "title": "ChannelNext",
+        "type": "object"
+      },
+      "ChannelSettingField": {
+        "properties": {
+          "default": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default"
+          },
+          "help": {
+            "title": "Help",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "choice",
+              "text"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/SettingOption"
+            },
+            "title": "Options",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "kind",
+          "help",
+          "default",
+          "options"
+        ],
+        "title": "ChannelSettingField",
+        "type": "object"
+      },
+      "ChannelSettingsIn": {
+        "properties": {
+          "settings": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Settings",
+            "type": "object"
+          }
+        },
+        "required": [
+          "settings"
+        ],
+        "title": "ChannelSettingsIn",
+        "type": "object"
+      },
+      "ChannelSettingsOut": {
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/ChannelSettingField"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "values": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "required": [
+          "fields",
+          "values"
+        ],
+        "title": "ChannelSettingsOut",
+        "type": "object"
+      },
       "CommentIn": {
         "properties": {
           "body": {
@@ -2367,6 +2562,24 @@
           }
         },
         "title": "EmailUpdate",
+        "type": "object"
+      },
+      "FailureReason": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "count"
+        ],
+        "title": "FailureReason",
         "type": "object"
       },
       "FeedIn": {
@@ -4556,6 +4769,11 @@
             "title": "Approvals",
             "type": "integer"
           },
+          "channels": {
+            "default": 0,
+            "title": "Channels",
+            "type": "integer"
+          },
           "drafts": {
             "title": "Drafts",
             "type": "integer"
@@ -5430,6 +5648,81 @@
         "title": "PostWrite",
         "type": "object"
       },
+      "PublishRate": {
+        "properties": {
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "published": {
+            "title": "Published",
+            "type": "integer"
+          },
+          "success_rate_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success Rate Pct"
+          }
+        },
+        "required": [
+          "published",
+          "failed",
+          "success_rate_pct"
+        ],
+        "title": "PublishRate",
+        "type": "object"
+      },
+      "PublishingHealthOut": {
+        "properties": {
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/ChannelNext"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "failures_by_channel": {
+            "items": {
+              "$ref": "#/components/schemas/ChannelFailures"
+            },
+            "title": "Failures By Channel",
+            "type": "array"
+          },
+          "failures_by_reason": {
+            "items": {
+              "$ref": "#/components/schemas/FailureReason"
+            },
+            "title": "Failures By Reason",
+            "type": "array"
+          },
+          "month": {
+            "$ref": "#/components/schemas/PublishRate"
+          },
+          "stuck": {
+            "title": "Stuck",
+            "type": "integer"
+          },
+          "week": {
+            "$ref": "#/components/schemas/PublishRate"
+          }
+        },
+        "required": [
+          "week",
+          "month",
+          "failures_by_reason",
+          "failures_by_channel",
+          "channels",
+          "stuck"
+        ],
+        "title": "PublishingHealthOut",
+        "type": "object"
+      },
       "QueueItem": {
         "properties": {
           "post": {
@@ -6168,6 +6461,24 @@
           "features"
         ],
         "title": "SessionOut",
+        "type": "object"
+      },
+      "SettingOption": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "SettingOption",
         "type": "object"
       },
       "SetupIn": {
@@ -8432,6 +8743,118 @@
           }
         },
         "summary": "Remove",
+        "tags": [
+          "channels"
+        ]
+      },
+      "patch": {
+        "description": "Change the settings publishing reads: board, subreddit, who can see posts.",
+        "operationId": "update_settings_brands__brand_id__accounts__account_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Settings",
+        "tags": [
+          "channels"
+        ]
+      }
+    },
+    "/brands/{brand_id}/accounts/{account_id}/settings": {
+      "get": {
+        "description": "What can be set on this channel, with the choices (Pinterest boards come from Zernio).",
+        "operationId": "get_settings_for_brands__brand_id__accounts__account_id__settings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "title": "Account Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Settings For",
         "tags": [
           "channels"
         ]
@@ -11312,6 +11735,51 @@
           }
         },
         "summary": "Assign",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/brands/{brand_id}/inbox/items/{item_id}/draft": {
+      "delete": {
+        "description": "Throw away the reply a rule prepared; the item stays open.",
+        "operationId": "discard_draft_brands__brand_id__inbox_items__item_id__draft_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discard Draft",
         "tags": [
           "inbox"
         ]
@@ -14213,6 +14681,49 @@
         "summary": "Unschedule",
         "tags": [
           "posts"
+        ]
+      }
+    },
+    "/brands/{brand_id}/publishing/health": {
+      "get": {
+        "description": "Success rates, why posts failed, and what goes out next on each channel.",
+        "operationId": "publishing_health_summary_brands__brand_id__publishing_health_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishingHealthOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Publishing Health Summary",
+        "tags": [
+          "queue"
         ]
       }
     },

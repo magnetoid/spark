@@ -5,7 +5,8 @@ describes was committed. The worker calls `process`, which takes each row once (
 update, safe with several workers), tells chat and queues webhook deliveries.
 
 Events: post.approval_needed, post.published, post.failed, inbox.comment, inbox.message,
-inbox.review, inbox.mention. Every payload is plain JSON and is what webhook endpoints receive.
+inbox.review, inbox.mention, channel.reconnect_needed, channel.expiring, channel.recovered.
+Channel events are emailed to the brand's owners and editors too. Every payload is plain JSON and is what webhook endpoints receive.
 """
 
 from __future__ import annotations
@@ -37,6 +38,9 @@ EVENTS = {
     "inbox.message": "A new direct message arrived",
     "inbox.review": "A new review arrived",
     "inbox.mention": "The brand was mentioned",
+    "channel.reconnect_needed": "A channel stopped working and needs reconnecting",
+    "channel.expiring": "A channel's access runs out soon (7, 3 and 1 days before)",
+    "channel.recovered": "A channel works again",
 }
 FRESH = timedelta(hours=24)  # older inbox items are history being imported, not news
 KEEP = timedelta(days=7)
@@ -45,7 +49,11 @@ CHAT_SWITCH = {  # event → the switch in the Chat notifications connector; oth
     "post.failed": "chat_on_failed",
     "post.published": "chat_on_published",
     "inbox.review": "chat_on_review",
+    "channel.reconnect_needed": "chat_on_channel",
+    "channel.expiring": "chat_on_channel",
+    "channel.recovered": "chat_on_channel",
 }
+CHANNEL_EMAIL = ("channel.reconnect_needed", "channel.expiring")
 
 
 def _base() -> str:
@@ -163,6 +171,11 @@ def describe(event: str, data: dict, brand_name: str) -> tuple[str, str, str] | 
             live or post.get("url") or _base(),
             "See the post" if live else "Open in Spark",
         )
+    if event.startswith("channel."):
+        said = channel_text(event, data.get("channel") or {})
+        if said is None:
+            return None
+        return (f"{head}{said[0]}", said[1], said[2])
     if event == "inbox.review":
         stars = f"{item['rating']}/5 " if item.get("rating") is not None else ""
         return (
@@ -172,6 +185,54 @@ def describe(event: str, data: dict, brand_name: str) -> tuple[str, str, str] | 
             "Reply in Spark",
         )
     return None
+
+
+def channel_text(event: str, ch: dict) -> tuple[str, str, str] | None:
+    """What a channel event says, for chat and email alike: (text, link, link label)."""
+    name = f"{ch.get('handle')} ({ch.get('platform')})"
+    link = ch.get("url") or f"{_base()}/channels"
+    if event == "channel.reconnect_needed":
+        why = f"\n{ch['error']}" if ch.get("error") else ""
+        return (
+            f"{name} needs reconnecting. Posts to it will fail until it is.{why}"[:1500],
+            link,
+            "Reconnect",
+        )
+    if event == "channel.expiring":
+        days = ch.get("days_left")
+        when = "today" if not days else f"in {days} day{'s' if days != 1 else ''}"
+        return (f"{name} loses access {when}. Reconnect it to keep posting.", link, "Reconnect")
+    if event == "channel.recovered":
+        return (f"{name} works again.", link, "Open channels")
+    return None
+
+
+async def _email_channel(db: AsyncSession, brand: Brand | None, event: str, data: dict) -> None:
+    if brand is None or event not in CHANNEL_EMAIL:
+        return
+    from spark.services import notify
+
+    said = channel_text(event, data.get("channel") or {})
+    if said is None:
+        return
+    people = [
+        u
+        for u, role in await notify._brand_people(db, brand.id)
+        if role in ("owner", "editor") and notify.wants(u, "notify_channels")
+    ]
+    if not people:
+        return
+    subject = f"[{brand.name}] {said[0].splitlines()[0]}"[:200]
+    import html
+
+    intro = html.escape(said[0]).replace("\n", "<br>")
+    body = notify.layout(subject, intro, "", said[1], said[2])
+    sender = notify.get_sender()
+    for u in people:
+        try:
+            await sender.send(u.email, subject, body)
+        except Exception:
+            log.exception("Channel alert email to %s failed", u.email)
 
 
 async def _tell_chat(event: str, data: dict, brand_name: str) -> None:
@@ -219,6 +280,10 @@ async def process(db: AsyncSession, limit: int = 200) -> int:
             await _tell_chat(event, data, brand_name)
         except Exception:  # chat is best effort; the event stays taken
             log.exception("Chat notification for event %s failed", event_id)
+        try:
+            await _email_channel(db, brand, event, data)
+        except Exception:  # email is best effort too
+            log.exception("Channel email for event %s failed", event_id)
     if waiting:
         await db.execute(
             delete(OutboundEvent)

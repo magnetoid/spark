@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     chat_on_failed: bool = True
     chat_on_review: bool = True
     chat_on_published: bool = False
+    chat_on_channel: bool = True
 
     # Publishing
     publish_max_attempts: int = 3

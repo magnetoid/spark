@@ -221,10 +221,25 @@ async def set_status(
     it.status = body.status
     if body.status != "open":
         it.draft_reply, it.draft_rule_id = None, None
+        await svc.mark_read(db, it)
     await db.commit()
     await events.publish("inbox", ctx.brand.id)
     accounts, rules = await _ctx_maps(db, ctx.brand.id)
     return _out(it, accounts, rules)
+
+
+@router.delete("/items/{item_id}/draft", status_code=204)
+async def discard_draft(
+    item_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
+    """Throw away the reply a rule prepared; the item stays open."""
+    it = await _item(db, ctx, item_id)
+    it.draft_reply, it.draft_rule_id = None, None
+    await db.commit()
+    await events.publish("inbox", ctx.brand.id)
+    return Response(status_code=204)
 
 
 @router.post("/items/{item_id}/assign", response_model=InboxItemOut)

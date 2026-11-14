@@ -168,6 +168,7 @@ class ZernioAdapter(PlatformAdapter):
                 "zernio_platform": a.get("platform"),
                 "profile_url": a.get("profileUrl"),
                 "needs_reconnection": a.get("needsReconnection", False),
+                "token_expires_at": a.get("tokenExpiresAt"),
             },
         )
 
@@ -200,6 +201,11 @@ class ZernioAdapter(PlatformAdapter):
             if not cursor:
                 return out
             params = {**base, "cursor": cursor}
+
+    async def pinterest_boards(self, account_id: str) -> list[dict]:
+        """The boards a Pinterest account can pin to: [{id, name, ...}]."""
+        data = (await self._req("GET", f"/accounts/{account_id}/pinterest-boards")).json()
+        return data.get("boards") or []
 
     async def get_account(self, account_id: str) -> ConnectedAccount | None:
         data = (await self._req("GET", "/accounts", params={"search": account_id})).json()
@@ -240,6 +246,8 @@ class ZernioAdapter(PlatformAdapter):
             "url": pre["publicUrl"],
             "type": "video"
             if m.is_video
+            else "document"
+            if m.content_type == "application/pdf"
             else ("gif" if m.content_type == "image/gif" else "image"),
             "filename": m.filename,
             "mimeType": m.content_type,
@@ -393,9 +401,8 @@ class ZernioAdapter(PlatformAdapter):
             body["platforms"][0]["platformSpecificData"] = pdata
         import uuid
 
-        resp = await self._req(
-            "POST", "/posts", json=body, headers={"Idempotency-Key": str(uuid.uuid4())}
-        )
+        key = payload.idempotency_key or str(uuid.uuid4())
+        resp = await self._req("POST", "/posts", json=body, headers={"Idempotency-Key": key})
         data = resp.json()
         post = data.get("post") or data
         post_id = post.get("_id") or data.get("postId")
@@ -406,12 +413,12 @@ class ZernioAdapter(PlatformAdapter):
             msg = t.get("errorMessage") or post.get("status") or "Zernio could not publish"
             cat = t.get("errorCategory", "")
             if cat == "auth_expired":
-                raise AuthExpired(f"Zernio: {msg}")
+                raise AuthExpired(f"Zernio: {msg}", answered=True)
             retryable = (
                 cat in ("platform_error", "platform_rate_limit", "")
                 and t.get("errorSource") != "user"
             )
-            raise PlatformError(f"Zernio: {msg}", retryable=retryable)
+            raise PlatformError(f"Zernio: {msg}", retryable=retryable, answered=True)
         if not post_id:
             raise PlatformError(f"Zernio returned no post id: {str(data)[:200]}")
         return PublishResult(remote_id=post_id, url=t.get("platformPostUrl"))
@@ -472,7 +479,7 @@ class ZernioAdapter(PlatformAdapter):
     async def like_comment(
         self, post_id: str, comment_id: str, account_id: str, liked: bool
     ) -> None:
-        method = "DELETE" if liked else "POST"
+        method = "POST" if liked else "DELETE"
         await self._req(
             method, f"/inbox/comments/{post_id}/{comment_id}/like", json={"accountId": account_id}
         )

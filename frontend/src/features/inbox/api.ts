@@ -35,6 +35,8 @@ export const useAssignItem = (b: number) => useAction(async ({ id, user_id }: { 
   (r) => r.assignee ? `Assigned to ${r.assignee.name}` : "Unassigned");
 export const useSuggestReplies = (b: number) => useAction(async (id: number) =>
   unwrap(await api.POST("/brands/{brand_id}/inbox/items/{item_id}/suggest", ip(b, id))), [["inbox-item", b], ["inbox", b]]);
+export const useDiscardDraft = (b: number) => useAction(async (id: number) =>
+  unwrap(await api.DELETE("/brands/{brand_id}/inbox/items/{item_id}/draft", ip(b, id))), KEYS(b), "Prepared reply discarded");
 export const useLikeItem = (b: number) => useAction(async ({ id, liked }: { id: number; liked: boolean }) =>
   unwrap(await api.POST("/brands/{brand_id}/inbox/items/{item_id}/like", { ...ip(b, id), body: { liked } })), [], (r) => (r as { liked: boolean }).liked ? "Liked" : "Like removed");
 export const useSyncInbox = (b: number) => useAction(async () => unwrap(await api.POST("/brands/{brand_id}/inbox/sync", bp(b))), KEYS(b),
