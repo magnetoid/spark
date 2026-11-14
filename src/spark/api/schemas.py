@@ -1444,6 +1444,7 @@ class ShareLinkOut(BaseModel):
     created_at: datetime | None
     last_used_at: datetime | None
     posts: int | None
+    report_id: int | None = None
 
 
 class ShareLinkCreated(ShareLinkOut):
@@ -1645,3 +1646,63 @@ class ReportOut(BaseModel):
 
 class ReportSummaryOut(BaseModel):
     summary: dict[str, Any]
+
+
+class ReportShareIn(BaseModel):
+    days: int = Field(30, ge=1, le=365)
+
+
+class PublicBrand(BaseModel):
+    name: str
+    color: str | None = None
+
+
+class PublicReport(BaseModel):
+    title: str
+    start: date
+    end: date
+    data: dict[str, Any]
+    summary: dict[str, Any] | None
+    brand: PublicBrand
+    expires_at: datetime | None
+
+
+ReportCadence = Literal["weekly", "monthly"]
+
+
+class ReportScheduleIn(BaseModel):
+    cadence: ReportCadence = "weekly"
+    hour: int = Field(8, ge=0, le=23)
+    recipients: list[EmailStr] = Field(min_length=1, max_length=20)
+    with_summary: bool = True
+    share_days: int = Field(30, ge=1, le=365)
+    is_active: bool = True
+
+
+class ReportScheduleUpdate(BaseModel):
+    cadence: ReportCadence | None = None
+    hour: int | None = Field(None, ge=0, le=23)
+    recipients: list[EmailStr] | None = Field(None, min_length=1, max_length=20)
+    with_summary: bool | None = None
+    share_days: int | None = Field(None, ge=1, le=365)
+    is_active: bool | None = None
+
+
+class NextPeriod(BaseModel):
+    start: date
+    end: date
+    days: int
+    send_at: datetime
+
+
+class ReportScheduleOut(BaseModel):
+    id: int
+    cadence: str
+    hour: int
+    recipients: list[str]
+    with_summary: bool
+    share_days: int
+    is_active: bool
+    last_sent_at: datetime | None
+    last_error: str | None
+    next_period: NextPeriod

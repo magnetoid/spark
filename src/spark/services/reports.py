@@ -4,23 +4,30 @@ inbox's load, and an AI summary of what worked and what to do next."""
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 import logging
+import secrets
+import statistics
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from spark.config import get_settings
 from spark.models import (
     Brand,
     ContentPillar,
     FollowerSnapshot,
     InboxItem,
+    LinkClick,
     Post,
     PostStatus,
     PostTarget,
     Report,
+    ShareLink,
+    ShortLink,
     SocialAccount,
     User,
 )
@@ -28,7 +35,7 @@ from spark.platforms.base import PlatformError
 from spark.platforms.zernio import ZernioAdapter
 from spark.services import activity
 from spark.services import ai as ai_svc
-from spark.services.analytics import _latest_metrics, _pct
+from spark.services.analytics import _latest_metrics, _pct, rate
 from spark.services.publisher import as_utc
 
 log = logging.getLogger("spark.reports")
@@ -43,7 +50,10 @@ def _bounds(start: date, end: date) -> tuple[datetime, datetime]:
 async def _period(db: AsyncSession, brand: Brand, start: date, end: date) -> dict:
     since, until = _bounds(start, end)
     rows = await _latest_metrics(db, brand.id, since, until)
-    totals = dict(impressions=0, likes=0, comments=0, shares=0, clicks=0, engagements=0)
+    totals = dict(impressions=0, likes=0, comments=0, shares=0, clicks=0, engagements=0, seen=0)
+    # Empty when no post in the period has the number; the networks report these unevenly
+    wide: dict[str, int | None] = dict(reach=None, views=None, saves=None)
+    link_clicks = await _link_clicks(db, brand, since, until)
     by_channel: dict[int, dict] = {}
     by_day: dict[str, dict] = defaultdict(lambda: dict(impressions=0, engagements=0, posts=0))
     by_pillar: dict[int | None, int] = defaultdict(int)
@@ -51,7 +61,11 @@ async def _period(db: AsyncSession, brand: Brand, start: date, end: date) -> dic
     for m, t, a in rows:
         for k in ("impressions", "likes", "comments", "shares", "clicks"):
             totals[k] += getattr(m, k)
+        for k in wide:
+            if getattr(m, k) is not None:
+                wide[k] = (wide[k] or 0) + getattr(m, k)
         totals["engagements"] += m.engagements
+        totals["seen"] += m.seen
         c = by_channel.setdefault(
             a.id,
             {
@@ -60,11 +74,13 @@ async def _period(db: AsyncSession, brand: Brand, start: date, end: date) -> dic
                 "handle": a.handle,
                 "posts": 0,
                 "impressions": 0,
+                "seen": 0,
                 "engagements": 0,
             },
         )
         c["posts"] += 1
         c["impressions"] += m.impressions
+        c["seen"] += m.seen
         c["engagements"] += m.engagements
         day = as_utc(t.published_at).date().isoformat()
         by_day[day]["impressions"] += m.impressions
@@ -80,7 +96,9 @@ async def _period(db: AsyncSession, brand: Brand, start: date, end: date) -> dic
                 "published_at": as_utc(t.published_at).isoformat(),
                 "url": t.remote_url,
                 "impressions": m.impressions,
+                "seen": m.seen,
                 "engagements": m.engagements,
+                "link_clicks": link_clicks["by_target"].get(t.id, 0),
             }
         )
     published = (
@@ -97,15 +115,11 @@ async def _period(db: AsyncSession, brand: Brand, start: date, end: date) -> dic
         or 0
     )
     for c in by_channel.values():
-        c["engagement_rate_pct"] = (
-            round(c["engagements"] / c["impressions"] * 100, 2) if c["impressions"] else 0.0
-        )
+        c["engagement_rate_pct"] = rate(c["engagements"], c["seen"])
     totals["published"] = published
-    totals["engagement_rate_pct"] = (
-        round(totals["engagements"] / totals["impressions"] * 100, 2)
-        if totals["impressions"]
-        else 0.0
-    )
+    totals.update(wide)
+    totals["link_clicks"] = link_clicks["total"]
+    totals["engagement_rate_pct"] = rate(totals["engagements"], totals["seen"])
     days = []
     d = start
     while d <= end:
@@ -122,6 +136,26 @@ async def _period(db: AsyncSession, brand: Brand, start: date, end: date) -> dic
     }
 
 
+async def _link_clicks(db: AsyncSession, brand: Brand, since: datetime, until: datetime) -> dict:
+    """Clicks on the brand's short links in the period, all and per published post target."""
+    rows = (
+        await db.execute(
+            select(LinkClick.target_id, func.count(LinkClick.id))
+            .join(ShortLink, ShortLink.id == LinkClick.link_id)
+            .where(
+                ShortLink.brand_id == brand.id,
+                LinkClick.clicked_at >= since,
+                LinkClick.clicked_at < until,
+            )
+            .group_by(LinkClick.target_id)
+        )
+    ).all()
+    return {
+        "total": sum(n for _, n in rows),
+        "by_target": {tid: n for tid, n in rows if tid is not None},
+    }
+
+
 async def _followers(db: AsyncSession, brand: Brand, start: date, end: date) -> dict:
     accounts = (
         (
@@ -135,7 +169,7 @@ async def _followers(db: AsyncSession, brand: Brand, start: date, end: date) -> 
         .all()
     )
     if not accounts:
-        return {"start": 0, "end": 0, "delta": 0, "series": []}
+        return {"start": 0, "end": 0, "delta": 0, "series": [], "by_channel": []}
     rows = (
         (
             await db.execute(
@@ -168,11 +202,41 @@ async def _followers(db: AsyncSession, brand: Brand, start: date, end: date) -> 
                 first_total = total
         d += timedelta(days=1)
     end_total = series[-1]["followers"] if series else 0
+    # Per channel: the first count known in the period (or just before it) and the last one
+    first: dict[int, int] = {}
+    latest: dict[int, int] = {}
+    for snap in rows:
+        if snap.day <= start or snap.account_id not in first:
+            first[snap.account_id] = snap.followers
+        latest[snap.account_id] = snap.followers
+    meta = {
+        a.id: a
+        for a in (
+            await db.execute(select(SocialAccount).where(SocialAccount.id.in_(list(latest))))
+        ).scalars()
+    }
+    by_channel = sorted(
+        (
+            {
+                "account_id": aid,
+                "platform": meta[aid].platform,
+                "handle": meta[aid].handle,
+                "start": first[aid],
+                "end": latest[aid],
+                "delta": latest[aid] - first[aid],
+            }
+            for aid in latest
+            if aid in meta
+        ),
+        key=lambda c: c["delta"],
+        reverse=True,
+    )
     return {
         "start": first_total or 0,
         "end": end_total,
         "delta": end_total - (first_total or 0),
         "series": series,
+        "by_channel": by_channel,
     }
 
 
@@ -199,11 +263,27 @@ async def _inbox(db: AsyncSession, brand: Brand, start: date, end: date) -> dict
             .group_by(InboxItem.kind)
         )
     ).all()
+    waits = [
+        (as_utc(done) - as_utc(got)).total_seconds() / 60
+        for got, done in (
+            await db.execute(
+                select(InboxItem.received_at, InboxItem.replied_at).where(
+                    InboxItem.brand_id == brand.id,
+                    InboxItem.direction == "incoming",
+                    InboxItem.received_at >= since,
+                    InboxItem.received_at < until,
+                    InboxItem.replied_at.is_not(None),
+                )
+            )
+        ).all()
+        if done >= got
+    ]
     return {
         "received": received,
         "replied": replied,
         "negative": negative,
         "by_kind": {k: n for k, n in kinds},
+        "median_reply_minutes": round(statistics.median(waits)) if waits else None,
     }
 
 
@@ -217,7 +297,7 @@ async def build(db: AsyncSession, brand: Brand, start: date, end: date) -> dict:
             "previous": prev["totals"][k],
             "pct": _pct(cur["totals"][k], prev["totals"][k]) if prev["totals"][k] else None,
         }
-        for k in ("published", "impressions", "engagements", "clicks")
+        for k in ("published", "impressions", "seen", "engagements", "clicks", "link_clicks")
     }
     pillars = {
         p.id: {"name": p.name, "color": p.color, "target_share": p.target_share}
@@ -268,6 +348,36 @@ async def create(
     activity.record(db, brand.id, user, "created", "report", rep.id, rep.title)
     await db.commit()
     return rep
+
+
+def token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def report_url(token: str) -> str:
+    return f"{get_settings().base_url.rstrip('/')}/r/{token}"
+
+
+async def share(
+    db: AsyncSession, brand: Brand, rep: Report, user: User | None, days: int = 30
+) -> tuple[ShareLink, str]:
+    """A login-free link to one report. Returns the link and its token; only the hash is kept."""
+    token = secrets.token_urlsafe(24)
+    link = ShareLink(
+        brand_id=brand.id,
+        token_hash=token_hash(token),
+        prefix=token[:8],
+        kind="report",
+        scope={"report_id": rep.id},
+        created_by=user.id if user else None,
+        expires_at=datetime.now(UTC) + timedelta(days=days),
+    )
+    db.add(link)
+    await db.flush()
+    activity.record(
+        db, brand.id, user, "shared", "report", rep.id, f"{rep.title}, link for {days} days"
+    )
+    return link, token
 
 
 async def summarize(db: AsyncSession, brand: Brand, rep: Report) -> dict:

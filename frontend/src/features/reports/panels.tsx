@@ -1,14 +1,17 @@
 /** Reports on the Analytics page: the list and the "new report" dialog. */
 import { useState, type FormEvent } from "react";
-import { Download, FileText, Trash2 } from "lucide-react";
-import { useBrand, usePerms } from "@/app/session";
+import { CalendarClock, Download, FileText, Trash2 } from "lucide-react";
+import { useBrand, usePerms, useSession } from "@/app/session";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { csvUrl, reportPath, useCreateReport, useDeleteReport, useReports } from "@/features/reports/api";
-import { fmtDay } from "@/lib/time";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { csvUrl, reportPath, useCreateReport, useCreateReportSchedule, useDeleteReport, useDeleteReportSchedule, useReports, useReportSchedules, useUpdateReportSchedule, type ReportScheduleOut } from "@/features/reports/api";
+import { fmtDateTime, fmtDay } from "@/lib/time";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const presets = () => {
@@ -64,6 +67,7 @@ export function ReportsSection() {
           })}
         </ul>
       )}
+      {canEdit && <ScheduledReports />}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>New report</DialogTitle></DialogHeader>
@@ -79,5 +83,102 @@ export function ReportsSection() {
         </DialogContent>
       </Dialog>
     </section>
+  );
+}
+
+// ---- scheduled reports --------------------------------------------------------------------------
+const HOURS = Array.from({ length: 24 }, (_, h) => h);
+const hh = (h: number) => `${String(h).padStart(2, "0")}:00`;
+
+function ScheduledReports() {
+  const brand = useBrand();
+  const { data = [], isPending } = useReportSchedules(brand.id);
+  const update = useUpdateReportSchedule(brand.id);
+  const remove = useDeleteReportSchedule(brand.id);
+  const [editing, setEditing] = useState<ReportScheduleOut | "new" | null>(null);
+  return (
+    <div className="border-t border-line px-5 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div><h3 className="text-sm font-semibold">Sent on a schedule</h3><p className="text-xs text-ink-2">Spark makes the report after each week or month and emails a link that opens without an account.</p></div>
+        <Button size="sm" variant="outline" onClick={() => setEditing("new")}><CalendarClock className="size-4" />Schedule a report</Button>
+      </div>
+      {isPending ? <Skeleton className="mt-3 h-10" /> : data.length > 0 && (
+        <ul className="mt-3 divide-y divide-line rounded-control border border-line">
+          {data.map((s) => (
+            <li key={s.id} className="flex flex-wrap items-center gap-3 px-3 py-2.5 text-sm">
+              <div className="min-w-0 flex-1">
+                <div className="font-medium">{s.cadence === "weekly" ? "Weekly, Mondays" : "Monthly, on the 1st"} at {hh(s.hour)} <span className="font-normal text-ink-2">to {s.recipients.join(", ")}</span></div>
+                <div className="text-xs text-ink-2 tnum">
+                  {s.is_active ? <>Next: {fmtDay(s.next_period.start, { day: "numeric", month: "short" })} – {fmtDay(s.next_period.end, { day: "numeric", month: "short" })}, sent {fmtDateTime(s.next_period.send_at, brand.timezone)}</> : "Paused"}
+                  {s.last_sent_at && <> · last sent {fmtDateTime(s.last_sent_at, brand.timezone)}</>}
+                </div>
+                {s.last_error && <div className="text-xs text-st-failed">{s.last_error}</div>}
+              </div>
+              <label className="flex items-center gap-2 text-xs text-ink-2"><Switch checked={s.is_active} onCheckedChange={(v) => update.mutate({ id: s.id, body: { is_active: v } })} aria-label={s.is_active ? "Pause this schedule" : "Resume this schedule"} />{s.is_active ? "On" : "Paused"}</label>
+              <Button size="sm" variant="ghost" onClick={() => setEditing(s)}>Edit</Button>
+              <Button size="icon" variant="ghost" className="size-8 text-ink-2" aria-label="Remove this schedule" onClick={() => confirm("Stop sending this report? Reports already sent stay.") && remove.mutate(s.id)}><Trash2 className="size-4" /></Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ScheduleDialog editing={editing} onClose={() => setEditing(null)} />
+    </div>
+  );
+}
+
+function ScheduleDialog({ editing, onClose }: { editing: ReportScheduleOut | "new" | null; onClose: () => void }) {
+  const existing = editing && editing !== "new" ? editing : null;
+  return (
+    <Dialog open={editing !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{existing ? "Edit scheduled report" : "Schedule a report"}</DialogTitle></DialogHeader>
+        {/* mounted per opening, so its fields start from the schedule being edited */}
+        {editing !== null && <ScheduleForm key={existing?.id ?? "new"} existing={existing} onClose={onClose} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ScheduleForm({ existing, onClose }: { existing: ReportScheduleOut | null; onClose: () => void }) {
+  const brand = useBrand();
+  const { data: session } = useSession();
+  const create = useCreateReportSchedule(brand.id);
+  const update = useUpdateReportSchedule(brand.id);
+  const [cadence, setCadence] = useState(existing?.cadence ?? "weekly");
+  const [hour, setHour] = useState(String(existing?.hour ?? 8));
+  const [days, setDays] = useState(String(existing?.share_days ?? 30));
+  const [error, setError] = useState<string | null>(null);
+  const submit = (ev: FormEvent<HTMLFormElement>) => {
+    ev.preventDefault();
+    const fd = new FormData(ev.currentTarget);
+    const recipients = String(fd.get("recipients")).split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean);
+    if (!recipients.length) { setError("Add at least one email address."); return; }
+    const body = { cadence: cadence as "weekly" | "monthly", hour: Number(hour), recipients, share_days: Number(days), with_summary: session?.features.ai ? fd.get("with_summary") === "on" : existing?.with_summary ?? true };
+    if (existing) update.mutate({ id: existing.id, body }, { onSuccess: onClose });
+    else create.mutate(body, { onSuccess: onClose });
+  };
+  return (
+    <form className="space-y-4" onSubmit={submit}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5"><Label>How often</Label>
+          <Select value={cadence} onValueChange={setCadence}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">Weekly, the last Monday to Sunday</SelectItem><SelectItem value="monthly">Monthly, the last month</SelectItem></SelectContent></Select>
+        </div>
+        <div className="space-y-1.5"><Label>Sent at</Label>
+          <Select value={hour} onValueChange={setHour}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{HOURS.map((h) => <SelectItem key={h} value={String(h)}>{hh(h)}</SelectItem>)}</SelectContent></Select>
+          <p className="text-xs text-ink-2">{brand.timezone}</p>
+        </div>
+      </div>
+      <div className="space-y-1.5"><Label htmlFor="rs-to">Send to</Label>
+        <Textarea id="rs-to" name="recipients" rows={2} defaultValue={existing ? existing.recipients.join(", ") : session?.user?.email ?? ""} placeholder="client@example.com, you@agency.com" aria-invalid={!!error} aria-describedby="rs-to-help" onChange={() => error && setError(null)} />
+        <p id="rs-to-help" className={error ? "text-xs text-st-failed" : "text-xs text-ink-2"}>{error ?? "Up to 20 addresses, separated by commas. They don't need a Spark account."}</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5"><Label>The link works for</Label>
+          <Select value={days} onValueChange={setDays}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["7", "30", "90", "365"].map((d) => <SelectItem key={d} value={d}>{d} days</SelectItem>)}</SelectContent></Select>
+        </div>
+        {session?.features.ai && <label className="flex items-center gap-2 self-end pb-2 text-sm"><Switch name="with_summary" defaultChecked={existing?.with_summary ?? true} />Add an AI summary</label>}
+      </div>
+      <DialogFooter><Button type="button" variant="ghost" onClick={onClose}>Cancel</Button><Button type="submit" disabled={create.isPending || update.isPending}>{existing ? "Save" : "Schedule"}</Button></DialogFooter>
+    </form>
   );
 }

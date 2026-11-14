@@ -4,6 +4,20 @@ Changes that matter to people who run Spark. Dates are when the change reached `
 
 ## Unreleased
 
+**Before you upgrade:** nothing to do. Scheduled reports go out through the email settings you
+already have; check **Settings → Connectors → Email** sends real mail first.
+
+- Scheduled reports: weekly (the last Monday to Sunday) or monthly (the last month), made at an
+  hour of the brand's day and emailed to up to 20 addresses, with an optional AI summary. The
+  people receiving them need no Spark account.
+- Share a report: a link that opens the report without an account, for 7 to 365 days, listed
+  on the report with when it was last opened, and revoked with one click. Deleting a report
+  ends its links.
+- Reports now show what was seen (impressions, views or reach), reach, views and saves, link
+  clicks per post, follower change per channel, and the typical time to reply in the inbox.
+
+## 2026-11-14: data foundations
+
 **Before you upgrade:** nothing breaks. To get fresh numbers about an hour after Zernio syncs
 them, open **Settings → Connectors → Zernio** and press **Refresh registration** once, so
 Zernio also sends the `analytics.synced` event.
@@ -26,7 +40,7 @@ Zernio also sends the `analytics.synced` event.
   IP addresses are kept.
 - Campaign results: posts, reach, engagement and link clicks per campaign, with a CSV export.
 
-## 2026-11-14
+## 2026-11-14: reliability and setup
 
 - A setup checklist on **Today** for owners: Zernio key, webhooks, channels, posting times,
   first post, email, public address, secret key, worker and two-factor, each with a link to fix

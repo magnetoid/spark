@@ -304,11 +304,12 @@ def _link_out(link: ShareLink) -> ShareLinkOut:
         id=link.id,
         kind=link.kind,
         prefix=link.prefix,
-        url_hint=f"{get_settings().base_url}/review/{link.prefix}…",
+        url_hint=f"{get_settings().base_url}/{'r' if link.kind == 'report' else 'review'}/{link.prefix}…",
         expires_at=as_utc(link.expires_at),
         created_at=as_utc(link.created_at),
         last_used_at=as_utc(link.last_used_at),
         posts=len(scope["post_ids"]) if scope.get("post_ids") else None,
+        report_id=scope.get("report_id"),
     )
 
 
@@ -385,6 +386,7 @@ async def _link(db: AsyncSession, token: str) -> tuple[ShareLink, Brand]:
     now = datetime.now(UTC)
     if (
         link is None
+        or link.kind != "approval"
         or link.revoked_at is not None
         or (link.expires_at and as_utc(link.expires_at) < now)
     ):

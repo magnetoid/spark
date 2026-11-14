@@ -206,6 +206,13 @@ async def send_weekly_digest(ctx) -> int:
         return await notify.weekly_digest(db)
 
 
+async def send_scheduled_reports(ctx) -> int:
+    from spark.services import report_schedules
+
+    async with SessionLocal() as db:
+        return await report_schedules.send_due(db)
+
+
 async def load_connectors(ctx) -> None:
     """Pick up connector values saved in Settings → Connectors (cached for 30 s)."""
     from spark.services import connectors
@@ -242,6 +249,7 @@ class WorkerSettings:
         cron(worker_beat, second={0}, run_at_startup=True),
         cron(prune_webhook_log, hour={3}, minute=40),
         cron(send_weekly_digest, weekday=0, hour=7, minute=0),  # Mondays 07:00 UTC
+        cron(send_scheduled_reports, minute={3}),  # hourly; each schedule sends at its hour
     ]
     max_jobs = 10
     job_timeout = 600

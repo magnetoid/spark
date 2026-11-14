@@ -67,7 +67,8 @@ export function CommentsPanel({ postId }: { postId: number }) {
 export function ReviewLinksBar() {
   const brand = useBrand();
   const { canEdit } = usePerms();
-  const { data = [] } = useShareLinks(brand.id);
+  const { data: links = [] } = useShareLinks(brand.id);
+  const data = links.filter((l) => l.kind === "approval");  // report links live on their report
   const create = useCreateShareLink(brand.id);
   const revoke = useRevokeShareLink(brand.id);
   const [created, setCreated] = useState<ShareLinkCreated | null>(null);

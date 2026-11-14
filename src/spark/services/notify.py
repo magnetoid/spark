@@ -33,8 +33,14 @@ def _base() -> str:
 
 
 def layout(
-    title: str, intro: str, body: str, cta_url: str | None = None, cta_label: str = "Open Spark"
+    title: str,
+    intro: str,
+    body: str,
+    cta_url: str | None = None,
+    cta_label: str = "Open Spark",
+    footer: str | None = None,
 ) -> str:
+    """`footer` replaces the note about Preferences, for people outside the team."""
     cta = (
         f'<p style="margin:24px 0"><a href="{cta_url}" style="background:#171717;color:#fff;padding:10px 16px;'
         f'border-radius:8px;text-decoration:none;font-weight:600">{html.escape(cta_label)}</a></p>'
@@ -47,8 +53,12 @@ def layout(
         f'<h1 style="font-size:20px;margin:0 0 8px">{html.escape(title)}</h1>'
         f'<p style="color:#555;margin:0 0 16px">{intro}</p>{body}{cta}'
         '<hr style="border:none;border-top:1px solid #eee;margin:32px 0 12px">'
-        f'<p style="font-size:12px;color:#888">Sent by Spark. Change what you receive under '
-        f'<a href="{_base()}/settings?tab=me" style="color:#888">Preferences</a>.</p></div>'
+        + (
+            f'<p style="font-size:12px;color:#888">{footer}</p></div>'
+            if footer
+            else f'<p style="font-size:12px;color:#888">Sent by Spark. Change what you receive under '
+            f'<a href="{_base()}/settings?tab=me" style="color:#888">Preferences</a>.</p></div>'
+        )
     )
 
 

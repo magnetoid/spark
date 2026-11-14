@@ -5319,6 +5319,37 @@
         "title": "NeedsYou",
         "type": "object"
       },
+      "NextPeriod": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "send_at": {
+            "format": "date-time",
+            "title": "Send At",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "days",
+          "send_at"
+        ],
+        "title": "NextPeriod",
+        "type": "object"
+      },
       "PaletteItem": {
         "properties": {
           "action": {
@@ -6189,6 +6220,91 @@
         "title": "PostWrite",
         "type": "object"
       },
+      "PublicBrand": {
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "PublicBrand",
+        "type": "object"
+      },
+      "PublicReport": {
+        "properties": {
+          "brand": {
+            "$ref": "#/components/schemas/PublicBrand"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "start",
+          "end",
+          "data",
+          "summary",
+          "brand",
+          "expires_at"
+        ],
+        "title": "PublicReport",
+        "type": "object"
+      },
       "PublishRate": {
         "properties": {
           "failed": {
@@ -6445,6 +6561,232 @@
           "created_at"
         ],
         "title": "ReportOut",
+        "type": "object"
+      },
+      "ReportScheduleIn": {
+        "properties": {
+          "cadence": {
+            "default": "weekly",
+            "enum": [
+              "weekly",
+              "monthly"
+            ],
+            "title": "Cadence",
+            "type": "string"
+          },
+          "hour": {
+            "default": 8,
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Hour",
+            "type": "integer"
+          },
+          "is_active": {
+            "default": true,
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "recipients": {
+            "items": {
+              "format": "email",
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Recipients",
+            "type": "array"
+          },
+          "share_days": {
+            "default": 30,
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Share Days",
+            "type": "integer"
+          },
+          "with_summary": {
+            "default": true,
+            "title": "With Summary",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "recipients"
+        ],
+        "title": "ReportScheduleIn",
+        "type": "object"
+      },
+      "ReportScheduleOut": {
+        "properties": {
+          "cadence": {
+            "title": "Cadence",
+            "type": "string"
+          },
+          "hour": {
+            "title": "Hour",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sent At"
+          },
+          "next_period": {
+            "$ref": "#/components/schemas/NextPeriod"
+          },
+          "recipients": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recipients",
+            "type": "array"
+          },
+          "share_days": {
+            "title": "Share Days",
+            "type": "integer"
+          },
+          "with_summary": {
+            "title": "With Summary",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "cadence",
+          "hour",
+          "recipients",
+          "with_summary",
+          "share_days",
+          "is_active",
+          "last_sent_at",
+          "last_error",
+          "next_period"
+        ],
+        "title": "ReportScheduleOut",
+        "type": "object"
+      },
+      "ReportScheduleUpdate": {
+        "properties": {
+          "cadence": {
+            "anyOf": [
+              {
+                "enum": [
+                  "weekly",
+                  "monthly"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cadence"
+          },
+          "hour": {
+            "anyOf": [
+              {
+                "maximum": 23.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hour"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "recipients": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "email",
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipients"
+          },
+          "share_days": {
+            "anyOf": [
+              {
+                "maximum": 365.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Days"
+          },
+          "with_summary": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "With Summary"
+          }
+        },
+        "title": "ReportScheduleUpdate",
+        "type": "object"
+      },
+      "ReportShareIn": {
+        "properties": {
+          "days": {
+            "default": 30,
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Days",
+            "type": "integer"
+          }
+        },
+        "title": "ReportShareIn",
         "type": "object"
       },
       "ReportSummaryOut": {
@@ -7201,6 +7543,17 @@
             "title": "Prefix",
             "type": "string"
           },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
           "token": {
             "title": "Token",
             "type": "string"
@@ -7316,6 +7669,17 @@
           "prefix": {
             "title": "Prefix",
             "type": "string"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
           },
           "url_hint": {
             "title": "Url Hint",
@@ -15700,6 +16064,205 @@
         ]
       }
     },
+    "/brands/{brand_id}/report-schedules": {
+      "get": {
+        "operationId": "list_schedules_brands__brand_id__report_schedules_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReportScheduleOut"
+                  },
+                  "title": "Response List Schedules Brands  Brand Id  Report Schedules Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Schedules",
+        "tags": [
+          "reports"
+        ]
+      },
+      "post": {
+        "operationId": "create_schedule_brands__brand_id__report_schedules_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportScheduleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportScheduleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Schedule",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/brands/{brand_id}/report-schedules/{schedule_id}": {
+      "delete": {
+        "operationId": "delete_schedule_brands__brand_id__report_schedules__schedule_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "schedule_id",
+            "required": true,
+            "schema": {
+              "title": "Schedule Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Schedule",
+        "tags": [
+          "reports"
+        ]
+      },
+      "patch": {
+        "operationId": "update_schedule_brands__brand_id__report_schedules__schedule_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "schedule_id",
+            "required": true,
+            "schema": {
+              "title": "Schedule Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportScheduleUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportScheduleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Schedule",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
     "/brands/{brand_id}/reports": {
       "get": {
         "operationId": "list_reports_brands__brand_id__reports_get",
@@ -15933,6 +16496,68 @@
           }
         },
         "summary": "Report Csv",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/brands/{brand_id}/reports/{report_id}/share": {
+      "post": {
+        "description": "A link to this report that opens without an account, until it expires or is revoked\nunder the brand's share links.",
+        "operationId": "share_report_brands__brand_id__reports__report_id__share_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportShareIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareLinkCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Share Report",
         "tags": [
           "reports"
         ]
@@ -16899,6 +17524,48 @@
         "summary": "Two Factor Setup",
         "tags": [
           "session"
+        ]
+      }
+    },
+    "/public/reports/{token}": {
+      "get": {
+        "operationId": "public_report_public_reports__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Public Report",
+        "tags": [
+          "reports"
         ]
       }
     },

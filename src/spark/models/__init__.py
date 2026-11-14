@@ -16,7 +16,7 @@ from spark.models.marketing import (
 )
 from spark.models.outbound import OutboundEvent, WebhookDelivery, WebhookEndpoint
 from spark.models.planning import ContentPillar
-from spark.models.reports import FollowerSnapshot, Report
+from spark.models.reports import FollowerSnapshot, Report, ReportSchedule
 from spark.models.social import (
     Campaign,
     Metric,
@@ -39,6 +39,7 @@ __all__ = [
     "AppState",
     "ConnectorSetting",
     "FollowerSnapshot",
+    "ReportSchedule",
     "Report",
     "InboxItem",
     "InboxRule",

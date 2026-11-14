@@ -70,6 +70,8 @@ for r in (
     planning.router,
     agent.router,
     reports.router,
+    reports.schedules,
+    reports.public,
     webhooks.router,
     setup.router,
 ):

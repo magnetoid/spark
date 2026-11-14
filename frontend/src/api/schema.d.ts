@@ -1636,6 +1636,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/brands/{brand_id}/report-schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Schedules */
+        get: operations["list_schedules_brands__brand_id__report_schedules_get"];
+        put?: never;
+        /** Create Schedule */
+        post: operations["create_schedule_brands__brand_id__report_schedules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/report-schedules/{schedule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Schedule */
+        delete: operations["delete_schedule_brands__brand_id__report_schedules__schedule_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Schedule */
+        patch: operations["update_schedule_brands__brand_id__report_schedules__schedule_id__patch"];
+        trace?: never;
+    };
     "/brands/{brand_id}/reports": {
         parameters: {
             query?: never;
@@ -1683,6 +1719,27 @@ export interface paths {
         get: operations["report_csv_brands__brand_id__reports__report_id__csv_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/reports/{report_id}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Share Report
+         * @description A link to this report that opens without an account, until it expires or is revoked
+         *     under the brand's share links.
+         */
+        post: operations["share_report_brands__brand_id__reports__report_id__share_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1987,6 +2044,23 @@ export interface paths {
          * @description Step 1: a secret for the authenticator app. Nothing changes at sign-in until step 2.
          */
         post: operations["two_factor_setup_me_two_factor_setup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/reports/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public Report */
+        get: operations["public_report_public_reports__token__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4089,6 +4163,26 @@ export interface components {
              */
             replies: number;
         };
+        /** NextPeriod */
+        NextPeriod: {
+            /** Days */
+            days: number;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Send At
+             * Format: date-time
+             */
+            send_at: string;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+        };
         /** PaletteItem */
         PaletteItem: {
             /** Action */
@@ -4374,6 +4468,39 @@ export interface components {
              */
             targets: components["schemas"]["TargetIn"][];
         };
+        /** PublicBrand */
+        PublicBrand: {
+            /** Color */
+            color?: string | null;
+            /** Name */
+            name: string;
+        };
+        /** PublicReport */
+        PublicReport: {
+            brand: components["schemas"]["PublicBrand"];
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            };
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Expires At */
+            expires_at: string | null;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            } | null;
+            /** Title */
+            title: string;
+        };
         /** PublishRate */
         PublishRate: {
             /** Failed */
@@ -4465,6 +4592,82 @@ export interface components {
             } | null;
             /** Title */
             title: string;
+        };
+        /** ReportScheduleIn */
+        ReportScheduleIn: {
+            /**
+             * Cadence
+             * @default weekly
+             * @enum {string}
+             */
+            cadence: "weekly" | "monthly";
+            /**
+             * Hour
+             * @default 8
+             */
+            hour: number;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+            /** Recipients */
+            recipients: string[];
+            /**
+             * Share Days
+             * @default 30
+             */
+            share_days: number;
+            /**
+             * With Summary
+             * @default true
+             */
+            with_summary: boolean;
+        };
+        /** ReportScheduleOut */
+        ReportScheduleOut: {
+            /** Cadence */
+            cadence: string;
+            /** Hour */
+            hour: number;
+            /** Id */
+            id: number;
+            /** Is Active */
+            is_active: boolean;
+            /** Last Error */
+            last_error: string | null;
+            /** Last Sent At */
+            last_sent_at: string | null;
+            next_period: components["schemas"]["NextPeriod"];
+            /** Recipients */
+            recipients: string[];
+            /** Share Days */
+            share_days: number;
+            /** With Summary */
+            with_summary: boolean;
+        };
+        /** ReportScheduleUpdate */
+        ReportScheduleUpdate: {
+            /** Cadence */
+            cadence?: ("weekly" | "monthly") | null;
+            /** Hour */
+            hour?: number | null;
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Recipients */
+            recipients?: string[] | null;
+            /** Share Days */
+            share_days?: number | null;
+            /** With Summary */
+            with_summary?: boolean | null;
+        };
+        /** ReportShareIn */
+        ReportShareIn: {
+            /**
+             * Days
+             * @default 30
+             */
+            days: number;
         };
         /** ReportSummaryOut */
         ReportSummaryOut: {
@@ -4729,6 +4932,8 @@ export interface components {
             posts: number | null;
             /** Prefix */
             prefix: string;
+            /** Report Id */
+            report_id?: number | null;
             /** Token */
             token: string;
             /** Url */
@@ -4762,6 +4967,8 @@ export interface components {
             posts: number | null;
             /** Prefix */
             prefix: string;
+            /** Report Id */
+            report_id?: number | null;
             /** Url Hint */
             url_hint: string;
         };
@@ -9556,6 +9763,138 @@ export interface operations {
             };
         };
     };
+    list_schedules_brands__brand_id__report_schedules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportScheduleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_schedule_brands__brand_id__report_schedules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportScheduleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportScheduleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_schedule_brands__brand_id__report_schedules__schedule_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schedule_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_schedule_brands__brand_id__report_schedules__schedule_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schedule_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportScheduleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportScheduleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_reports_brands__brand_id__reports_get: {
         parameters: {
             query?: never;
@@ -9703,6 +10042,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    share_report_brands__brand_id__reports__report_id__share_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportShareIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareLinkCreated"];
                 };
             };
             /** @description Validation Error */
@@ -10412,6 +10787,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TwoFactorSetup"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    public_report_public_reports__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicReport"];
                 };
             };
             /** @description Validation Error */

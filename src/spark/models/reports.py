@@ -2,7 +2,17 @@
 
 from datetime import date, datetime
 
-from sqlalchemy import JSON, Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    true,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from spark.db import Base, TimestampMixin
@@ -37,4 +47,25 @@ class Report(TimestampMixin, Base):
     end: Mapped[date] = mapped_column(Date)
     data: Mapped[dict] = mapped_column(JSON, default=dict)
     summary: Mapped[dict | None] = mapped_column(JSON)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+
+
+class ReportSchedule(TimestampMixin, Base):
+    """A report made and emailed on a cadence: weekly (the last Monday to Sunday) or monthly (the
+    last calendar month), at an hour of the brand's day, with a link that opens without login."""
+
+    __tablename__ = "report_schedules"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    brand_id: Mapped[int] = mapped_column(ForeignKey("brands.id", ondelete="CASCADE"), index=True)
+    cadence: Mapped[str] = mapped_column(String(16), default="weekly")  # weekly | monthly
+    hour: Mapped[int] = mapped_column(Integer, default=8, server_default="8")
+    recipients: Mapped[list] = mapped_column(JSON, default=list)
+    with_summary: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    share_days: Mapped[int] = mapped_column(Integer, default=30, server_default="30")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    # The end of the last period sent, so a period goes out once even if the worker restarts
+    last_period_end: Mapped[date | None] = mapped_column(Date)
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(500))
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
