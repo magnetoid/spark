@@ -56,17 +56,33 @@ async def test_desired_config_wires_janus_to_spark(db, brand, managed, monkeypat
     text = await janus_setup.desired_config(db)
     cfg = yaml.safe_load(text)
     assert cfg["model"]["provider"] == "anthropic" and cfg["model"]["default"] == managed.ai_model
-    assert cfg["agent"]["reasoning_effort"] == "high" and "terminal" in cfg["agent"]["disabled_toolsets"]
+    assert (
+        cfg["agent"]["reasoning_effort"] == "high"
+        and "terminal" in cfg["agent"]["disabled_toolsets"]
+    )
     assert cfg["approvals"]["mode"] == "manual"
     assert cfg["platform_toolsets"]["api_server"] == ["spark"]
     mcp = cfg["mcp_servers"]["spark"]
-    assert mcp["url"] == "https://spark.example.com/mcp" and mcp["headers"]["Authorization"].startswith("Bearer spk_")
+    assert mcp["url"] == "https://spark.example.com/mcp" and mcp["headers"][
+        "Authorization"
+    ].startswith("Bearer spk_")
     assert "create_post" not in mcp["tools"]["include"] and "list_posts" in mcp["tools"]["include"]
-    assert cfg["personalities"]["spark"]["system_prompt"].startswith("You help a small studio") and cfg["display"]["personality"] == "spark"
+    assert (
+        cfg["personalities"]["spark"]["system_prompt"].startswith("You help a small studio")
+        and cfg["display"]["personality"] == "spark"
+    )
     # the person's own YAML wins where it overlaps
-    monkeypatch.setattr(managed, "janus_extra_yaml", "agent:\n  max_turns: 40\nskills:\n  external_dirs: [/data/janus/skills]\n")
+    monkeypatch.setattr(
+        managed,
+        "janus_extra_yaml",
+        "agent:\n  max_turns: 40\nskills:\n  external_dirs: [/data/janus/skills]\n",
+    )
     cfg = yaml.safe_load(await janus_setup.desired_config(db))
-    assert cfg["agent"]["max_turns"] == 40 and cfg["agent"]["reasoning_effort"] == "high" and cfg["skills"]["external_dirs"] == ["/data/janus/skills"]
+    assert (
+        cfg["agent"]["max_turns"] == 40
+        and cfg["agent"]["reasoning_effort"] == "high"
+        and cfg["skills"]["external_dirs"] == ["/data/janus/skills"]
+    )
 
 
 # ---- pushing it -----------------------------------------------------------------------------------------
@@ -75,10 +91,24 @@ async def test_sync_pushes_once_until_something_changes(db, brand, managed, monk
     from spark.services import janus_setup
 
     respx.get(f"{J}/health").mock(return_value=httpx.Response(200, json={"status": "ok"}))
-    put = respx.put(f"{J}/v1/config").mock(return_value=httpx.Response(200, json={"applied": ["raw"], "warnings": [], "restarting": True, "drain_timeout_seconds": 30}))
+    put = respx.put(f"{J}/v1/config").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "applied": ["raw"],
+                "warnings": [],
+                "restarting": True,
+                "drain_timeout_seconds": 30,
+            },
+        )
+    )
     assert (await janus_setup.sync(db))["result"] == "pushed"
     body = json.loads(put.calls.last.request.content)
-    assert body["restart"] is True and body["api_keys"] == {"ANTHROPIC_API_KEY": "sk-ant-test"} and "mcp_servers" in body["raw"]
+    assert (
+        body["restart"] is True
+        and body["api_keys"] == {"ANTHROPIC_API_KEY": "sk-ant-test"}
+        and "mcp_servers" in body["raw"]
+    )
     assert put.calls.last.request.headers["authorization"] == "Bearer compose-generated-key"
     assert (await janus_setup.sync(db))["result"] == "unchanged" and put.call_count == 1
     monkeypatch.setattr(managed, "janus_effort", "low")
@@ -92,18 +122,35 @@ async def test_sync_pushes_once_until_something_changes(db, brand, managed, monk
 @respx.mock
 async def test_settings_show_options_not_wiring_when_built_in(api, db, brand, managed):
     respx.get(f"{J}/health").mock(return_value=httpx.Response(200, json={"status": "ok"}))
-    respx.get(f"{J}/v1/config").mock(return_value=httpx.Response(200, json={"object": "janus.config", "version": "0.18.0"}))
-    put = respx.put(f"{J}/v1/config").mock(return_value=httpx.Response(200, json={"applied": ["raw"], "warnings": [], "restarting": True}))
+    respx.get(f"{J}/v1/config").mock(
+        return_value=httpx.Response(200, json={"object": "janus.config", "version": "0.18.0"})
+    )
+    put = respx.put(f"{J}/v1/config").mock(
+        return_value=httpx.Response(
+            200, json={"applied": ["raw"], "warnings": [], "restarting": True}
+        )
+    )
     r = await api.get(f"{API}/settings/connectors/janus")
     assert r.status_code == 200, r.text
     names = [f["name"] for f in r.json()["fields"]]
     assert "janus_base_url" not in names and "janus_api_key" not in names
-    assert {"janus_model", "janus_effort", "janus_approvals", "janus_soul", "janus_extra_yaml"} <= set(names)
+    assert {
+        "janus_model",
+        "janus_effort",
+        "janus_approvals",
+        "janus_soul",
+        "janus_extra_yaml",
+    } <= set(names)
     assert r.json()["extra"]["janus"]["managed"] is True and r.json()["configured"] is True
-    r = await api.put(f"{API}/settings/connectors/janus", json={"values": {"janus_effort": "high", "janus_soul": "Short and kind."}, "clear": []})
+    r = await api.put(
+        f"{API}/settings/connectors/janus",
+        json={"values": {"janus_effort": "high", "janus_soul": "Short and kind."}, "clear": []},
+    )
     assert r.status_code == 200, r.text
     assert put.called and "Short and kind." in json.loads(put.calls.last.request.content)["raw"]
-    r = await api.post(f"{API}/settings/janus/update")  # restart; the service pulls the latest Janus on the way back up
+    r = await api.post(
+        f"{API}/settings/janus/update"
+    )  # restart; the service pulls the latest Janus on the way back up
     assert r.status_code == 200 and json.loads(put.calls.last.request.content) == {"restart": True}
     st = (await api.get(f"{API}/brands/{brand.id}/agent/status")).json()
     assert st["configured"] and st["healthy"] and st["managed"] is True and st["can_update"] is True
@@ -114,4 +161,8 @@ async def test_settings_show_options_not_wiring_when_built_in(api, db, brand, ma
 async def test_unmanaged_install_keeps_the_wiring_fields(api, brand):
     r = await api.get(f"{API}/settings/connectors/janus")
     names = [f["name"] for f in r.json()["fields"]]
-    assert "janus_base_url" in names and "janus_api_key" in names and r.json()["extra"]["janus"]["managed"] is False
+    assert (
+        "janus_base_url" in names
+        and "janus_api_key" in names
+        and r.json()["extra"]["janus"]["managed"] is False
+    )

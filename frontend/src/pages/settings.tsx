@@ -8,6 +8,8 @@ import { MembersSection } from "@/features/collab/panels";
 import { AgentSection, JanusSection } from "@/features/agent/panels";
 import { GuardrailsSection, PillarsSection } from "@/features/planning/panels";
 import { RulesSection, SavedRepliesSection } from "@/features/inbox/panels";
+import { WebhooksSection } from "@/features/webhooks/panels";
+import { RequireTwoFactor, TwoFactorCard } from "@/features/two-factor/card";
 import { useAccounts } from "@/features/posts/api";
 import { PlatformMark, platformLabel } from "@/lib/platforms";
 import { PageHeader } from "@/components/page";
@@ -21,30 +23,32 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   useAddMember, useAddSlots, useChangePassword, useConnector, useConnectors, useCreateToken, useDeleteBrand, useDeleteSlot, useDeleteToken,
-  useSaveConnector, useSlots, useTeam, useTestConnector, useTokens, useUpdateBrand, useUpdateMe, useUpdateMember, useZernioWebhook,
+  useResetMemberTwoFactor, useSaveConnector, useSlots, useTeam, useTestConnector, useTokens, useUpdateBrand, useUpdateMe, useUpdateMember, useZernioWebhook,
 } from "@/features/api4";
 import { fmtDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-const TABS = [["brand", "Brand & team"], ["times", "Posting times"], ["inbox", "Inbox"], ["connectors", "Connectors"], ["me", "Preferences"]] as const;
+const TABS = [["brand", "Brand & team"], ["times", "Posting times"], ["inbox", "Inbox"], ["connectors", "Connectors"], ["webhooks", "Webhooks"], ["me", "Preferences"]] as const;
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const TIMEZONES: string[] = (() => { try { return (Intl as unknown as { supportedValuesOf: (k: string) => string[] }).supportedValuesOf("timeZone"); } catch { return ["UTC"]; } })();
 
 export function SettingsPage() {
   const search = useSearch({ strict: false }) as { tab?: string; connector?: string };
   const navigate = useNavigate();
-  const tab = TABS.find(([k]) => k === search.tab)?.[0] ?? "brand";
+  const { user } = useWorkspace();
+  const tabs = TABS.filter(([k]) => k !== "webhooks" || user.role === "owner");  // webhooks are the workspace owner's
+  const tab = tabs.find(([k]) => k === search.tab)?.[0] ?? "brand";
   const go = (patch: Record<string, string | undefined>) => void navigate({ to: ".", search: (p) => ({ ...p, ...patch }) });
   return (
     <>
       <PageHeader title="Settings" description="Brand, team, the services Spark connects to, and your own preferences." />
       <div role="tablist" className="mb-5 flex gap-1 overflow-x-auto border-b border-line">
-        {TABS.map(([k, label]) => (
+        {tabs.map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => go({ tab: k, connector: undefined })}
                   className={cn("-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm", tab === k ? "border-brand font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink")}>{label}</button>
         ))}
       </div>
-      {tab === "brand" ? <BrandTab /> : tab === "times" ? <TimesTab /> : tab === "inbox" ? <InboxTab /> : tab === "connectors" ? (search.connector ? <ConnectorDetail connectorKey={search.connector} onBack={() => go({ connector: undefined })} /> : <ConnectorsTab onOpen={(k) => go({ connector: k })} />) : <MeTab />}
+      {tab === "brand" ? <BrandTab /> : tab === "times" ? <TimesTab /> : tab === "inbox" ? <InboxTab /> : tab === "connectors" ? (search.connector ? <ConnectorDetail connectorKey={search.connector} onBack={() => go({ connector: undefined })} /> : <ConnectorsTab onOpen={(k) => go({ connector: k })} />) : tab === "webhooks" ? <WebhooksSection /> : <MeTab />}
     </>
   );
 }
@@ -127,6 +131,7 @@ function TeamSection() {
   const { data = [], isPending } = useTeam();
   const add = useAddMember();
   const update = useUpdateMember();
+  const resetTwoFactor = useResetMemberTwoFactor();
   const { user } = useWorkspace();
   const [adding, setAdding] = useState(false);
   return (
@@ -136,7 +141,10 @@ function TeamSection() {
         <ul className="divide-y divide-line">
           {data.map((m) => (
             <li key={m.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
-              <div className="min-w-0 flex-1"><div className="font-medium">{m.name}{m.id === user.id && <span className="ml-1 text-xs text-ink-2">(you)</span>}</div><div className="text-xs text-ink-2">{m.email}</div></div>
+              <div className="min-w-0 flex-1"><div className="font-medium">{m.name}{m.id === user.id && <span className="ml-1 text-xs text-ink-2">(you)</span>}</div><div className="text-xs text-ink-2">{m.email}</div>
+                <div className="mt-0.5 text-xs">{m.two_factor ? <span className="text-st-published">Two-factor on</span> : <span className="text-ink-2">No two-factor</span>}
+                  {m.two_factor && m.id !== user.id && <button type="button" className="ml-2 text-ink-2 underline underline-offset-2 hover:text-ink" disabled={resetTwoFactor.isPending}
+                    onClick={() => confirm(`Turn off two-factor for ${m.name}? Do this when they lost their phone and recovery codes. They sign in with the password alone until they set it up again.`) && resetTwoFactor.mutate(m.id)}>Turn off</button>}</div></div>
               {m.id === user.id ? <span className="text-xs text-ink-2 capitalize">{m.role}</span> : (
                 <>
                   <Select value={m.role} onValueChange={(role) => update.mutate({ id: m.id, body: { role: role as "owner" | "editor" | "viewer" } })}><SelectTrigger className="w-28"><SelectValue /></SelectTrigger><SelectContent>{["owner", "editor", "viewer"].map((r) => <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>)}</SelectContent></Select>
@@ -147,6 +155,7 @@ function TeamSection() {
           ))}
         </ul>
       )}
+      <RequireTwoFactor />
       <Dialog open={adding} onOpenChange={setAdding}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add a team member</DialogTitle></DialogHeader>
@@ -401,6 +410,7 @@ function MeTab() {
           <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-1.5"><Label htmlFor="p-cur">Current password</Label><Input id="p-cur" name="current" type="password" required autoComplete="current-password" /></div><div className="space-y-1.5"><Label htmlFor="p-new">New password</Label><Input id="p-new" name="new" type="password" required minLength={10} autoComplete="new-password" /><p className="text-xs text-ink-2">At least 10 characters.</p></div></div>
           <Button type="submit" variant="outline" disabled={password.isPending}>Change password</Button>
         </form>
+        <TwoFactorCard />
       </div>
       <aside className="space-y-2 self-start rounded-card border border-line bg-surface p-4 text-sm text-ink-2"><h3 className="font-semibold text-ink">About notifications</h3><p>Failure and approval emails go out within a minute from the worker. The digest covers every brand you can see and skips brands without channels.</p><p>MCP tokens live under Connectors → <Plug className="inline size-3" /> MCP access.</p></aside>
     </div>

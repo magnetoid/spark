@@ -21,13 +21,23 @@ def _free_port() -> int:
 def server_url():
     tmp = tempfile.mkdtemp(prefix="spark-e2e-")
     port = _free_port()
-    env = {**os.environ,
-           "SPARK_DATABASE_URL": f"sqlite+aiosqlite:///{tmp}/e2e.db", "SPARK_MEDIA_DIR": f"{tmp}/media",
-           "SPARK_SECRET_KEY": "e2e-secret", "SPARK_BASE_URL": f"http://127.0.0.1:{port}",
-           "SPARK_FORCE_DRY_RUN": "true", "SPARK_ENV": "development", "SPARK_ZERNIO_API_KEY": "",
-           "SPARK_ANTHROPIC_API_KEY": ""}
-    proc = subprocess.Popen([sys.executable, "-m", "uvicorn", "spark.main:app", "--port", str(port)],
-                            env=env, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    env = {
+        **os.environ,
+        "SPARK_DATABASE_URL": f"sqlite+aiosqlite:///{tmp}/e2e.db",
+        "SPARK_MEDIA_DIR": f"{tmp}/media",
+        "SPARK_SECRET_KEY": "e2e-secret",
+        "SPARK_BASE_URL": f"http://127.0.0.1:{port}",
+        "SPARK_FORCE_DRY_RUN": "true",
+        "SPARK_ENV": "development",
+        "SPARK_ZERNIO_API_KEY": "",
+        "SPARK_ANTHROPIC_API_KEY": "",
+    }
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "spark.main:app", "--port", str(port)],
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+    )
     url = f"http://127.0.0.1:{port}"
     for _ in range(450):  # cold import can take a while on CI
         try:
@@ -66,12 +76,18 @@ def seeded_brand(server_url):
         s = c.get("/api/v1/session").json()
         c.headers["X-CSRF-Token"] = s["csrf_token"]
         creds = {"email": "e2e@example.com", "password": "sparkdev-e2e-1"}
-        r = c.post("/api/v1/auth/setup", json={"name": "E2E Owner", **creds}) if s["needs_setup"] else c.post("/api/v1/auth/login", json=creds)
+        r = (
+            c.post("/api/v1/auth/setup", json={"name": "E2E Owner", **creds})
+            if s["needs_setup"]
+            else c.post("/api/v1/auth/login", json=creds)
+        )
         assert r.status_code == 200, r.text
         c.headers["X-CSRF-Token"] = r.json()["csrf_token"]
         brands = r.json()["brands"] or [c.post("/api/v1/brands", json={"name": "E2E Brand"}).json()]
         bid = brands[0]["id"]
         if not c.get(f"/api/v1/brands/{bid}/accounts").json():
-            r = c.post(f"/api/v1/brands/{bid}/accounts/connect/dry_run", json={"handle": "e2e-handle"})
+            r = c.post(
+                f"/api/v1/brands/{bid}/accounts/connect/dry_run", json={"handle": "e2e-handle"}
+            )
             assert r.status_code == 201, r.text
         return bid

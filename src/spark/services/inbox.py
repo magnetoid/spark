@@ -84,6 +84,10 @@ async def upsert(
         item.status = "resolved"
     db.add(item)
     await db.flush()
+    if direction == "incoming":
+        from spark.services import outbox
+
+        outbox.track_inbox(db, item, account)
     if direction == "incoming" and item.status == "open":
         await apply_rules(db, item)
     return item, True
@@ -379,8 +383,16 @@ async def classify_pending(db: AsyncSession, limit: int = 50) -> int:
     done = 0
     now = datetime.now(UTC)
     blank = [it for it in rows if not (it.text or "").strip()]
-    for it in blank:  # a star-only review or an attachment-only message: nothing for a model to read
-        it.sentiment = "positive" if (it.rating or 0) >= 4 else "negative" if it.rating and it.rating <= 2 else "neutral"
+    for (
+        it
+    ) in blank:  # a star-only review or an attachment-only message: nothing for a model to read
+        it.sentiment = (
+            "positive"
+            if (it.rating or 0) >= 4
+            else "negative"
+            if it.rating and it.rating <= 2
+            else "neutral"
+        )
         it.intent, it.classified_at = "other", now
         done += 1
     rows = [it for it in rows if it not in blank]
@@ -404,7 +416,9 @@ async def classify_pending(db: AsyncSession, limit: int = 50) -> int:
         try:
             labels = await ai.classify_inbox(brand, payload)
         except ai_svc.AIUnavailable as e:
-            log.warning("Inbox classification failed for %s: %s; items marked neutral", brand.slug, e)
+            log.warning(
+                "Inbox classification failed for %s: %s; items marked neutral", brand.slug, e
+            )
             labels = []
         labelled = {int(lab.get("id", 0)) for lab in labels}
         for it in items:  # one attempt: what the model did not label is neutral/other, not retried every five minutes

@@ -25,6 +25,8 @@ import {
 } from "@/features/posts/api";
 import { MediaPicker } from "@/features/composer/media-picker";
 import { PostPreview } from "@/features/composer/previews";
+import { ChannelExtras } from "@/features/composer/extras-panel";
+import { aiLabel } from "@/features/composer/extras";
 import { CommentsPanel } from "@/features/collab/panels";
 import { useComposerState, type Action, type ComposerDraft } from "@/features/composer/use-composer-state";
 
@@ -295,6 +297,7 @@ export function Composer({ initial, existing, onSaved, onCancel, compact }: {
                           {a.capabilities.threadable && isOver && !thread.length && <button type="button" className="font-medium text-brand underline-offset-2 hover:underline" onClick={() => s.split(a.id)}>Split into thread</button>}
                           {a.capabilities.first_comment && <button type="button" className="text-ink-2 underline-offset-2 hover:text-ink hover:underline" onClick={() => s.setFirstComment(a.id, draft.firstComments[a.id] ?? "")}>{draft.firstComments[a.id] !== undefined ? "First comment" : "+ First comment"}</button>}
                         </div>
+                        <ChannelExtras account={a} value={draft.options[a.id]} media={draft.media} onChange={(next) => s.setOptions(a.id, next)} />
                         {editing === a.id && (
                           <div className="space-y-1">
                             <Textarea rows={4} value={draft.overrides[a.id] ?? ""} onChange={(e) => s.setOverride(a.id, e.target.value)} placeholder="Leave empty to use the main text" className="text-sm" />
@@ -334,7 +337,12 @@ export function Composer({ initial, existing, onSaved, onCancel, compact }: {
           <section className="space-y-3">
             <h3 className="text-sm font-semibold">Preview</h3>
             {draft.selected.map((id) => { const a = s.byId.get(id); return a ? (
-              <PostPreview key={id} account={a} text={s.textFor(id)} thread={draft.threads[id] ?? []} firstComment={draft.firstComments[id] ?? ""} media={draft.media} link={draft.link} brandColor={brand.color} />
+              <PostPreview key={id} account={a} text={s.textFor(id)} thread={draft.threads[id] ?? []} firstComment={draft.firstComments[id] ?? ""} media={draft.media} link={draft.link} brandColor={brand.color}
+                poll={a.capabilities.options.includes("poll") ? draft.options[id]?.poll ?? null : null}
+                labels={[
+                  ...(a.capabilities.options.includes("paid_partnership") && draft.options[id]?.paid_partnership ? ["Paid partnership"] : []),
+                  ...(a.capabilities.options.includes("ai_generated") && aiLabel(draft.options[id], draft.media) ? ["AI-generated"] : []),
+                ]} />
             ) : null; })}
           </section>
         )}

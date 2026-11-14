@@ -23,19 +23,33 @@ from spark.services.publisher import as_utc
 log = logging.getLogger(__name__)
 
 
-async def collect_metrics(db: AsyncSession, max_age_days: int = 30, brand_id: int | None = None) -> int:
+async def collect_metrics(
+    db: AsyncSession, max_age_days: int = 30, brand_id: int | None = None
+) -> int:
     since = datetime.now(UTC) - timedelta(days=max_age_days)
-    scope = [PostTarget.account_id.in_(select(SocialAccount.id).where(SocialAccount.brand_id == brand_id))] if brand_id else []
+    scope = (
+        [
+            PostTarget.account_id.in_(
+                select(SocialAccount.id).where(SocialAccount.brand_id == brand_id)
+            )
+        ]
+        if brand_id
+        else []
+    )
     rows = (
-        await db.execute(
-            select(PostTarget).where(
-                *scope,
-                PostTarget.status == PostStatus.published,
-                PostTarget.published_at >= since,
-                PostTarget.remote_id.is_not(None),
+        (
+            await db.execute(
+                select(PostTarget).where(
+                    *scope,
+                    PostTarget.status == PostStatus.published,
+                    PostTarget.published_at >= since,
+                    PostTarget.remote_id.is_not(None),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     by_account: dict[int, list[PostTarget]] = defaultdict(list)
     for t in rows:
         by_account[t.account_id].append(t)
@@ -74,7 +88,9 @@ async def collect_metrics(db: AsyncSession, max_age_days: int = 30, brand_id: in
     return saved
 
 
-async def _latest_metrics(db: AsyncSession, brand_id: int, since: datetime, until: datetime | None = None):
+async def _latest_metrics(
+    db: AsyncSession, brand_id: int, since: datetime, until: datetime | None = None
+):
     """Latest snapshot per target for a brand's targets published since `since`."""
     sub = (
         select(Metric.target_id, func.max(Metric.captured_at).label("mx"))
@@ -115,18 +131,27 @@ async def compare(db: AsyncSession, brand_id: int, days: int = 30) -> dict:
 
     cur = totals(await _latest_metrics(db, brand_id, since))
     prev = totals(await _latest_metrics(db, brand_id, prev_since, since))
-    published_prev = await db.scalar(
-        select(func.count(PostTarget.id))
-        .join(SocialAccount, SocialAccount.id == PostTarget.account_id)
-        .where(SocialAccount.brand_id == brand_id, PostTarget.status == PostStatus.published,
-               PostTarget.published_at >= prev_since, PostTarget.published_at < since)
-    ) or 0
+    published_prev = (
+        await db.scalar(
+            select(func.count(PostTarget.id))
+            .join(SocialAccount, SocialAccount.id == PostTarget.account_id)
+            .where(
+                SocialAccount.brand_id == brand_id,
+                PostTarget.status == PostStatus.published,
+                PostTarget.published_at >= prev_since,
+                PostTarget.published_at < since,
+            )
+        )
+        or 0
+    )
     return {
         "impressions": _pct(cur["impressions"], prev["impressions"]),
         "engagements": _pct(cur["engagements"], prev["engagements"]),
         "published_prev": published_prev,
         "rate": (cur["engagements"] / cur["impressions"] * 100) if cur["impressions"] else 0,
-        "rate_prev": (prev["engagements"] / prev["impressions"] * 100) if prev["impressions"] else 0,
+        "rate_prev": (prev["engagements"] / prev["impressions"] * 100)
+        if prev["impressions"]
+        else 0,
     }
 
 
@@ -165,7 +190,9 @@ async def overview(db: AsyncSession, brand_id: int, days: int = 30) -> dict:
         )
     )
     failed = await db.scalar(
-        select(func.count(Post.id)).where(Post.brand_id == brand_id, Post.status == PostStatus.failed)
+        select(func.count(Post.id)).where(
+            Post.brand_id == brand_id, Post.status == PostStatus.failed
+        )
     )
     followers = await db.scalar(
         select(func.coalesce(func.sum(SocialAccount.followers), 0)).where(
@@ -182,7 +209,9 @@ async def overview(db: AsyncSession, brand_id: int, days: int = 30) -> dict:
     return {
         "totals": totals,
         "engagements": engagements,
-        "engagement_rate": (engagements / totals["impressions"] * 100) if totals["impressions"] else 0,
+        "engagement_rate": (engagements / totals["impressions"] * 100)
+        if totals["impressions"]
+        else 0,
         "published": published or 0,
         "scheduled": scheduled or 0,
         "failed": failed or 0,

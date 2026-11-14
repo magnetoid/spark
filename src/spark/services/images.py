@@ -28,6 +28,15 @@ RATIOS = {
     "1.91:1": (191, 100),
 }
 SIZES = {"square": "1024x1024", "portrait": "1024x1536", "landscape": "1536x1024"}
+# OpenAI retires image models on a schedule (developers.openai.com/api/docs/deprecations). The model
+# is a setting, so nothing here pins one; a saved ID that OpenAI already shut down uses the default.
+DEFAULT_MODEL = "gpt-image-2.6-flare"
+RETIRED_MODELS = frozenset({"gpt-image-1", "dall-e-2", "dall-e-3"})
+
+
+def model() -> str:
+    m = (get_settings().image_model or "").strip()
+    return DEFAULT_MODEL if not m or m in RETIRED_MODELS else m
 
 
 class BadImage(Exception):
@@ -128,7 +137,7 @@ async def generate(db: AsyncSession, brand: Brand, prompt: str, size: str = "squ
     if brand.voice_tone:
         full += f"\n\nBrand mood: {brand.voice_tone[:200]}"
     body = {
-        "model": s.image_model,
+        "model": model(),
         "prompt": full[:4000],
         "size": SIZES.get(size, SIZES["square"]),
         "n": 1,
@@ -141,9 +150,15 @@ async def generate(db: AsyncSession, brand: Brand, prompt: str, size: str = "squ
         )
     if r.status_code >= 400:
         try:
-            msg = r.json().get("error", {}).get("message") or r.text[:200]
+            err = r.json().get("error", {}) or {}
+            msg, code = err.get("message") or r.text[:200], err.get("code") or ""
         except Exception:
-            msg = r.text[:200]
+            msg, code = r.text[:200], ""
+        if r.status_code == 404 or code == "model_not_found":
+            raise ImagesUnavailable(
+                f"OpenAI does not offer the image model {body['model']} (retired or misspelled). "
+                "Pick a current one under Settings → Connectors → Image generation."
+            )
         raise ImagesUnavailable(f"The image service answered {r.status_code}: {msg}")
     item = (r.json().get("data") or [{}])[0]
     if item.get("b64_json"):
@@ -168,11 +183,16 @@ async def test_connection() -> tuple[bool, str]:
         return False, "Add an API key first"
     async with httpx.AsyncClient(timeout=15) as c:
         r = await c.get(
-            f"https://api.openai.com/v1/models/{s.image_model}",
+            f"https://api.openai.com/v1/models/{model()}",
             headers={"Authorization": f"Bearer {s.openai_api_key}"},
         )
     if r.status_code == 200:
-        return True, f"OpenAI answered: {s.image_model} is available"
+        return True, f"OpenAI answered: {model()} is available"
+    if r.status_code == 404:
+        return (
+            False,
+            f"OpenAI does not offer {model()} (retired or misspelled). Change the model below.",
+        )
     return False, f"OpenAI answered {r.status_code}: {r.text[:160]}"
 
 

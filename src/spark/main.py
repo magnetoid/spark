@@ -15,15 +15,21 @@ log = logging.getLogger("spark")
 CSRF_EXEMPT_PREFIXES = ("/e/u/", "/webhooks/")
 SPA_BASE = get_settings().spa_base.rstrip("/")  # "" once the app owns "/"
 # The React app bundles everything, so it needs no CDNs, no eval and no inline scripts.
-SPA_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-           "img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data:; "
-           "connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'")
+SPA_CSP = (
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data:; "
+    "connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+)
 
 # ---- rate limiting (token bucket per client+bucket; in-process, good enough per web container) ----
 RATE_LIMITS = {  # path prefix -> (methods, requests, per_seconds)
-    "/l/": ({"GET"}, 120, 60), "/b/": ({"GET", "POST"}, 60, 60), "/e/": ({"GET", "POST"}, 120, 60),
-    "/webhooks/": ({"POST"}, 600, 60), "/mcp": ({"GET", "POST", "DELETE"}, 240, 60),
-    "/api/v1/auth/": ({"POST"}, 10, 60), "/api/v1/public/": ({"GET", "POST"}, 120, 60),
+    "/l/": ({"GET"}, 120, 60),
+    "/b/": ({"GET", "POST"}, 60, 60),
+    "/e/": ({"GET", "POST"}, 120, 60),
+    "/webhooks/": ({"POST"}, 600, 60),
+    "/mcp": ({"GET", "POST", "DELETE"}, 240, 60),
+    "/api/v1/auth/": ({"POST"}, 10, 60),
+    "/api/v1/public/": ({"GET", "POST"}, 120, 60),
 }
 _buckets: dict[tuple[str, str], list] = {}
 _clock = __import__("time").monotonic  # tests freeze this so refills don't depend on machine speed
@@ -31,7 +37,7 @@ _clock = __import__("time").monotonic  # tests freeze this so refills don't depe
 
 def _client_ip(request: Request) -> str:
     fwd = request.headers.get("x-forwarded-for")
-    return (fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "?"))
+    return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "?")
 
 
 def rate_limited(request: Request) -> bool:
@@ -122,7 +128,9 @@ def _mount_spa(app: FastAPI) -> None:
         d = get_settings().spa_dir / "assets"
         if not d.is_dir():
             raise HTTPException(404)
-        return await HashedAssets(directory=d).get_response(path, {"type": "http", "method": "GET", "headers": []})
+        return await HashedAssets(directory=d).get_response(
+            path, {"type": "http", "method": "GET", "headers": []}
+        )
 
     async def index(path: str = ""):
         file = _spa_index()
@@ -136,23 +144,34 @@ def _mount_spa(app: FastAPI) -> None:
                 return FileResponse(candidate, headers={"Cache-Control": "public, max-age=3600"})
         return FileResponse(file, headers={"Cache-Control": "no-cache"})
 
-    app.add_api_route(assets_prefix + "/{path:path}", assets, methods=["GET"], include_in_schema=False)
+    app.add_api_route(
+        assets_prefix + "/{path:path}", assets, methods=["GET"], include_in_schema=False
+    )
     if SPA_BASE:
         app.add_api_route(SPA_BASE, index, methods=["GET"], include_in_schema=False)
-        app.add_api_route(SPA_BASE + "/{path:path}", index, methods=["GET"], include_in_schema=False)
+        app.add_api_route(
+            SPA_BASE + "/{path:path}", index, methods=["GET"], include_in_schema=False
+        )
     else:  # after the cutover the SPA owns every path no other route claimed
         app.add_api_route("/{path:path}", index, methods=["GET"], include_in_schema=False)
 
 
 def create_app() -> FastAPI:
     s = get_settings()
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    )
     # CSRF on every state-changing request as an app-level dependency (not middleware, so the
     # form body stays available to the route): token from the X-CSRF-Token header (htmx/fetch
     # add it from <meta name="csrf">) or the `csrf` form field. One-click email unsubscribe is
     # exempt: mail clients POST it without a session.
-    app = FastAPI(title="Spark", docs_url=None, redoc_url=None, lifespan=lifespan,
-                  dependencies=[Depends(csrf_guard)])
+    app = FastAPI(
+        title="Spark",
+        docs_url=None,
+        redoc_url=None,
+        lifespan=lifespan,
+        dependencies=[Depends(csrf_guard)],
+    )
     app.add_middleware(
         SessionMiddleware,
         secret_key=s.secret_key,
@@ -167,14 +186,21 @@ def create_app() -> FastAPI:
     from spark import mcp_server
     from spark.api.app import api as json_api
 
-    app.router.routes.append(mcp_server.route)  # MCP over Streamable HTTP; bearer-token auth, no CSRF
-    app.mount("/api/v1", json_api)  # JSON API for the React app; its own CSRF/auth rules live in spark.api.deps
+    app.router.routes.append(
+        mcp_server.route
+    )  # MCP over Streamable HTTP; bearer-token auth, no CSRF
+    app.mount(
+        "/api/v1", json_api
+    )  # JSON API for the React app; its own CSRF/auth rules live in spark.api.deps
 
     @app.middleware("http")
     async def guard_and_headers(request: Request, call_next):
         if rate_limited(request):
-            return JSONResponse({"detail": "Too many requests — slow down a little"}, 429,
-                                headers={"Retry-After": "30"})
+            return JSONResponse(
+                {"detail": "Too many requests — slow down a little"},
+                429,
+                headers={"Retry-After": "30"},
+            )
         if not request.url.path.startswith(("/static/", "/media/", "/healthz")):
             await _load_connectors()
         response = await call_next(request)
@@ -182,25 +208,40 @@ def create_app() -> FastAPI:
         h.setdefault("X-Content-Type-Options", "nosniff")
         h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         if request.url.path.startswith("/media/"):  # uploads never run as pages on this origin
-            h["Content-Security-Policy"] = "sandbox; default-src 'none'; img-src 'self'; media-src 'self'"
+            h["Content-Security-Policy"] = (
+                "sandbox; default-src 'none'; img-src 'self'; media-src 'self'"
+            )
             h["Content-Disposition"] = h.get("Content-Disposition", "inline")
         h.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
         if not request.url.path.startswith("/b/"):  # bio pages may be embedded
             h.setdefault("X-Frame-Options", "SAMEORIGIN")
-        if request.url.path.startswith("/b/"):  # the public bio page: embeddable, loads one Google font
-            h.setdefault("Content-Security-Policy",
-                         "default-src 'self'; img-src * data: blob:; media-src * blob:; script-src 'self' 'unsafe-inline'; "
-                         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; "
-                         "connect-src 'self'; frame-ancestors *")
+        if request.url.path.startswith(
+            "/b/"
+        ):  # the public bio page: embeddable, loads one Google font
+            h.setdefault(
+                "Content-Security-Policy",
+                "default-src 'self'; img-src * data: blob:; media-src * blob:; script-src 'self' 'unsafe-inline'; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; "
+                "connect-src 'self'; frame-ancestors *",
+            )
         h.setdefault("Content-Security-Policy", SPA_CSP)
         return response
 
     @app.exception_handler(Exception)
     async def _server_error(request: Request, exc: Exception):
         log.exception("Unhandled error on %s %s", request.method, request.url.path)
-        if "text/html" in request.headers.get("accept", "") and not request.headers.get("HX-Request"):
-            return templates.TemplateResponse(request, "error.html",
-                                              {"code": 500, "message": "Something broke on our side. It's logged; try again in a moment."}, 500)
+        if "text/html" in request.headers.get("accept", "") and not request.headers.get(
+            "HX-Request"
+        ):
+            return templates.TemplateResponse(
+                request,
+                "error.html",
+                {
+                    "code": 500,
+                    "message": "Something broke on our side. It's logged; try again in a moment.",
+                },
+                500,
+            )
         return JSONResponse({"detail": "Internal server error"}, 500)
 
     @app.exception_handler(LoginRequired)
@@ -214,8 +255,9 @@ def create_app() -> FastAPI:
         if exc.status_code == 303 and exc.headers and "Location" in exc.headers:
             return RedirectResponse(exc.headers["Location"], 303)
         if exc.status_code == 404 and "text/html" in request.headers.get("accept", ""):
-            return templates.TemplateResponse(request, "error.html",
-                                              {"code": 404, "message": "Page not found"}, 404)
+            return templates.TemplateResponse(
+                request, "error.html", {"code": 404, "message": "Page not found"}, 404
+            )
         return JSONResponse({"detail": exc.detail}, exc.status_code, headers=exc.headers)
 
     @app.get("/healthz")

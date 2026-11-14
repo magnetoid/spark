@@ -92,6 +92,9 @@ class ZernioAdapter(PlatformAdapter):
         self.supports_first_comment = z in self.FIRST_COMMENT_PLATFORMS
         self.post_types = self.FORMATS_BY_PLATFORM.get(z, ("post",))
         self.supports_thread = z in self.THREAD_PLATFORMS
+        self.option_keys = self.OPTIONS_BY_PLATFORM.get(z, ())
+        if z == "linkedin":
+            self.poll_option_chars, self.poll_question_chars = 30, 140
 
     @classmethod
     def for_platform(cls, platform: str, http: httpx.AsyncClient | None = None) -> ZernioAdapter:
@@ -168,7 +171,9 @@ class ZernioAdapter(PlatformAdapter):
             },
         )
 
-    async def list_accounts(self, profile_id: str | None = None) -> list[tuple[str, ConnectedAccount]]:
+    async def list_accounts(
+        self, profile_id: str | None = None
+    ) -> list[tuple[str, ConnectedAccount]]:
         """Accounts as (spark_platform, account) pairs — one Zernio profile, or every
         profile when `profile_id` is None (accounts connected in Zernio's own UI sit in
         the Default profile, not in the per-brand one Spark creates)."""
@@ -226,12 +231,16 @@ class ZernioAdapter(PlatformAdapter):
             )
         ).json()
         data = payload.media_path(m).read_bytes()
-        put = await self.http.put(pre["uploadUrl"], content=data, headers={"Content-Type": m.content_type})
+        put = await self.http.put(
+            pre["uploadUrl"], content=data, headers={"Content-Type": m.content_type}
+        )
         if put.status_code >= 400:
             raise PlatformError(f"Zernio media upload failed ({put.status_code})")
         item = {
             "url": pre["publicUrl"],
-            "type": "video" if m.is_video else ("gif" if m.content_type == "image/gif" else "image"),
+            "type": "video"
+            if m.is_video
+            else ("gif" if m.content_type == "image/gif" else "image"),
             "filename": m.filename,
             "mimeType": m.content_type,
             "size": m.size,
@@ -243,9 +252,55 @@ class ZernioAdapter(PlatformAdapter):
     # Zernio has `platformSpecificData.firstComment` and `threadItems` only for these
     FIRST_COMMENT_PLATFORMS = {"threads", "facebook", "instagram", "linkedin", "youtube"}
     THREAD_PLATFORMS = {"twitter", "threads", "bluesky"}
-    # Formats Zernio infers from the media: one video = Reel, several images = carousel, a PDF = LinkedIn
-    # document. Stories have no documented selector yet, so they are not offered.
-    FORMATS_BY_PLATFORM = {"instagram": ("post", "carousel", "reel"), "facebook": ("post", "carousel", "reel"), "linkedin": ("post", "document")}
+    # Zernio infers most formats from the media: several images = carousel, a PDF = LinkedIn
+    # document, one video on Instagram = Reel. A Story needs `contentType: "story"`, and so does
+    # a Facebook Reel (`"reel"`); without it Facebook publishes the video as a feed post.
+    FORMATS_BY_PLATFORM = {
+        "instagram": ("post", "carousel", "reel", "story"),
+        "facebook": ("post", "carousel", "reel", "story"),
+        "linkedin": ("post", "document"),
+    }
+    # Labels and extras Zernio documents per network. Facebook and Threads have none of them.
+    OPTIONS_BY_PLATFORM = {
+        "instagram": ("ai_generated", "paid_partnership", "collaborators"),
+        "twitter": ("ai_generated", "paid_partnership", "poll"),
+        "youtube": ("ai_generated",),
+        "tiktok": ("ai_generated", "paid_partnership"),
+        "linkedin": ("poll",),
+    }
+    LINKEDIN_POLL_DAYS = ((1, "ONE_DAY"), (3, "THREE_DAYS"), (7, "SEVEN_DAYS"))
+
+    @staticmethod
+    def _poll(payload: PublishPayload) -> tuple[list[str], int, str] | None:
+        """(options, days, question) of a poll that can go out, else None."""
+        poll = (payload.options or {}).get("poll") or {}
+        choices = [str(c).strip() for c in poll.get("options") or [] if str(c).strip()]
+        if len(choices) < 2 or payload.media or payload.thread:
+            return None
+        return choices[:4], int(poll.get("days") or 3), str(poll.get("question") or "").strip()
+
+    def _tiktok_settings(self, account, payload: PublishPayload) -> dict:
+        """TikTok refuses a post without these; Zernio reads them from the top of the request."""
+        opts = payload.options or {}
+        privacy = (account.extra or {}).get("privacy_level", "PUBLIC_TO_EVERYONE")
+        video = any(m.is_video for m in payload.media)
+        out: dict = {"privacy_level": privacy, "allow_comment": True}
+        if video:
+            out |= {"allow_duet": True, "allow_stitch": True}
+        elif payload.media:
+            out["media_type"] = "photo"
+        # The author saw the post in the composer and chose to publish it
+        out |= {"content_preview_confirmed": True, "express_consent_given": True}
+        if video and opts.get("ai_generated"):
+            out["video_made_with_ai"] = True  # TikTok refuses the label on photo posts
+        if opts.get("paid_partnership"):
+            if privacy == "SELF_ONLY":
+                raise PlatformError(
+                    "TikTok: a paid partnership cannot be posted as visible only to you",
+                    retryable=False,
+                )
+            out["commercialContentType"] = "brand_content"
+        return out
 
     def _platform_data(self, account, payload: PublishPayload) -> dict:
         z = to_zernio(account.platform)
@@ -253,13 +308,54 @@ class ZernioAdapter(PlatformAdapter):
         data: dict = {}
         if z == "youtube":
             title, _, _ = payload.text.partition("\n")
-            data = {"title": (title or "Video")[:100], "visibility": extra.get("privacy_status", "public")}
+            data = {
+                "title": (title or "Video")[:100],
+                "visibility": extra.get("privacy_status", "public"),
+            }
         elif z == "pinterest" and extra.get("board_id"):
             data = {"boardId": extra["board_id"]}
         elif z == "reddit" and extra.get("subreddit"):
             title, _, _ = payload.text.partition("\n")
             data = {"subreddit": extra["subreddit"], "title": title[:300]}
-        if payload.first_comment and z in self.FIRST_COMMENT_PLATFORMS:
+        opts = payload.options or {}
+        ai, paid = bool(opts.get("ai_generated")), bool(opts.get("paid_partnership"))
+        story = payload.post_type == "story" and "story" in self.post_types
+        poll = self._poll(payload)
+        if z == "instagram":
+            if story:
+                data["contentType"] = "story"
+            if ai:
+                data["isAiGenerated"] = True
+            # A Story with either of these comes back as a 400
+            people = [str(p) for p in opts.get("collaborators") or [] if str(p).strip()]
+            if paid and not story:
+                data["isPaidPartnership"] = True
+            if people and not story:
+                data["collaborators"] = people[:3]
+        elif z == "facebook" and payload.post_type in ("story", "reel"):
+            data["contentType"] = payload.post_type
+        elif z == "twitter":
+            if ai:
+                data["madeWithAi"] = True
+            if paid:
+                data["paidPartnership"] = True
+            if poll:
+                choices, days, _ = poll
+                data["poll"] = {"options": choices, "duration_minutes": min(days, 7) * 1440}
+        elif z == "youtube" and ai:
+            data["containsSyntheticMedia"] = True
+        elif z == "linkedin" and poll:
+            choices, days, question = poll
+            first_line, _, _ = payload.text.partition("\n")
+            data["poll"] = {
+                "question": (question or first_line.strip())[:140],
+                "options": choices,
+                "duration": next(
+                    (name for limit, name in self.LINKEDIN_POLL_DAYS if days <= limit),
+                    "FOURTEEN_DAYS",
+                ),
+            }
+        if payload.first_comment and z in self.FIRST_COMMENT_PLATFORMS and not story:
             data["firstComment"] = payload.first_comment[:500]
         return data
 
@@ -274,11 +370,17 @@ class ZernioAdapter(PlatformAdapter):
         body: dict = {
             "content": text,
             "publishNow": True,
-            "platforms": [{"platform": to_zernio(account.platform), "accountId": account.external_id}],
+            "platforms": [
+                {"platform": to_zernio(account.platform), "accountId": account.external_id}
+            ],
             "metadata": {"source": "spark"},
         }
-        media_items = [await self._upload(payload, m) for m in payload.media] if payload.media else []
+        media_items = (
+            [await self._upload(payload, m) for m in payload.media] if payload.media else []
+        )
         pdata = self._platform_data(account, payload)
+        if to_zernio(account.platform) == "tiktok":
+            body["tiktokSettings"] = self._tiktok_settings(account, payload)
         if payload.thread and to_zernio(account.platform) in self.THREAD_PLATFORMS:
             # threadItems[0] is the root and carries the media; top-level content is display-only.
             root: dict = {"content": text}
@@ -305,14 +407,19 @@ class ZernioAdapter(PlatformAdapter):
             cat = t.get("errorCategory", "")
             if cat == "auth_expired":
                 raise AuthExpired(f"Zernio: {msg}")
-            retryable = cat in ("platform_error", "platform_rate_limit", "") and t.get("errorSource") != "user"
+            retryable = (
+                cat in ("platform_error", "platform_rate_limit", "")
+                and t.get("errorSource") != "user"
+            )
             raise PlatformError(f"Zernio: {msg}", retryable=retryable)
         if not post_id:
             raise PlatformError(f"Zernio returned no post id: {str(data)[:200]}")
         return PublishResult(remote_id=post_id, url=t.get("platformPostUrl"))
 
     # ---- engagement inbox (comments) --------------------------------------------
-    async def commented_posts(self, account_ids: set[str], since: str | None = None, limit: int = 50) -> list[dict]:
+    async def commented_posts(
+        self, account_ids: set[str], since: str | None = None, limit: int = 50
+    ) -> list[dict]:
         """Posts with comments across the key's accounts, filtered to `account_ids`
         (Zernio account ids). Each row: id, platform, accountId, accountUsername,
         content, picture, permalink, createdTime, commentCount, likeCount."""
@@ -322,7 +429,11 @@ class ZernioAdapter(PlatformAdapter):
         out: list[dict] = []
         while True:
             data = (await self._req("GET", "/inbox/comments", params=params)).json()
-            out += [r for r in data.get("data", []) if r.get("accountId") in account_ids and not r.get("isAd")]
+            out += [
+                r
+                for r in data.get("data", [])
+                if r.get("accountId") in account_ids and not r.get("isAd")
+            ]
             page = data.get("pagination") or {}
             if not page.get("hasMore") or not page.get("nextCursor") or len(out) >= limit:
                 return out[:limit]
@@ -334,8 +445,14 @@ class ZernioAdapter(PlatformAdapter):
             params["cursor"] = cursor
         return (await self._req("GET", f"/inbox/comments/{post_id}", params=params)).json()
 
-    async def reply(self, post_id: str, account_id: str, message: str, comment_id: str | None = None,
-                    bluesky: dict | None = None) -> dict:
+    async def reply(
+        self,
+        post_id: str,
+        account_id: str,
+        message: str,
+        comment_id: str | None = None,
+        bluesky: dict | None = None,
+    ) -> dict:
         import uuid
 
         body: dict = {"accountId": account_id, "message": message}
@@ -343,60 +460,119 @@ class ZernioAdapter(PlatformAdapter):
             body["commentId"] = comment_id
         if bluesky:
             body.update({k: v for k, v in bluesky.items() if v})
-        return (await self._req("POST", f"/inbox/comments/{post_id}", json=body,
-                                headers={"Idempotency-Key": str(uuid.uuid4())})).json()
+        return (
+            await self._req(
+                "POST",
+                f"/inbox/comments/{post_id}",
+                json=body,
+                headers={"Idempotency-Key": str(uuid.uuid4())},
+            )
+        ).json()
 
-    async def like_comment(self, post_id: str, comment_id: str, account_id: str, liked: bool) -> None:
+    async def like_comment(
+        self, post_id: str, comment_id: str, account_id: str, liked: bool
+    ) -> None:
         method = "DELETE" if liked else "POST"
-        await self._req(method, f"/inbox/comments/{post_id}/{comment_id}/like", json={"accountId": account_id})
+        await self._req(
+            method, f"/inbox/comments/{post_id}/{comment_id}/like", json={"accountId": account_id}
+        )
 
-    async def _page(self, path: str, account_ids: set[str], params: dict, limit: int, key: str = "data") -> list[dict]:
+    async def _page(
+        self, path: str, account_ids: set[str], params: dict, limit: int, key: str = "data"
+    ) -> list[dict]:
         out: list[dict] = []
         params = dict(params)
         while True:
             data = (await self._req("GET", path, params=params)).json()
-            out += [r for r in data.get(key, []) if not account_ids or r.get("accountId") in account_ids]
+            out += [
+                r for r in data.get(key, []) if not account_ids or r.get("accountId") in account_ids
+            ]
             page = data.get("pagination") or {}
-            if not page.get("hasMore") or not (page.get("nextCursor") or page.get("cursor")) or len(out) >= limit:
+            if (
+                not page.get("hasMore")
+                or not (page.get("nextCursor") or page.get("cursor"))
+                or len(out) >= limit
+            ):
                 return out[:limit]
             params["cursor"] = page.get("nextCursor") or page.get("cursor")
 
     async def conversations(self, account_ids: set[str], limit: int = 50) -> list[dict]:
         """Direct-message conversations across the key's accounts (Facebook, Instagram, X, Bluesky, Reddit, Telegram, WhatsApp…)."""
-        return await self._page("/inbox/conversations", account_ids, {"limit": min(limit, 100), "sortOrder": "desc"}, limit)
+        return await self._page(
+            "/inbox/conversations",
+            account_ids,
+            {"limit": min(limit, 100), "sortOrder": "desc"},
+            limit,
+        )
 
-    async def conversation_messages(self, conversation_id: str, account_id: str, limit: int = 50) -> list[dict]:
-        data = (await self._req("GET", f"/inbox/conversations/{conversation_id}/messages",
-                                params={"accountId": account_id, "limit": min(limit, 100), "sortOrder": "asc"})).json()
+    async def conversation_messages(
+        self, conversation_id: str, account_id: str, limit: int = 50
+    ) -> list[dict]:
+        data = (
+            await self._req(
+                "GET",
+                f"/inbox/conversations/{conversation_id}/messages",
+                params={"accountId": account_id, "limit": min(limit, 100), "sortOrder": "asc"},
+            )
+        ).json()
         return data.get("messages") or []
 
     async def send_message(self, conversation_id: str, account_id: str, text: str) -> dict:
         import uuid
 
-        return (await self._req("POST", f"/inbox/conversations/{conversation_id}/messages", json={"accountId": account_id, "message": text},
-                                headers={"Idempotency-Key": str(uuid.uuid4())})).json()
+        return (
+            await self._req(
+                "POST",
+                f"/inbox/conversations/{conversation_id}/messages",
+                json={"accountId": account_id, "message": text},
+                headers={"Idempotency-Key": str(uuid.uuid4())},
+            )
+        ).json()
 
     async def mark_read(self, conversation_id: str, account_id: str) -> None:
-        await self._req("POST", f"/inbox/conversations/{conversation_id}/read", json={"accountId": account_id})
+        await self._req(
+            "POST", f"/inbox/conversations/{conversation_id}/read", json={"accountId": account_id}
+        )
 
     async def reviews(self, account_ids: set[str], limit: int = 50) -> list[dict]:
         """Google Business and Facebook reviews. Each row: id, platform, accountId, rating, text, reviewer, created, hasReply, reply."""
-        return await self._page("/inbox/reviews", account_ids, {"limit": min(limit, 100), "sortBy": "date", "sortOrder": "desc"}, limit)
+        return await self._page(
+            "/inbox/reviews",
+            account_ids,
+            {"limit": min(limit, 100), "sortBy": "date", "sortOrder": "desc"},
+            limit,
+        )
 
     async def reply_review(self, review_id: str, account_id: str, text: str) -> dict:
         from urllib.parse import quote
 
-        return (await self._req("POST", f"/inbox/reviews/{quote(review_id, safe='')}/reply", json={"accountId": account_id, "message": text})).json()
+        return (
+            await self._req(
+                "POST",
+                f"/inbox/reviews/{quote(review_id, safe='')}/reply",
+                json={"accountId": account_id, "message": text},
+            )
+        ).json()
 
     async def follower_stats(self, account_ids: set[str]) -> dict[str, int]:
         """Latest follower count per Zernio account id from /accounts/follower-stats (analytics add-on).
         Rows carry accountId plus followers/followersCount and a date; the newest row per account wins."""
-        data = (await self._req("GET", "/accounts/follower-stats", params={"accountIds": ",".join(sorted(account_ids))})).json()
+        data = (
+            await self._req(
+                "GET",
+                "/accounts/follower-stats",
+                params={"accountIds": ",".join(sorted(account_ids))},
+            )
+        ).json()
         rows: list = []
         body = data.get("data", data.get("stats")) if isinstance(data, dict) else data
         if isinstance(body, dict):  # {"<accountId>": {...}} or {"stats": [...]}
             inner = body.get("stats") or body.get("data")
-            rows = list(inner) if isinstance(inner, list) else [{"accountId": k, **v} for k, v in body.items() if isinstance(v, dict)]
+            rows = (
+                list(inner)
+                if isinstance(inner, list)
+                else [{"accountId": k, **v} for k, v in body.items() if isinstance(v, dict)]
+            )
         elif isinstance(body, list):
             rows = body
         out: dict[str, tuple[str, int]] = {}
@@ -419,7 +595,9 @@ class ZernioAdapter(PlatformAdapter):
     async def mentions(self, account_ids: set[str], limit: int = 50) -> list[dict]:
         """Mentions of the accounts in other people's posts and comments (last 7 days; needs Zernio's Inbox add-on)."""
         try:
-            return await self._page("/inbox/mentions", account_ids, {"limit": min(limit, 100)}, limit)
+            return await self._page(
+                "/inbox/mentions", account_ids, {"limit": min(limit, 100)}, limit
+            )
         except PlatformError as e:  # the add-on is optional: no mentions is not an error
             if any(code in str(e) for code in ("403", "404", "402")):
                 return []
@@ -431,20 +609,36 @@ class ZernioAdapter(PlatformAdapter):
         data = r.json()
         return data.get("webhooks") or data.get("data") or (data if isinstance(data, list) else [])
 
-    async def upsert_webhook(self, url: str, secret: str, events: list[str], name: str = "Spark") -> dict:
+    async def upsert_webhook(
+        self, url: str, secret: str, events: list[str], name: str = "Spark"
+    ) -> dict:
         """Create our endpoint, or bring an existing one for the same URL up to date."""
         for w in await self.list_webhooks():
             if w.get("url") == url:
-                r = await self._req("PUT", "/webhooks/settings", json={
-                    "webhookId": w.get("_id"), "name": name, "url": url, "secret": secret,
-                    "events": events, "isActive": True})
+                r = await self._req(
+                    "PUT",
+                    "/webhooks/settings",
+                    json={
+                        "webhookId": w.get("_id"),
+                        "name": name,
+                        "url": url,
+                        "secret": secret,
+                        "events": events,
+                        "isActive": True,
+                    },
+                )
                 return r.json().get("webhook") or w
-        r = await self._req("POST", "/webhooks/settings", json={
-            "name": name, "url": url, "secret": secret, "events": events, "isActive": True})
+        r = await self._req(
+            "POST",
+            "/webhooks/settings",
+            json={"name": name, "url": url, "secret": secret, "events": events, "isActive": True},
+        )
         return r.json().get("webhook") or r.json()
 
     async def test_webhook(self, webhook_id: str, event: str = "post.published") -> dict:
-        r = await self._req("POST", "/webhooks/test", json={"webhookId": webhook_id, "event": event})
+        r = await self._req(
+            "POST", "/webhooks/test", json={"webhookId": webhook_id, "event": event}
+        )
         return r.json()
 
     async def resolve_url(self, remote_id: str) -> str | None:
@@ -471,8 +665,11 @@ class ZernioAdapter(PlatformAdapter):
             data = resp.json()
             a = data.get("analytics") or {}
             if not a and data.get("platformAnalytics"):
-                a = next(iter(data["platformAnalytics"].values()), {}) if isinstance(
-                    data["platformAnalytics"], dict) else (data["platformAnalytics"][0] or {})
+                a = (
+                    next(iter(data["platformAnalytics"].values()), {})
+                    if isinstance(data["platformAnalytics"], dict)
+                    else (data["platformAnalytics"][0] or {})
+                )
             out.append(
                 MetricsSnapshot(
                     remote_id=rid,

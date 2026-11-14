@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from spark.config import get_settings
 from spark.models import Brand, Post, PostStatus, PostTarget, SocialAccount, User
-from spark.services import analytics
+from spark.services import analytics, outbox
 from spark.services.email import EmailSender, get_sender
 
 log = logging.getLogger(__name__)
@@ -130,6 +130,11 @@ async def notify_failed(db: AsyncSession, sender: EmailSender | None = None) -> 
                 sent += 1
             except Exception:
                 log.exception("Failed-post notification to %s failed", u.email)
+        by_post: dict[int, list[PostTarget]] = {}
+        for t in targets:
+            by_post.setdefault(t.post_id, []).append(t)
+        for group in by_post.values():
+            outbox.emit(db, brand_id, "post.failed", outbox.post_data(group[0].post, group))
         now = datetime.now(UTC)
         for t in targets:
             t.notified_at = now
@@ -199,6 +204,7 @@ async def notify_approvals(db: AsyncSession, sender: EmailSender | None = None) 
                 log.exception("Approval notification to %s failed", u.email)
         now = datetime.now(UTC)
         for p in group:
+            outbox.emit(db, brand_id, "post.approval_needed", outbox.post_data(p))
             p.approval_notified_at = now
     await db.commit()
     return sent

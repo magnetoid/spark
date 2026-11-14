@@ -23,8 +23,9 @@ HREF_RE = re.compile(r'href="(https?://[^"]+)"')
 
 
 class EmailSender:
-    async def send(self, to: str, subject: str, html: str, text: str | None = None,
-                   headers: dict | None = None) -> None:
+    async def send(
+        self, to: str, subject: str, html: str, text: str | None = None, headers: dict | None = None
+    ) -> None:
         raise NotImplementedError
 
 
@@ -67,8 +68,13 @@ class ResendSender(EmailSender):
         resp = await self.http.post(
             "https://api.resend.com/emails",
             headers={"Authorization": f"Bearer {self.s.resend_api_key}"},
-            json={"from": self.s.email_from, "to": [to], "subject": subject, "html": html,
-                  "headers": headers or {}},
+            json={
+                "from": self.s.email_from,
+                "to": [to],
+                "subject": subject,
+                "html": html,
+                "headers": headers or {},
+            },
         )
         resp.raise_for_status()
 
@@ -111,7 +117,9 @@ def render(campaign: EmailCampaign, brand: Brand, contact: Contact, send: EmailS
     )
 
 
-async def send_campaign(db: AsyncSession, campaign_id: int, sender: EmailSender | None = None) -> int:
+async def send_campaign(
+    db: AsyncSession, campaign_id: int, sender: EmailSender | None = None
+) -> int:
     sender = sender or get_sender()
     campaign = await db.get(EmailCampaign, campaign_id)
     if not campaign or campaign.status == "sent" or not campaign.list_id:

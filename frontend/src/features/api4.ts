@@ -20,6 +20,8 @@ export type ConnectorCard = S["ConnectorCard"];
 export type ConnectorOut = S["ConnectorOut"];
 export type TokenOut = S["TokenOut"];
 export type PaletteItem = S["PaletteItem"];
+export type WebhookOut = S["WebhookOut"];
+export type DeliveryOut = S["DeliveryOut"];
 
 const bp = (brand_id: number) => ({ params: { path: { brand_id } } });
 
@@ -131,6 +133,23 @@ export const useCreateToken = () => useAction(async (name: string) => unwrap(awa
 export const useDeleteToken = () => useAction(async (id: number) => unwrap(await api.DELETE("/me/tokens/{token_id}", { params: { path: { token_id: id } } })), [["tokens"], ["connectors"]], "Token revoked");
 export const useUpdateMe = () => useAction(async (body: S["MeUpdate"]) => unwrap(await api.PATCH("/me", { body })), [["session"]], "Preferences saved");
 export const useChangePassword = () => useAction(async (body: S["PasswordChange"]) => unwrap(await api.POST("/me/password", { body })), [], "Password changed");
+export const useSecurity = () => useQuery({ queryKey: ["security"], queryFn: async () => unwrap(await api.GET("/settings/security")) });
+export const useSaveSecurity = () => useAction(async (body: S["SecuritySettings"]) => unwrap(await api.PUT("/settings/security", { body })), [["security"], ["session"]],
+  (r) => r.require_two_factor ? "Everyone now needs two-factor to use Spark" : "Two-factor is optional again");
+export const useResetMemberTwoFactor = () => useAction(async (id: number) => unwrap(await api.DELETE("/team/{user_id}/two-factor", { params: { path: { user_id: id } } })), [["team"]], "Two-factor turned off for that member");
+
+// ---- outbound webhooks -----------------------------------------------------------------------
+export const useWebhooks = (enabled = true) => useQuery({ queryKey: ["webhooks"], enabled, queryFn: async () => unwrap(await api.GET("/webhooks")) });
+export const useCreateWebhook = () => useAction(async (body: S["WebhookIn"]) => unwrap(await api.POST("/webhooks", { body })), [["webhooks"]], "Webhook added");
+export const useUpdateWebhook = () => useAction(async ({ id, body }: { id: number; body: S["WebhookUpdate"] }) =>
+  unwrap(await api.PATCH("/webhooks/{webhook_id}", { params: { path: { webhook_id: id } }, body })), [["webhooks"]], (r) => r.enabled ? "Webhook saved" : "Webhook paused");
+export const useDeleteWebhook = () => useAction(async (id: number) => unwrap(await api.DELETE("/webhooks/{webhook_id}", { params: { path: { webhook_id: id } } })), [["webhooks"]], "Webhook deleted");
+export const useTestWebhook = () => useAction(async (id: number) => unwrap(await api.POST("/webhooks/{webhook_id}/test", { params: { path: { webhook_id: id } } })), [["webhooks"], ["webhook-deliveries"]],
+  (r) => r.status === "delivered" ? `Test delivered, your address answered ${r.response_status}` : undefined);
+export const useWebhookDeliveries = (id: number | null) => useQuery({
+  queryKey: ["webhook-deliveries", id], enabled: id !== null, refetchInterval: 15_000,
+  queryFn: async () => unwrap(await api.GET("/webhooks/{webhook_id}/deliveries", { params: { path: { webhook_id: id! } } })),
+});
 
 // ---- palette ------------------------------------------------------------------------------------
 export const usePalette = (b: number, enabled: boolean) => useQuery({ queryKey: ["palette", b], enabled, staleTime: 30_000, queryFn: async () => unwrap(await api.GET("/brands/{brand_id}/palette", bp(b))) });

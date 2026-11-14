@@ -104,7 +104,9 @@ class LinkClick(Base):
     __tablename__ = "link_clicks"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    link_id: Mapped[int] = mapped_column(ForeignKey("short_links.id", ondelete="CASCADE"), index=True)
+    link_id: Mapped[int] = mapped_column(
+        ForeignKey("short_links.id", ondelete="CASCADE"), index=True
+    )
     clicked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     referrer: Mapped[str | None] = mapped_column(String(1000))
     user_agent: Mapped[str | None] = mapped_column(String(500))

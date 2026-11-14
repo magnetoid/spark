@@ -48,8 +48,12 @@ async def db():
 
 @pytest.fixture
 async def brand(db):
-    owner = User(email="owner@example.com", name="Owner", role=Role.owner,
-                 password_hash=hash_password("password123"))
+    owner = User(
+        email="owner@example.com",
+        name="Owner",
+        role=Role.owner,
+        password_hash=hash_password("password123"),
+    )
     b = Brand(name="Acme", slug="acme", timezone="UTC")
     db.add_all([owner, b])
     await db.flush()
@@ -65,12 +69,15 @@ async def client(brand):
     from spark import main as m
 
     m._buckets.clear()  # each test gets a fresh rate-limit window
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver",
-                           follow_redirects=False) as c:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver", follow_redirects=False
+    ) as c:
         # CSRF: minted by /api/v1/session; sent as a header like the React app does
         token = (await c.get("/api/v1/session")).json()["csrf_token"]
         c.headers["X-CSRF-Token"] = token
-        r = await c.post("/api/v1/auth/login", json={"email": "owner@example.com", "password": "password123"})
+        r = await c.post(
+            "/api/v1/auth/login", json={"email": "owner@example.com", "password": "password123"}
+        )
         assert r.status_code == 200, r.text
         c.headers["X-CSRF-Token"] = r.json()["csrf_token"]  # the session was rotated on login
         yield c

@@ -6,6 +6,7 @@ import { api, ApiError, setCsrfToken, unwrap } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { afterSignInError, type SignInStep } from "@/features/two-factor/sign-in";
 
 export function LoginPage() {
   const { data: session } = useSession();
@@ -14,6 +15,9 @@ export function LoginPage() {
   const qc = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [step, setStep] = useState<SignInStep>("password");
+  const [code, setCode] = useState("");
+  const [recovery, setRecovery] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -27,15 +31,40 @@ export function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      const s = unwrap(await api.POST("/auth/login", { body: { email, password } }));
+      const s = unwrap(await api.POST("/auth/login", { body: { email, password, code: step === "code" ? code : undefined } }));
       setCsrfToken(s.csrf_token);
       qc.setQueryData(sessionQuery.queryKey, s);
       const target = next && next.startsWith("/") ? next : "/";
       window.location.assign(target.startsWith(import.meta.env.BASE_URL) ? target : import.meta.env.BASE_URL.replace(/\/$/, "") + target);
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 401 ? "That email and password don't match." : "Could not sign in. Try again.");
+      const next = err instanceof ApiError ? afterSignInError(err.status, err.code, err.message) : { error: "Could not sign in. Try again." };
+      if (next.step) setStep(next.step);
+      setCode("");
+      setError(next.error);
       setBusy(false);
     }
+  }
+
+  if (step === "code") {
+    return (
+      <AuthFrame title="Enter your sign-in code">
+        <form onSubmit={submit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="code">{recovery ? "Recovery code" : "6-digit code from your authenticator app"}</Label>
+            {recovery
+              ? <Input key="recovery" id="code" required autoFocus autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="xxxxx-xxxxx" className="font-mono" value={code} onChange={(e) => setCode(e.target.value)} />
+              : <Input key="totp" id="code" required autoFocus inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,7}" maxLength={7} className="tnum text-base tracking-widest" value={code} onChange={(e) => setCode(e.target.value)} />}
+            <p className="text-xs text-ink-2">{recovery ? "Each recovery code works once." : `Signing in as ${email}.`}</p>
+          </div>
+          {error && <p role="alert" className="text-sm text-st-failed">{error}</p>}
+          <Button type="submit" className="w-full" disabled={busy}>{busy ? "Checking…" : "Sign in"}</Button>
+          <div className="flex justify-between text-sm">
+            <button type="button" className="text-ink-2 underline-offset-4 hover:underline" onClick={() => { setStep("password"); setCode(""); setError(null); }}>Back</button>
+            <button type="button" className="text-ink-2 underline-offset-4 hover:underline" onClick={() => { setRecovery(!recovery); setCode(""); setError(null); }}>{recovery ? "Use the authenticator app" : "Lost your phone? Use a recovery code"}</button>
+          </div>
+        </form>
+      </AuthFrame>
+    );
   }
 
   return (

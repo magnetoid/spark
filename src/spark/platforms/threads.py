@@ -136,7 +136,9 @@ class ThreadsAdapter(PlatformAdapter):
         else:
             children = []
             for m in payload.media:
-                c = await self._create(account, is_carousel_item="true", **self._media_args(payload, m))
+                c = await self._create(
+                    account, is_carousel_item="true", **self._media_args(payload, m)
+                )
                 await self._wait(account, c)
                 children.append(c)
             cid = await self._create(

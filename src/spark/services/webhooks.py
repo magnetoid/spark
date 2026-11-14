@@ -22,15 +22,26 @@ from spark.config import get_settings
 from spark.models import Brand, Post, PostStatus, PostTarget, SocialAccount, WebhookEvent
 from spark.platforms.zernio import from_zernio
 from spark.services import inbox as inbox_svc
+from spark.services import outbox
 
 log = logging.getLogger(__name__)
 
 # What Spark subscribes to when it registers its endpoint
 ZERNIO_EVENTS = [
-    "post.published", "post.failed", "post.partial",
-    "post.platform.published", "post.platform.failed", "post.platform.deleted",
-    "account.connected", "account.disconnected", "account.permissions_changed",
-    "comment.received", "message.received", "review.new", "review.updated", "review.deleted",
+    "post.published",
+    "post.failed",
+    "post.partial",
+    "post.platform.published",
+    "post.platform.failed",
+    "post.platform.deleted",
+    "account.connected",
+    "account.disconnected",
+    "account.permissions_changed",
+    "comment.received",
+    "message.received",
+    "review.new",
+    "review.updated",
+    "review.deleted",
 ]
 
 
@@ -65,19 +76,28 @@ async def remember(db: AsyncSession, event_id: str, event: str) -> bool:
 async def _account(db: AsyncSession, account_id: str | None) -> SocialAccount | None:
     if not account_id:
         return None
-    return await db.scalar(select(SocialAccount).where(
-        SocialAccount.provider == "zernio", SocialAccount.external_id == account_id))
+    return await db.scalar(
+        select(SocialAccount).where(
+            SocialAccount.provider == "zernio", SocialAccount.external_id == account_id
+        )
+    )
 
 
-async def _target(db: AsyncSession, account: SocialAccount, zernio_post_id: str | None) -> PostTarget | None:
+async def _target(
+    db: AsyncSession, account: SocialAccount, zernio_post_id: str | None
+) -> PostTarget | None:
     if not zernio_post_id:
         return None
-    return await db.scalar(select(PostTarget).where(
-        PostTarget.account_id == account.id, PostTarget.remote_id == zernio_post_id)
-        .options(selectinload(PostTarget.post).selectinload(Post.targets)))
+    return await db.scalar(
+        select(PostTarget)
+        .where(PostTarget.account_id == account.id, PostTarget.remote_id == zernio_post_id)
+        .options(selectinload(PostTarget.post).selectinload(Post.targets))
+    )
 
 
-def _apply_platform_result(target: PostTarget, status: str, url: str | None, error: str | None) -> bool:
+def _apply_platform_result(
+    target: PostTarget, status: str, url: str | None, error: str | None
+) -> bool:
     """Mirror Zernio's per-platform outcome onto our target. Returns True when something changed."""
     if status == "published":
         changed = target.status != PostStatus.published or (url and target.remote_url != url)
@@ -125,9 +145,12 @@ async def handle_zernio_event(db: AsyncSession, payload: dict) -> str:
         if not t:
             return "unknown-post"
         pl = payload.get("platform") or {}
-        changed = _apply_platform_result(t, pl.get("status") or event.rsplit(".", 1)[-1],
-                                         pl.get("publishedUrl"), pl.get("error"))
+        changed = _apply_platform_result(
+            t, pl.get("status") or event.rsplit(".", 1)[-1], pl.get("publishedUrl"), pl.get("error")
+        )
+        before = t.post.status
         t.post.refresh_status()
+        outbox.track_published(db, t.post, before)
         await db.commit()
         return "updated" if changed else "unchanged"
 
@@ -141,9 +164,13 @@ async def handle_zernio_event(db: AsyncSession, payload: dict) -> str:
             t = await _target(db, acc, post.get("id"))
             if not t:
                 continue
-            if _apply_platform_result(t, pl.get("status") or "", pl.get("publishedUrl"), pl.get("error")):
+            if _apply_platform_result(
+                t, pl.get("status") or "", pl.get("publishedUrl"), pl.get("error")
+            ):
                 changed += 1
+            before = t.post.status
             t.post.refresh_status()
+            outbox.track_published(db, t.post, before)
         await db.commit()
         return "updated" if changed else "unchanged"
 
@@ -168,16 +195,29 @@ async def handle_zernio_event(db: AsyncSession, payload: dict) -> str:
 
     if event == "account.connected":
         a = payload.get("account") or {}
-        brand = await db.scalar(select(Brand).where(Brand.zernio_profile_id == a.get("profileId"))) if a.get("profileId") else None
+        brand = (
+            await db.scalar(select(Brand).where(Brand.zernio_profile_id == a.get("profileId")))
+            if a.get("profileId")
+            else None
+        )
         if not brand:
             return "no-brand"
         platform = from_zernio(a.get("platform") or "")
-        acc = await db.scalar(select(SocialAccount).where(
-            SocialAccount.brand_id == brand.id, SocialAccount.platform == platform,
-            SocialAccount.external_id == a.get("accountId")))
+        acc = await db.scalar(
+            select(SocialAccount).where(
+                SocialAccount.brand_id == brand.id,
+                SocialAccount.platform == platform,
+                SocialAccount.external_id == a.get("accountId"),
+            )
+        )
         if acc is None:
-            acc = SocialAccount(brand_id=brand.id, platform=platform, external_id=a.get("accountId"),
-                                provider="zernio", handle=a.get("username") or a.get("displayName") or platform)
+            acc = SocialAccount(
+                brand_id=brand.id,
+                platform=platform,
+                external_id=a.get("accountId"),
+                provider="zernio",
+                handle=a.get("username") or a.get("displayName") or platform,
+            )
             db.add(acc)
         acc.handle = a.get("username") or acc.handle
         acc.display_name = a.get("displayName") or acc.display_name

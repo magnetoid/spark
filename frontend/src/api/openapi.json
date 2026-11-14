@@ -1569,6 +1569,14 @@
             "title": "Max",
             "type": "integer"
           },
+          "options": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
           "post_types": {
             "default": [
               "post"
@@ -2023,6 +2031,118 @@
           "label"
         ],
         "title": "CredentialField",
+        "type": "object"
+      },
+      "DeliveryList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DeliveryList",
+        "type": "object"
+      },
+      "DeliveryOut": {
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "delivered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivered At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "event": {
+            "title": "Event",
+            "type": "string"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At"
+          },
+          "response_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Status"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "event",
+          "event_id",
+          "status",
+          "attempts",
+          "response_status",
+          "error",
+          "created_at",
+          "delivered_at",
+          "next_attempt_at"
+        ],
+        "title": "DeliveryOut",
         "type": "object"
       },
       "EmailCreate": {
@@ -3982,6 +4102,17 @@
       },
       "LoginIn": {
         "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -4857,6 +4988,32 @@
         "title": "PlatformsOut",
         "type": "object"
       },
+      "PollIn": {
+        "properties": {
+          "days": {
+            "default": 3,
+            "maximum": 14.0,
+            "minimum": 1.0,
+            "title": "Days",
+            "type": "integer"
+          },
+          "options": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "question": {
+            "default": "",
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "title": "PollIn",
+        "type": "object"
+      },
       "PostImportIn": {
         "properties": {
           "csv": {
@@ -5344,6 +5501,22 @@
           "counts"
         ],
         "title": "QueueOut",
+        "type": "object"
+      },
+      "RecoveryCodes": {
+        "properties": {
+          "recovery_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recovery Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "recovery_codes"
+        ],
+        "title": "RecoveryCodes",
         "type": "object"
       },
       "ReportIn": {
@@ -5934,6 +6107,19 @@
         "title": "SavedReplyUpdate",
         "type": "object"
       },
+      "SecuritySettings": {
+        "properties": {
+          "require_two_factor": {
+            "title": "Require Two Factor",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "require_two_factor"
+        ],
+        "title": "SecuritySettings",
+        "type": "object"
+      },
       "SessionOut": {
         "properties": {
           "brands": {
@@ -5956,6 +6142,11 @@
           },
           "needs_setup": {
             "title": "Needs Setup",
+            "type": "boolean"
+          },
+          "two_factor_setup_required": {
+            "default": false,
+            "title": "Two Factor Setup Required",
             "type": "boolean"
           },
           "user": {
@@ -6338,6 +6529,13 @@
             ],
             "title": "First Comment"
           },
+          "options": {
+            "$ref": "#/components/schemas/TargetOptions",
+            "default": {
+              "collaborators": [],
+              "paid_partnership": false
+            }
+          },
           "override": {
             "anyOf": [
               {
@@ -6367,6 +6565,47 @@
           "account_id"
         ],
         "title": "TargetIn",
+        "type": "object"
+      },
+      "TargetOptions": {
+        "description": "Extras a channel may carry. `ai_generated` unset means: label media the image model made.",
+        "properties": {
+          "ai_generated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Generated"
+          },
+          "collaborators": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Collaborators",
+            "type": "array"
+          },
+          "paid_partnership": {
+            "default": false,
+            "title": "Paid Partnership",
+            "type": "boolean"
+          },
+          "poll": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PollIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "TargetOptions",
         "type": "object"
       },
       "TargetOut": {
@@ -6415,6 +6654,13 @@
           "id": {
             "title": "Id",
             "type": "integer"
+          },
+          "options": {
+            "$ref": "#/components/schemas/TargetOptions",
+            "default": {
+              "collaborators": [],
+              "paid_partnership": false
+            }
           },
           "platform": {
             "title": "Platform",
@@ -6559,6 +6805,11 @@
           "role": {
             "title": "Role",
             "type": "string"
+          },
+          "two_factor": {
+            "default": false,
+            "title": "Two Factor",
+            "type": "boolean"
           }
         },
         "required": [
@@ -6993,6 +7244,72 @@
         "title": "TopPost",
         "type": "object"
       },
+      "TwoFactorCode": {
+        "properties": {
+          "code": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "TwoFactorCode",
+        "type": "object"
+      },
+      "TwoFactorDisable": {
+        "properties": {
+          "code": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password",
+          "code"
+        ],
+        "title": "TwoFactorDisable",
+        "type": "object"
+      },
+      "TwoFactorPassword": {
+        "properties": {
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "TwoFactorPassword",
+        "type": "object"
+      },
+      "TwoFactorSetup": {
+        "properties": {
+          "otpauth_uri": {
+            "title": "Otpauth Uri",
+            "type": "string"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "otpauth_uri"
+        ],
+        "title": "TwoFactorSetup",
+        "type": "object"
+      },
       "UserOut": {
         "properties": {
           "email": {
@@ -7013,9 +7330,19 @@
             "title": "Prefs",
             "type": "object"
           },
+          "recovery_codes_left": {
+            "default": 0,
+            "title": "Recovery Codes Left",
+            "type": "integer"
+          },
           "role": {
             "title": "Role",
             "type": "string"
+          },
+          "two_factor": {
+            "default": false,
+            "title": "Two Factor",
+            "type": "boolean"
           }
         },
         "required": [
@@ -7047,6 +7374,14 @@
             },
             "title": "Media Ids",
             "type": "array"
+          },
+          "options": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TargetOptions"
+            },
+            "default": {},
+            "title": "Options",
+            "type": "object"
           },
           "post_types": {
             "additionalProperties": {
@@ -7138,6 +7473,388 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WebhookCreated": {
+        "properties": {
+          "brand_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "disabled_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disabled Reason"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "events": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "failures": {
+            "title": "Failures",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_delivery_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Delivery At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Status"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "description",
+          "brand_id",
+          "events",
+          "enabled",
+          "failures",
+          "last_status",
+          "last_error",
+          "last_delivery_at",
+          "disabled_reason",
+          "created_at",
+          "secret"
+        ],
+        "title": "WebhookCreated",
+        "type": "object"
+      },
+      "WebhookEventInfo": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description"
+        ],
+        "title": "WebhookEventInfo",
+        "type": "object"
+      },
+      "WebhookIn": {
+        "properties": {
+          "brand_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Id"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Description",
+            "type": "string"
+          },
+          "events": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "url": {
+            "maxLength": 2000,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "WebhookIn",
+        "type": "object"
+      },
+      "WebhookList": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookEventInfo"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "events"
+        ],
+        "title": "WebhookList",
+        "type": "object"
+      },
+      "WebhookOut": {
+        "properties": {
+          "brand_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "disabled_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disabled Reason"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "events": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "failures": {
+            "title": "Failures",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_delivery_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Delivery At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Status"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "description",
+          "brand_id",
+          "events",
+          "enabled",
+          "failures",
+          "last_status",
+          "last_error",
+          "last_delivery_at",
+          "disabled_reason",
+          "created_at"
+        ],
+        "title": "WebhookOut",
+        "type": "object"
+      },
+      "WebhookUpdate": {
+        "properties": {
+          "brand_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "events": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Events"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "WebhookUpdate",
         "type": "object"
       },
       "WeekOut": {
@@ -14604,6 +15321,173 @@
         ]
       }
     },
+    "/me/two-factor/disable": {
+      "post": {
+        "operationId": "two_factor_disable_me_two_factor_disable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorDisable"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Two Factor Disable",
+        "tags": [
+          "session"
+        ]
+      }
+    },
+    "/me/two-factor/enable": {
+      "post": {
+        "description": "Step 2: a code from the app proves it was set up. Recovery codes are shown this once.",
+        "operationId": "two_factor_enable_me_two_factor_enable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorCode"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodes"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Two Factor Enable",
+        "tags": [
+          "session"
+        ]
+      }
+    },
+    "/me/two-factor/recovery-codes": {
+      "post": {
+        "description": "A new set of ten; the old ones stop working.",
+        "operationId": "two_factor_recovery_codes_me_two_factor_recovery_codes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorPassword"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodes"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Two Factor Recovery Codes",
+        "tags": [
+          "session"
+        ]
+      }
+    },
+    "/me/two-factor/setup": {
+      "post": {
+        "description": "Step 1: a secret for the authenticator app. Nothing changes at sign-in until step 2.",
+        "operationId": "two_factor_setup_me_two_factor_setup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorPassword"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorSetup"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Two Factor Setup",
+        "tags": [
+          "session"
+        ]
+      }
+    },
     "/public/review/{token}": {
       "get": {
         "operationId": "review_page_public_review__token__get",
@@ -14986,6 +15870,66 @@
         ]
       }
     },
+    "/settings/security": {
+      "get": {
+        "operationId": "security_settings_security_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecuritySettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Security",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "security_save_settings_security_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecuritySettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecuritySettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Security Save",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
     "/settings/zernio/webhook": {
       "post": {
         "operationId": "zernio_webhook_register_settings_zernio_webhook_post",
@@ -15137,6 +16081,271 @@
         "summary": "Team Update",
         "tags": [
           "settings"
+        ]
+      }
+    },
+    "/team/{user_id}/two-factor": {
+      "delete": {
+        "description": "For a member who lost their phone and their recovery codes. They sign in with the password\nalone until they set two-factor up again (at once, when the workspace requires it).",
+        "operationId": "team_two_factor_off_team__user_id__two_factor_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Team Two Factor Off",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/webhooks": {
+      "get": {
+        "operationId": "list_webhooks_webhooks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Webhooks",
+        "tags": [
+          "webhooks"
+        ]
+      },
+      "post": {
+        "operationId": "create_webhook_webhooks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Webhook",
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/webhooks/{webhook_id}": {
+      "delete": {
+        "operationId": "delete_webhook_webhooks__webhook_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "webhook_id",
+            "required": true,
+            "schema": {
+              "title": "Webhook Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Webhook",
+        "tags": [
+          "webhooks"
+        ]
+      },
+      "patch": {
+        "operationId": "update_webhook_webhooks__webhook_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "webhook_id",
+            "required": true,
+            "schema": {
+              "title": "Webhook Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Webhook",
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/webhooks/{webhook_id}/deliveries": {
+      "get": {
+        "operationId": "list_deliveries_webhooks__webhook_id__deliveries_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "webhook_id",
+            "required": true,
+            "schema": {
+              "title": "Webhook Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Deliveries",
+        "tags": [
+          "webhooks"
+        ]
+      }
+    },
+    "/webhooks/{webhook_id}/test": {
+      "post": {
+        "operationId": "test_webhook_webhooks__webhook_id__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "webhook_id",
+            "required": true,
+            "schema": {
+              "title": "Webhook Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Webhook",
+        "tags": [
+          "webhooks"
         ]
       }
     }

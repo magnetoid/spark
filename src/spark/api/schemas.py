@@ -12,7 +12,9 @@ from spark.services.posts import channel_capabilities
 from spark.services.publisher import as_utc
 
 Color = Annotated[str, Field(pattern=r"^#[0-9a-fA-F]{6}$")]
-PostStatusName = Literal["draft", "pending_approval", "scheduled", "publishing", "published", "failed"]
+PostStatusName = Literal[
+    "draft", "pending_approval", "scheduled", "publishing", "published", "failed"
+]
 
 
 class Out(BaseModel):
@@ -25,10 +27,20 @@ class UserOut(Out):
     email: str
     role: str
     prefs: dict[str, Any] = {}
+    two_factor: bool = False
+    recovery_codes_left: int = 0
 
     @classmethod
     def of(cls, u: User) -> UserOut:
-        return cls(id=u.id, name=u.name, email=u.email, role=u.role.value, prefs=u.prefs or {})
+        return cls(
+            id=u.id,
+            name=u.name,
+            email=u.email,
+            role=u.role.value,
+            prefs=u.prefs or {},
+            two_factor=bool(u.totp_enabled),
+            recovery_codes_left=len(u.recovery_codes or []) if u.totp_enabled else 0,
+        )
 
 
 class BrandOut(Out):
@@ -52,12 +64,31 @@ class BrandOut(Out):
 
     @classmethod
     def of(cls, b: Brand, role: str) -> BrandOut:
-        return cls(id=b.id, slug=b.slug, name=b.name, color=b.color, timezone=b.timezone, website=b.website,
-                   require_approval=b.require_approval, auto_shorten_links=b.auto_shorten_links, voice_tone=b.voice_tone,
-                   voice_audience=b.voice_audience, voice_rules=b.voice_rules, voice_examples=b.voice_examples,
-                   default_hashtags=b.default_hashtags, utm_campaign=(b.utm_defaults or {}).get("campaign"), role=role,
-                   agent_config={"never_say": [], "avoid_topics": [], "keywords": [], "auto_schedule": False, **(b.agent_config or {})},
-                   voice_profile=dict(b.voice_profile or {}))
+        return cls(
+            id=b.id,
+            slug=b.slug,
+            name=b.name,
+            color=b.color,
+            timezone=b.timezone,
+            website=b.website,
+            require_approval=b.require_approval,
+            auto_shorten_links=b.auto_shorten_links,
+            voice_tone=b.voice_tone,
+            voice_audience=b.voice_audience,
+            voice_rules=b.voice_rules,
+            voice_examples=b.voice_examples,
+            default_hashtags=b.default_hashtags,
+            utm_campaign=(b.utm_defaults or {}).get("campaign"),
+            role=role,
+            agent_config={
+                "never_say": [],
+                "avoid_topics": [],
+                "keywords": [],
+                "auto_schedule": False,
+                **(b.agent_config or {}),
+            },
+            voice_profile=dict(b.voice_profile or {}),
+        )
 
 
 class SessionOut(BaseModel):
@@ -66,11 +97,40 @@ class SessionOut(BaseModel):
     brands: list[BrandOut]
     needs_setup: bool
     features: dict[str, bool]
+    # the workspace requires two-factor and this person has not set it up: show only that screen
+    two_factor_setup_required: bool = False
 
 
 class LoginIn(BaseModel):
     email: str
     password: str
+    code: str | None = None  # authenticator or recovery code, once the server asks for it
+
+
+class TwoFactorPassword(BaseModel):
+    password: str
+
+
+class TwoFactorCode(BaseModel):
+    code: str = Field(min_length=1, max_length=40)
+
+
+class TwoFactorDisable(BaseModel):
+    password: str
+    code: str = Field(min_length=1, max_length=40)
+
+
+class TwoFactorSetup(BaseModel):
+    secret: str
+    otpauth_uri: str
+
+
+class RecoveryCodes(BaseModel):
+    recovery_codes: list[str]
+
+
+class SecuritySettings(BaseModel):
+    require_two_factor: bool
 
 
 class SetupIn(BaseModel):
@@ -121,6 +181,22 @@ class Capabilities(BaseModel):
     first_comment: bool
     threadable: bool
     post_types: list[str] = ["post"]
+    options: list[str] = []  # ai_generated | paid_partnership | collaborators | poll
+
+
+class PollIn(BaseModel):
+    question: str = ""
+    options: list[str] = []
+    days: int = Field(3, ge=1, le=14)
+
+
+class TargetOptions(BaseModel):
+    """Extras a channel may carry. `ai_generated` unset means: label media the image model made."""
+
+    ai_generated: bool | None = None
+    paid_partnership: bool = False
+    collaborators: list[str] = []
+    poll: PollIn | None = None
 
 
 class AccountOut(Out):
@@ -138,9 +214,18 @@ class AccountOut(Out):
     @classmethod
     def of(cls, a: SocialAccount) -> AccountOut:
         caps = channel_capabilities(a)
-        return cls(id=a.id, platform=a.platform, provider=a.provider, handle=a.handle, display_name=a.display_name,
-                   avatar_url=a.avatar_url, is_active=a.is_active, followers=a.followers, last_error=a.last_error,
-                   capabilities=Capabilities(**{k: caps[k] for k in Capabilities.model_fields}))
+        return cls(
+            id=a.id,
+            platform=a.platform,
+            provider=a.provider,
+            handle=a.handle,
+            display_name=a.display_name,
+            avatar_url=a.avatar_url,
+            is_active=a.is_active,
+            followers=a.followers,
+            last_error=a.last_error,
+            capabilities=Capabilities(**{k: caps[k] for k in Capabilities.model_fields}),
+        )
 
 
 def _dt(value: datetime | None) -> datetime | None:
@@ -161,13 +246,26 @@ class TargetOut(Out):
     first_comment: str | None
     thread: list[str]
     post_type: str = "post"
+    options: TargetOptions = TargetOptions()
 
     @classmethod
     def of(cls, t: PostTarget) -> TargetOut:
-        return cls(id=t.id, account_id=t.account_id, platform=t.account.platform, handle=t.account.handle,
-                   status=t.status.value, scheduled_at=_dt(t.scheduled_at), published_at=_dt(t.published_at),
-                   remote_url=t.remote_url, error=t.error, content_override=t.content_override,
-                   first_comment=t.first_comment, thread=list(t.thread or []), post_type=t.post_type or "post")
+        return cls(
+            id=t.id,
+            account_id=t.account_id,
+            platform=t.account.platform,
+            handle=t.account.handle,
+            status=t.status.value,
+            scheduled_at=_dt(t.scheduled_at),
+            published_at=_dt(t.published_at),
+            remote_url=t.remote_url,
+            error=t.error,
+            content_override=t.content_override,
+            first_comment=t.first_comment,
+            thread=list(t.thread or []),
+            post_type=t.post_type or "post",
+            options=TargetOptions.model_validate(t.options or {}),
+        )
 
 
 class PostOut(Out):
@@ -194,12 +292,27 @@ class PostOut(Out):
 
     @classmethod
     def of(cls, p: Post) -> PostOut:
-        return cls(id=p.id, content=p.content, link=p.link, media_ids=list(p.media_ids or []), status=p.status.value,
-                   pillar_id=p.pillar_id, evergreen=bool(p.evergreen), recycle_every_days=p.recycle_every_days, recycled_from_id=p.recycled_from_id,
-                   agent_run_id=p.agent_run_id, proposed_for=_dt(p.proposed_for),
-                   scheduled_at=_dt(p.scheduled_at), source=p.source, campaign_id=p.campaign_id, author_id=p.author_id,
-                   notes=p.notes, created_at=_dt(p.created_at), updated_at=_dt(p.updated_at),
-                   targets=[TargetOut.of(t) for t in p.targets])
+        return cls(
+            id=p.id,
+            content=p.content,
+            link=p.link,
+            media_ids=list(p.media_ids or []),
+            status=p.status.value,
+            pillar_id=p.pillar_id,
+            evergreen=bool(p.evergreen),
+            recycle_every_days=p.recycle_every_days,
+            recycled_from_id=p.recycled_from_id,
+            agent_run_id=p.agent_run_id,
+            proposed_for=_dt(p.proposed_for),
+            scheduled_at=_dt(p.scheduled_at),
+            source=p.source,
+            campaign_id=p.campaign_id,
+            author_id=p.author_id,
+            notes=p.notes,
+            created_at=_dt(p.created_at),
+            updated_at=_dt(p.updated_at),
+            targets=[TargetOut.of(t) for t in p.targets],
+        )
 
 
 class PostPage(BaseModel):
@@ -272,6 +385,7 @@ class TargetIn(BaseModel):
     first_comment: str | None = None
     thread: list[str] = []
     post_type: str = "post"
+    options: TargetOptions = TargetOptions()
 
 
 class PostWrite(BaseModel):
@@ -328,6 +442,7 @@ class ValidateIn(BaseModel):
     media_ids: list[int] = []
     link: str | None = None
     post_types: dict[str, str] = {}
+    options: dict[str, TargetOptions] = {}
 
 
 class ValidateOut(BaseModel):
@@ -388,9 +503,19 @@ class IdeaOut(Out):
 
     @classmethod
     def of(cls, i) -> IdeaOut:
-        return cls(id=i.id, title=i.title, body=i.body, tags=list(i.tags or []), status=i.status, source_url=i.source_url,
-                   position=i.position, post_id=i.post_id, media_ids=list(i.media_ids or []),
-                   created_at=_dt(i.created_at), updated_at=_dt(i.updated_at))
+        return cls(
+            id=i.id,
+            title=i.title,
+            body=i.body,
+            tags=list(i.tags or []),
+            status=i.status,
+            source_url=i.source_url,
+            position=i.position,
+            post_id=i.post_id,
+            media_ids=list(i.media_ids or []),
+            created_at=_dt(i.created_at),
+            updated_at=_dt(i.updated_at),
+        )
 
 
 class IdeaBoard(BaseModel):
@@ -414,9 +539,20 @@ class MediaOut(Out):
 
     @classmethod
     def of(cls, m) -> MediaOut:
-        return cls(id=m.id, name=m.filename, url=m.url, content_type=m.content_type, is_video=m.is_video, size=m.size,
-                   alt_text=m.alt_text, created_at=_dt(m.created_at), width=m.width, height=m.height, tags=list(m.tags or []),
-                   source=m.source or "upload")
+        return cls(
+            id=m.id,
+            name=m.filename,
+            url=m.url,
+            content_type=m.content_type,
+            is_video=m.is_video,
+            size=m.size,
+            alt_text=m.alt_text,
+            created_at=_dt(m.created_at),
+            width=m.width,
+            height=m.height,
+            tags=list(m.tags or []),
+            source=m.source or "upload",
+        )
 
 
 class MediaUploadOut(BaseModel):
@@ -756,7 +892,6 @@ class ImportResult(BaseModel):
     skipped: list[str] = []
 
 
-
 class SlotIn(BaseModel):
     weekdays: list[int] = Field(min_length=1)
     time: str = Field(pattern=r"^\d{2}:\d{2}$")
@@ -789,6 +924,7 @@ class TeamOut(Out):
     role: str
     is_active: bool
     created_at: datetime | None
+    two_factor: bool = False
 
 
 class ConnectorCard(BaseModel):
@@ -841,6 +977,67 @@ class TokenOut(Out):
 
 class TokenCreated(TokenOut):
     token: str
+
+
+class WebhookIn(BaseModel):
+    url: str = Field(max_length=2000)
+    brand_id: int | None = None  # None: events of every brand
+    events: list[str] = []  # empty: every event
+    description: str = Field(default="", max_length=200)
+
+
+class WebhookUpdate(BaseModel):
+    url: str | None = Field(default=None, max_length=2000)
+    brand_id: int | None = None
+    events: list[str] | None = None
+    description: str | None = Field(default=None, max_length=200)
+    enabled: bool | None = None
+
+
+class WebhookOut(Out):
+    id: int
+    url: str
+    description: str
+    brand_id: int | None
+    events: list[str]
+    enabled: bool
+    failures: int
+    last_status: int | None
+    last_error: str | None
+    last_delivery_at: datetime | None
+    disabled_reason: str | None
+    created_at: datetime | None
+
+
+class WebhookCreated(WebhookOut):
+    secret: str
+
+
+class WebhookEventInfo(BaseModel):
+    name: str
+    description: str
+
+
+class WebhookList(BaseModel):
+    items: list[WebhookOut]
+    events: list[WebhookEventInfo]
+
+
+class DeliveryOut(Out):
+    id: int
+    event: str
+    event_id: str
+    status: str
+    attempts: int
+    response_status: int | None
+    error: str | None
+    created_at: datetime | None
+    delivered_at: datetime | None
+    next_attempt_at: datetime | None
+
+
+class DeliveryList(BaseModel):
+    items: list[DeliveryOut]
 
 
 class InboxAccount(BaseModel):
@@ -990,7 +1187,6 @@ class PaletteItem(BaseModel):
     to: str | None = None
     action: str | None = None
     params: dict[str, Any] = {}
-
 
 
 # ---- phase 6: collaboration ----------------------------------------------------------------

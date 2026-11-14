@@ -90,12 +90,16 @@ class InboxLabels(BaseModel):
 
 class ReportSummary(BaseModel):
     headline: str = Field(description="One sentence on the period, specific to the numbers")
-    worked: list[str] = Field(description="Two to four findings on what worked, each naming the evidence")
+    worked: list[str] = Field(
+        description="Two to four findings on what worked, each naming the evidence"
+    )
     next: list[str] = Field(description="Two to four concrete things to do next period")
 
 
 class Suggestions(BaseModel):
-    replies: list[str] = Field(description="Three distinct replies in the brand's voice, shortest first")
+    replies: list[str] = Field(
+        description="Three distinct replies in the brand's voice, shortest first"
+    )
 
 
 class ContentAI:
@@ -171,24 +175,39 @@ class ContentAI:
 
     async def classify_inbox(self, brand: Brand, items: list[dict]) -> list[dict]:
         """Sentiment and intent for inbox items [{id, kind, text, rating}] with the fast model."""
-        lines = "\n".join(f"- id {i['id']} ({i.get('kind')}{', ' + str(i['rating']) + ' stars' if i.get('rating') else ''}): {str(i.get('text') or '')[:600]!r}" for i in items)
-        prompt = ("Label each inbox item for the brand's social team. sentiment: positive, neutral or negative. intent: question (wants an "
-                  "answer), complaint (unhappy, wants something fixed), praise, lead (wants to buy, book or work together), spam, or other. "
-                  "Return one label per id.\n\n" + lines)
+        lines = "\n".join(
+            f"- id {i['id']} ({i.get('kind')}{', ' + str(i['rating']) + ' stars' if i.get('rating') else ''}): {str(i.get('text') or '')[:600]!r}"
+            for i in items
+        )
+        prompt = (
+            "Label each inbox item for the brand's social team. sentiment: positive, neutral or negative. intent: question (wants an "
+            "answer), complaint (unhappy, wants something fixed), praise, lead (wants to buy, book or work together), spam, or other. "
+            "Return one label per id.\n\n" + lines
+        )
         out = await self._parse(brand, prompt, InboxLabels, max_tokens=4000)
         return [lab.model_dump() for lab in out.items]
 
     async def suggest_replies(self, brand: Brand, item: dict, thread: list[dict]) -> list[str]:
         """Three replies the team can send as they are, in the brand's voice."""
-        context = "\n".join(f"[{t['direction']}] {t['author']}: {t['text']}" for t in thread if t.get("text"))
-        prompt = (f"Someone wrote to {brand.name} ({item.get('kind')}" + (f", {item['rating']} stars" if item.get("rating") else "") + ").\n"
-                  + (f"On the post: {item['post']}\n" if item.get("post") else "")
-                  + (f"Thread so far:\n{context}\n" if context else "")
-                  + f"The message to answer, from {item.get('author')}: {item.get('text')!r}\n"
-                  + (f"It reads as {item.get('sentiment')} and a {item.get('intent')}.\n" if item.get("intent") else "")
-                  + "Write three different replies in the brand's voice: one short and warm, one that answers fully, one that moves the "
-                    "conversation forward (a question, an offer, a link if the brand has one). Keep each under 280 characters, no hashtags, "
-                    "no emoji unless the brand's examples use them. If the message is spam, make the first reply an empty string.")
+        context = "\n".join(
+            f"[{t['direction']}] {t['author']}: {t['text']}" for t in thread if t.get("text")
+        )
+        prompt = (
+            f"Someone wrote to {brand.name} ({item.get('kind')}"
+            + (f", {item['rating']} stars" if item.get("rating") else "")
+            + ").\n"
+            + (f"On the post: {item['post']}\n" if item.get("post") else "")
+            + (f"Thread so far:\n{context}\n" if context else "")
+            + f"The message to answer, from {item.get('author')}: {item.get('text')!r}\n"
+            + (
+                f"It reads as {item.get('sentiment')} and a {item.get('intent')}.\n"
+                if item.get("intent")
+                else ""
+            )
+            + "Write three different replies in the brand's voice: one short and warm, one that answers fully, one that moves the "
+            "conversation forward (a question, an offer, a link if the brand has one). Keep each under 280 characters, no hashtags, "
+            "no emoji unless the brand's examples use them. If the message is spam, make the first reply an empty string."
+        )
         out = await self._parse(brand, prompt, Suggestions, max_tokens=2000)
         return out.replies[:3]
 
@@ -196,10 +215,24 @@ class ContentAI:
         """What worked and what to do next, from a report's numbers."""
         import json
 
-        slim = {k: data.get(k) for k in ("period", "totals", "channels", "top_posts", "pillars", "compare", "followers", "inbox")}
-        prompt = ("Here is a social media report for the brand as JSON. Write a short, honest summary for the team and the client: a headline, "
-                  "what worked (point at the posts, channels or pillars that explain the numbers), and what to do next period. Plain language, "
-                  "no hype, no claims the data cannot back.\n\n" + json.dumps(slim, default=str)[:30000])
+        slim = {
+            k: data.get(k)
+            for k in (
+                "period",
+                "totals",
+                "channels",
+                "top_posts",
+                "pillars",
+                "compare",
+                "followers",
+                "inbox",
+            )
+        }
+        prompt = (
+            "Here is a social media report for the brand as JSON. Write a short, honest summary for the team and the client: a headline, "
+            "what worked (point at the posts, channels or pillars that explain the numbers), and what to do next period. Plain language, "
+            "no hype, no claims the data cannot back.\n\n" + json.dumps(slim, default=str)[:30000]
+        )
         out = await self._parse(brand, prompt, ReportSummary, max_tokens=3000)
         return out.model_dump()
 
@@ -209,12 +242,29 @@ class ContentAI:
 
         try:
             resp = await self.client.messages.create(
-                model=self.model, max_tokens=200, system=self._system(brand),
-                messages=[{"role": "user", "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": content_type, "data": base64.b64encode(data).decode()}},
-                    {"type": "text", "text": "Write alt text for this image for a social post: what is shown, who or what matters, "
-                                             "no 'image of', no hashtags, under 125 characters. Answer with the alt text only."},
-                ]}],
+                model=self.model,
+                max_tokens=200,
+                system=self._system(brand),
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": content_type,
+                                    "data": base64.b64encode(data).decode(),
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": "Write alt text for this image for a social post: what is shown, who or what matters, "
+                                "no 'image of', no hashtags, under 125 characters. Answer with the alt text only.",
+                            },
+                        ],
+                    }
+                ],
             )
         except anthropic.RateLimitError as e:
             raise AIUnavailable("AI rate limit reached, try again in a minute") from e

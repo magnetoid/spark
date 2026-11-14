@@ -19,22 +19,31 @@ class Settings(BaseSettings):
     spa_dir: Path = Path("frontend/dist")
     spa_base: str = "/"
 
+    # Everyone who signs in with a password must use two-factor (Settings → Brand & team)
+    require_two_factor: bool = False
+
     # AI
     anthropic_api_key: str | None = None
     # Janus agent (github.com/magnetoid/Janus-Agent), deployed next to Spark; see deploy/janus
     janus_base_url: str | None = None
     janus_api_key: str | None = None
-    janus_managed: bool = False  # true in the compose stack: the `janus` service is wired in, Spark pushes its config
+    janus_managed: bool = (
+        False  # true in the compose stack: the `janus` service is wired in, Spark pushes its config
+    )
     janus_model: str | None = None  # defaults to ai_model
     janus_effort: str = "medium"
     janus_approvals: str = "manual"
     janus_soul: str | None = None  # the personality; the built-in text when empty
     janus_extra_yaml: str | None = None  # merged over the configuration Spark writes
-    janus_update_webhook: str | None = None  # external installs only: a deploy hook that rebuilds Janus
+    janus_update_webhook: str | None = (
+        None  # external installs only: a deploy hook that rebuilds Janus
+    )
     janus_update_token: str | None = None
     # Image generation (Claude makes no images): OpenAI's image model behind the "Image generation" connector
     openai_api_key: str | None = None
-    image_model: str = "gpt-image-1"
+    image_model: str = (
+        "gpt-image-2.6-flare"  # see services/images.py: retired IDs fall back to this
+    )
     ai_model: str = "claude-opus-5-5"
     ai_effort: str = "medium"
     ai_model_fast: str = "claude-haiku-5-5"  # labels and other quick, cheap calls
@@ -48,6 +57,19 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_tls: bool = True
     resend_api_key: str | None = None
+
+    # Chat notifications (Settings → Connectors → Chat notifications); any one destination is enough
+    chat_slack_webhook: str | None = None  # Slack or Mattermost incoming webhook
+    chat_discord_webhook: str | None = None
+    chat_teams_webhook: str | None = (
+        None  # a Teams Workflows "when a webhook request is received" URL
+    )
+    chat_telegram_token: str | None = None
+    chat_telegram_chat_id: str | None = None
+    chat_on_approval: bool = True
+    chat_on_failed: bool = True
+    chat_on_review: bool = True
+    chat_on_published: bool = False
 
     # Publishing
     publish_max_attempts: int = 3

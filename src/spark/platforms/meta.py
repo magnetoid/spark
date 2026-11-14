@@ -164,7 +164,9 @@ class FacebookAdapter(_MetaBase):
                 )
             except PlatformError:
                 continue
-            ins = {i["name"]: i["values"][0]["value"] for i in d.get("insights", {}).get("data", [])}
+            ins = {
+                i["name"]: i["values"][0]["value"] for i in d.get("insights", {}).get("data", [])
+            }
             out.append(
                 MetricsSnapshot(
                     remote_id=rid,

@@ -136,7 +136,9 @@ class YouTubeAdapter(PlatformAdapter):
         if not location:
             raise PlatformError("YouTube did not return an upload URL")
         res = self.check(
-            await self.http.put(location, content=data, headers={**h, "Content-Type": m.content_type})
+            await self.http.put(
+                location, content=data, headers={**h, "Content-Type": m.content_type}
+            )
         ).json()
         return PublishResult(res["id"], f"https://www.youtube.com/watch?v={res['id']}")
 

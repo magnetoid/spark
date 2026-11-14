@@ -13,8 +13,13 @@ from spark.services import analytics, scheduler
 from spark.services import inbox as inbox_svc
 from spark.services.publisher import as_utc
 
-LIVE = (PostStatus.scheduled, PostStatus.pending_approval, PostStatus.publishing, PostStatus.published,
-        PostStatus.failed)
+LIVE = (
+    PostStatus.scheduled,
+    PostStatus.pending_approval,
+    PostStatus.publishing,
+    PostStatus.published,
+    PostStatus.failed,
+)
 
 
 async def today(db: AsyncSession, brand: Brand) -> dict:
@@ -24,40 +29,97 @@ async def today(db: AsyncSession, brand: Brand) -> dict:
     start = datetime.combine(local.date(), datetime.min.time(), zone).astimezone(UTC)
     end = start + timedelta(days=1)
 
-    rows = (await db.execute(
-        select(Post).where(Post.brand_id == brand.id, Post.is_autosave.is_(False), Post.status.in_(LIVE),
-                           Post.scheduled_at >= start, Post.scheduled_at < end)
-        .order_by(Post.scheduled_at))).scalars().all()
-    timeline = [{
-        "post_id": p.id, "at": as_utc(p.scheduled_at), "status": p.status.value, "content": p.content[:160],
-        "channels": [{"account_id": t.account_id, "platform": t.account.platform, "handle": t.account.handle,
-                      "status": t.status.value} for t in p.targets],
-    } for p in rows]
+    rows = (
+        (
+            await db.execute(
+                select(Post)
+                .where(
+                    Post.brand_id == brand.id,
+                    Post.is_autosave.is_(False),
+                    Post.status.in_(LIVE),
+                    Post.scheduled_at >= start,
+                    Post.scheduled_at < end,
+                )
+                .order_by(Post.scheduled_at)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    timeline = [
+        {
+            "post_id": p.id,
+            "at": as_utc(p.scheduled_at),
+            "status": p.status.value,
+            "content": p.content[:160],
+            "channels": [
+                {
+                    "account_id": t.account_id,
+                    "platform": t.account.platform,
+                    "handle": t.account.handle,
+                    "status": t.status.value,
+                }
+                for t in p.targets
+            ],
+        }
+        for p in rows
+    ]
     taken = {as_utc(p.scheduled_at).replace(second=0, microsecond=0) for p in rows}
     slots = await scheduler.brand_slots(db, brand)
-    free = sum(1 for when in scheduler.next_slot_times(slots, brand.timezone, now, count=50)
-               if when < end and when.replace(second=0, microsecond=0) not in taken)
+    free = sum(
+        1
+        for when in scheduler.next_slot_times(slots, brand.timezone, now, count=50)
+        if when < end and when.replace(second=0, microsecond=0) not in taken
+    )
 
     async def count(status: PostStatus) -> int:
-        return await db.scalar(select(func.count(Post.id)).where(
-            Post.brand_id == brand.id, Post.is_autosave.is_(False), Post.status == status)) or 0
+        return (
+            await db.scalar(
+                select(func.count(Post.id)).where(
+                    Post.brand_id == brand.id, Post.is_autosave.is_(False), Post.status == status
+                )
+            )
+            or 0
+        )
 
-    needs_you = {"approvals": await count(PostStatus.pending_approval), "failed": await count(PostStatus.failed),
-                 "drafts": await count(PostStatus.draft),
-                 "plan_ready": await db.scalar(select(func.count(Post.id)).where(
-                     Post.brand_id == brand.id, Post.is_autosave.is_(False), Post.status == PostStatus.draft,
-                     Post.agent_run_id.is_not(None))) or 0,
-                 "replies": await inbox_svc.open_count(db, brand.id)}
+    needs_you = {
+        "approvals": await count(PostStatus.pending_approval),
+        "failed": await count(PostStatus.failed),
+        "drafts": await count(PostStatus.draft),
+        "plan_ready": await db.scalar(
+            select(func.count(Post.id)).where(
+                Post.brand_id == brand.id,
+                Post.is_autosave.is_(False),
+                Post.status == PostStatus.draft,
+                Post.agent_run_id.is_not(None),
+            )
+        )
+        or 0,
+        "replies": await inbox_svc.open_count(db, brand.id),
+    }
 
     data = await analytics.overview(db, brand.id, days=7)
     prev = await analytics.compare(db, brand.id, days=7)
     series = data["series"]
     week = {
-        "published": data["published"], "impressions": data["totals"]["impressions"],
-        "engagements": data["engagements"], "engagement_rate_pct": round(data["engagement_rate"], 2),
+        "published": data["published"],
+        "impressions": data["totals"]["impressions"],
+        "engagements": data["engagements"],
+        "engagement_rate_pct": round(data["engagement_rate"], 2),
         "change_pct": {"impressions": prev["impressions"], "engagements": prev["engagements"]},
-        "series": [{"day": str(d), "impressions": i, "engagements": e}
-                   for d, i, e in zip(series["days"], series["impressions"], series["engagements"], strict=False)][-7:],
+        "series": [
+            {"day": str(d), "impressions": i, "engagements": e}
+            for d, i, e in zip(
+                series["days"], series["impressions"], series["engagements"], strict=False
+            )
+        ][-7:],
     }
-    return {"date": local.date().isoformat(), "timezone": brand.timezone, "now": now, "timeline": timeline,
-            "free_slots_today": free, "needs_you": needs_you, "week": week}
+    return {
+        "date": local.date().isoformat(),
+        "timezone": brand.timezone,
+        "now": now,
+        "timeline": timeline,
+        "free_slots_today": free,
+        "needs_you": needs_you,
+        "week": week,
+    }

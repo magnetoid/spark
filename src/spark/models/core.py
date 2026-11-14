@@ -1,7 +1,18 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    false,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from spark.db import Base, TimestampMixin
@@ -26,6 +37,14 @@ class User(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Per-user UI preferences: {"onboarding_dismissed": bool, "default_action": "queue", ...}
     prefs: Mapped[dict] = mapped_column(JSON, default=dict)
+    # Two-factor sign-in (services/twofactor.py). The secret is Fernet-encrypted and may be
+    # pending (set up, not yet confirmed); recovery codes are keyed hashes, used once each.
+    totp_secret: Mapped[str | None] = mapped_column(Text)
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    recovery_codes: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
+    totp_last_step: Mapped[int | None] = mapped_column(Integer)  # a code works once
+    totp_failed: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    totp_locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     def can_edit(self) -> bool:
         return self.role in (Role.owner, Role.editor)
@@ -57,8 +76,12 @@ class Brand(TimestampMixin, Base):
     require_approval: Mapped[bool] = mapped_column(Boolean, default=False)
     auto_shorten_links: Mapped[bool] = mapped_column(Boolean, default=False)
     utm_defaults: Mapped[dict] = mapped_column(JSON, default=dict)
-    agent_config: Mapped[dict] = mapped_column(JSON, default=dict)  # guardrails + agent settings, see services/guardrails
-    voice_profile: Mapped[dict] = mapped_column(JSON, default=dict)  # learned voice, see services/janus
+    agent_config: Mapped[dict] = mapped_column(
+        JSON, default=dict
+    )  # guardrails + agent settings, see services/guardrails
+    voice_profile: Mapped[dict] = mapped_column(
+        JSON, default=dict
+    )  # learned voice, see services/janus
 
     accounts: Mapped[list["SocialAccount"]] = relationship(  # noqa: F821
         back_populates="brand", cascade="all, delete-orphan"
@@ -94,7 +117,9 @@ class Media(TimestampMixin, Base):
     height: Mapped[int | None] = mapped_column(Integer)
     duration_s: Mapped[float | None] = mapped_column(Float)
     tags: Mapped[list] = mapped_column(JSON, default=list)
-    source: Mapped[str] = mapped_column(String(16), default="upload")  # upload | generated | crop | import
+    source: Mapped[str] = mapped_column(
+        String(16), default="upload"
+    )  # upload | generated | crop | import
 
     @property
     def is_video(self) -> bool:

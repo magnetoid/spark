@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from spark.config import get_settings
 from spark.models import Media, Post, PostStatus, PostTarget, SocialAccount
 from spark.platforms import AuthExpired, PlatformError, PublishPayload, adapter_for
+from spark.services import outbox
 
 log = logging.getLogger(__name__)
 
@@ -28,12 +29,32 @@ async def build_payload(db: AsyncSession, target: PostTarget) -> PublishPayload:
     post = target.post
     media: list[Media] = []
     if post.media_ids:
-        rows = (await db.execute(select(Media).where(Media.id.in_(post.media_ids), Media.brand_id == post.brand_id))).scalars().all()
+        rows = (
+            (
+                await db.execute(
+                    select(Media).where(
+                        Media.id.in_(post.media_ids), Media.brand_id == post.brand_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
         by_id = {m.id: m for m in rows}
         media = [by_id[i] for i in post.media_ids if i in by_id]
-    return PublishPayload(text=target.text, media=media, link=post.link,
-                          first_comment=(target.first_comment or "").strip() or None,
-                          thread=[t for t in (target.thread or []) if str(t).strip()])
+    options = dict(target.options or {})
+    if options.get("ai_generated") is None:
+        # Nobody said either way: media made by the image model is labelled where a label exists
+        options["ai_generated"] = any(m.source == "generated" for m in media)
+    return PublishPayload(
+        text=target.text,
+        media=media,
+        link=post.link,
+        first_comment=(target.first_comment or "").strip() or None,
+        thread=[t for t in (target.thread or []) if str(t).strip()],
+        post_type=target.post_type or "post",
+        options=options,
+    )
 
 
 async def validate_post(db: AsyncSession, post: Post) -> list[str]:
@@ -47,7 +68,9 @@ async def validate_post(db: AsyncSession, post: Post) -> list[str]:
         problems += adapter.validate(payload)
         for i, item in enumerate(payload.thread, start=2):
             if len(item) > adapter.limits.max_chars:
-                problems.append(f"{adapter.label}: thread item {i} is {len(item)}/{adapter.limits.max_chars} characters")
+                problems.append(
+                    f"{adapter.label}: thread item {i} is {len(item)}/{adapter.limits.max_chars} characters"
+                )
     return problems
 
 
@@ -76,7 +99,10 @@ async def publish_target(db: AsyncSession, target_id: int) -> PostTarget:
     stmt = (
         select(PostTarget)
         .where(PostTarget.id == target_id)
-        .options(selectinload(PostTarget.post).selectinload(Post.targets), selectinload(PostTarget.account))
+        .options(
+            selectinload(PostTarget.post).selectinload(Post.targets),
+            selectinload(PostTarget.account),
+        )
     )
     target = (await db.execute(stmt)).scalar_one()
     account = target.account
@@ -114,7 +140,9 @@ async def publish_target(db: AsyncSession, target_id: int) -> PostTarget:
     except Exception as e:  # network errors, bugs in adapters
         log.exception("Publishing target %s failed", target_id)
         _retry_or_fail(target, f"{type(e).__name__}: {e}", True)
+    before = target.post.status
     target.post.refresh_status()
+    outbox.track_published(db, target.post, before)
     await db.commit()
     from spark.services import events
 
@@ -152,12 +180,16 @@ async def recover_stuck(db: AsyncSession, older_than: timedelta = timedelta(minu
     """Targets stuck in `publishing` (worker crashed) go back to the queue."""
     cutoff = datetime.now(UTC) - older_than
     rows = (
-        await db.execute(
-            select(PostTarget).where(
-                PostTarget.status == PostStatus.publishing, PostTarget.updated_at < cutoff
+        (
+            await db.execute(
+                select(PostTarget).where(
+                    PostTarget.status == PostStatus.publishing, PostTarget.updated_at < cutoff
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for t in rows:
         t.status = PostStatus.scheduled
     await db.commit()

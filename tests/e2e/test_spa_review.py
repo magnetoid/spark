@@ -30,20 +30,35 @@ async def test_review_link_flow(page, server_url, seeded_brand):
     with httpx.Client(base_url=server_url, timeout=30) as c:
         s = c.get("/api/v1/session").json()
         c.headers["X-CSRF-Token"] = s["csrf_token"]
-        r = c.post("/api/v1/auth/login", json={"email": "e2e@example.com", "password": "sparkdev-e2e-1"})
+        r = c.post(
+            "/api/v1/auth/login", json={"email": "e2e@example.com", "password": "sparkdev-e2e-1"}
+        )
         c.headers["X-CSRF-Token"] = r.json()["csrf_token"]
         acc = c.get(f"/api/v1/brands/{bid}/accounts").json()[0]["id"]
         # a post that waits for approval: editors' posts land there when the brand requires approval
         c.patch(f"/api/v1/brands/{bid}", json={"require_approval": True})
-        r = c.post(f"/api/v1/brands/{bid}/members", json={"email": "ed-e2e@example.com", "role": "editor", "name": "Ed", "password": "sparkdev-e2e-2"})
+        r = c.post(
+            f"/api/v1/brands/{bid}/members",
+            json={
+                "email": "ed-e2e@example.com",
+                "role": "editor",
+                "name": "Ed",
+                "password": "sparkdev-e2e-2",
+            },
+        )
         assert r.status_code in (201, 409), r.text
     with httpx.Client(base_url=server_url, timeout=30) as ed:
         s = ed.get("/api/v1/session").json()
         ed.headers["X-CSRF-Token"] = s["csrf_token"]
-        r = ed.post("/api/v1/auth/login", json={"email": "ed-e2e@example.com", "password": "sparkdev-e2e-2"})
+        r = ed.post(
+            "/api/v1/auth/login", json={"email": "ed-e2e@example.com", "password": "sparkdev-e2e-2"}
+        )
         ed.headers["X-CSRF-Token"] = r.json()["csrf_token"]
         for t in ("Client, please approve this one", "Client, this one needs your eye"):
-            r = ed.post(f"/api/v1/brands/{bid}/posts", json={"content": t, "targets": [{"account_id": acc}], "action": "next"})
+            r = ed.post(
+                f"/api/v1/brands/{bid}/posts",
+                json={"content": t, "targets": [{"account_id": acc}], "action": "next"},
+            )
             assert r.status_code == 201 and r.json()["post"]["status"] == "pending_approval", r.text
 
     ctx = await page.context.browser.new_context(viewport={"width": 900, "height": 1000})

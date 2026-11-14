@@ -31,6 +31,7 @@ class DryRunAdapter(PlatformAdapter):
     supports_first_comment = True
     post_types = ("post", "carousel", "reel", "story", "document")
     supports_thread = True
+    option_keys = ("ai_generated", "paid_partnership", "collaborators", "poll")
 
     def __init__(self, http: httpx.AsyncClient | None = None, impersonate=None):
         super().__init__(http)
@@ -39,6 +40,10 @@ class DryRunAdapter(PlatformAdapter):
             self.label = f"{impersonate.label} (dry run)"
             self.supports_first_comment = impersonate.supports_first_comment
             self.supports_thread = impersonate.supports_thread
+            self.post_types = impersonate.post_types
+            self.option_keys = impersonate.option_keys
+            self.poll_option_chars = impersonate.poll_option_chars
+            self.poll_question_chars = impersonate.poll_question_chars
 
     async def connect_with_credentials(self, data: dict[str, str]) -> list[ConnectedAccount]:
         handle = (data.get("handle") or "test-account").strip()
@@ -57,9 +62,13 @@ class DryRunAdapter(PlatformAdapter):
             from spark.platforms.base import PlatformError
 
             raise PlatformError("Dry-run forced failure (#fail in text)", retryable=False)
-        remote_id = hashlib.sha1(f"{account.id}:{payload.text}:{token(4)}".encode()).hexdigest()[:16]
+        remote_id = hashlib.sha1(f"{account.id}:{payload.text}:{token(4)}".encode()).hexdigest()[
+            :16
+        ]
         log.info("[dry-run] %s/%s: %s", account.platform, account.handle, payload.text[:80])
-        return PublishResult(remote_id=remote_id, url=f"https://example.com/{account.handle}/{remote_id}")
+        return PublishResult(
+            remote_id=remote_id, url=f"https://example.com/{account.handle}/{remote_id}"
+        )
 
     async def fetch_metrics(self, account, remote_ids: list[str]) -> list[MetricsSnapshot]:
         out = []

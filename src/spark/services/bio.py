@@ -22,18 +22,35 @@ async def links_with_clicks(db: AsyncSession, page: BioPage) -> list[dict]:
     codes = [l.get("code") for l in (page.links or []) if l.get("code")]
     clicks: dict[str, int] = {}
     if codes:
-        clicks = {l.code: l.clicks for l in (await db.execute(select(ShortLink).where(ShortLink.code.in_(codes)))).scalars()}
+        clicks = {
+            l.code: l.clicks
+            for l in (
+                await db.execute(select(ShortLink).where(ShortLink.code.in_(codes)))
+            ).scalars()
+        }
     return [{**l, "clicks": clicks.get(l.get("code"), 0)} for l in (page.links or [])]
 
 
 async def set_links(db: AsyncSession, brand: Brand, page: BioPage, items: list[dict]) -> None:
     """Replace the page's links. A link whose URL is unchanged keeps its code (and click history)."""
     codes = [str(i.get("code") or "") for i in items]
-    existing = {l.code: l for l in (await db.execute(select(ShortLink).where(
-        ShortLink.brand_id == brand.id, ShortLink.code.in_([c for c in codes if c])))).scalars()}
+    existing = {
+        l.code: l
+        for l in (
+            await db.execute(
+                select(ShortLink).where(
+                    ShortLink.brand_id == brand.id, ShortLink.code.in_([c for c in codes if c])
+                )
+            )
+        ).scalars()
+    }
     links = []
     for item in items:
-        label, url, code = str(item.get("label") or "").strip(), str(item.get("url") or "").strip(), str(item.get("code") or "").strip()
+        label, url, code = (
+            str(item.get("label") or "").strip(),
+            str(item.get("url") or "").strip(),
+            str(item.get("code") or "").strip(),
+        )
         if not label or not url.startswith(("http://", "https://")):
             continue
         tagged = add_utm(url, source="bio", medium="bio")

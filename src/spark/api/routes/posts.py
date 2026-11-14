@@ -37,7 +37,9 @@ router = APIRouter(tags=["posts"])
 B = "/brands/{brand_id}"
 
 
-async def _post(db: AsyncSession, ctx: deps.BrandCtx, post_id: int, allow_autosave: bool = False) -> Post:
+async def _post(
+    db: AsyncSession, ctx: deps.BrandCtx, post_id: int, allow_autosave: bool = False
+) -> Post:
     post = await db.get(Post, post_id)
     if not post or post.brand_id != ctx.brand.id or (post.is_autosave and not allow_autosave):
         raise not_found("No such post")
@@ -53,13 +55,29 @@ async def _reload(db: AsyncSession, post: Post) -> Post:
 
 
 def _targets(items) -> list[svc.TargetInput]:
-    return [svc.TargetInput(account_id=t.account_id, override=t.override, first_comment=t.first_comment,
-                            thread=list(t.thread or []), post_type=t.post_type or "post") for t in items]
+    return [
+        svc.TargetInput(
+            account_id=t.account_id,
+            override=t.override,
+            first_comment=t.first_comment,
+            thread=list(t.thread or []),
+            post_type=t.post_type or "post",
+            options=t.options.model_dump(exclude_none=True),
+        )
+        for t in items
+    ]
 
 
 def _cannot_place(e: svc.PlaceError, post: Post) -> JSONResponse:
-    return JSONResponse({"code": "cannot_place", "detail": " · ".join(e.problems), "problems": e.problems,
-                         "post": PostOut.of(post).model_dump(mode="json")}, 422)
+    return JSONResponse(
+        {
+            "code": "cannot_place",
+            "detail": " · ".join(e.problems),
+            "problems": e.problems,
+            "post": PostOut.of(post).model_dump(mode="json"),
+        },
+        422,
+    )
 
 
 def _when(value: datetime | None) -> datetime | None:
@@ -70,37 +88,73 @@ def _when(value: datetime | None) -> datetime | None:
 
 # ---- autosave (declared before /{post_id} so "autosave" is not parsed as an id) --------------
 @router.get(B + "/posts/autosave", response_model=PostOut | None)
-async def get_autosave(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def get_autosave(
+    db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)
+):
     post = await svc.latest_autosave(db, ctx.brand, ctx.user)
     return PostOut.of(post) if post else None
 
 
 @router.put(B + "/posts/autosave", response_model=AutosaveOut)
-async def put_autosave(body: AutosaveIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
-    post = await svc.autosave(db, ctx.brand, ctx.user, body.post_id, content=body.content, link=body.link,
-                              media_ids=body.media_ids, source=body.source, targets=_targets(body.targets))
+async def put_autosave(
+    body: AutosaveIn,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
+    post = await svc.autosave(
+        db,
+        ctx.brand,
+        ctx.user,
+        body.post_id,
+        content=body.content,
+        link=body.link,
+        media_ids=body.media_ids,
+        source=body.source,
+        targets=_targets(body.targets),
+    )
     return AutosaveOut(post_id=post.id if post else None, saved_at=datetime.now(UTC))
 
 
 @router.post(B + "/posts/validate", response_model=ValidateOut)
-async def validate(body: ValidateIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
-    out = await svc.validate_targets(db, ctx.brand, body.targets, body.media_ids, body.link, body.post_types)
+async def validate(
+    body: ValidateIn,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
+    out = await svc.validate_targets(
+        db,
+        ctx.brand,
+        body.targets,
+        body.media_ids,
+        body.link,
+        body.post_types,
+        {aid: o.model_dump(exclude_none=True) for aid, o in body.options.items()},
+    )
     return ValidateOut(**out)
 
 
 # ---- read -----------------------------------------------------------------------------------
 @router.get(B + "/posts", response_model=PostPage)
 async def list_posts(
-    db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx),
-    status: PostStatusName | None = None, account: int | None = None, campaign: int | None = None, pillar_id: int | None = None,
-    q: str | None = None, since: datetime | None = None, until: datetime | None = None,
-    limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.brand_ctx),
+    status: PostStatusName | None = None,
+    account: int | None = None,
+    campaign: int | None = None,
+    pillar_id: int | None = None,
+    q: str | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ):
     stmt = select(Post).where(Post.brand_id == ctx.brand.id, Post.is_autosave.is_(False))
     if status:
         stmt = stmt.where(Post.status == PostStatus(status))
     if account:
-        stmt = stmt.where(Post.id.in_(select(PostTarget.post_id).where(PostTarget.account_id == account)))
+        stmt = stmt.where(
+            Post.id.in_(select(PostTarget.post_id).where(PostTarget.account_id == account))
+        )
     if campaign:
         stmt = stmt.where(Post.campaign_id == campaign)
     if pillar_id is not None:
@@ -117,30 +171,53 @@ async def list_posts(
     else:
         stmt = stmt.order_by(Post.scheduled_at.desc().nulls_first(), Post.id.desc())
     rows = (await db.execute(stmt.limit(limit).offset(offset))).scalars().all()
-    return PostPage(items=[PostOut.of(p) for p in rows], total=total or 0, limit=limit, offset=offset)
+    return PostPage(
+        items=[PostOut.of(p) for p in rows], total=total or 0, limit=limit, offset=offset
+    )
 
 
 @router.get(B + "/posts/{post_id}", response_model=PostOut)
-async def get_post(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)):
+async def get_post(
+    post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)
+):
     from spark.models import PostComment
 
     post = await _post(db, ctx, post_id, allow_autosave=True)
     out = PostOut.of(post)
-    out.comment_count = await db.scalar(select(func.count(PostComment.id)).where(PostComment.post_id == post.id)) or 0
+    out.comment_count = (
+        await db.scalar(select(func.count(PostComment.id)).where(PostComment.post_id == post.id))
+        or 0
+    )
     return out
 
 
 # ---- write ----------------------------------------------------------------------------------
-async def _save_and_place(db: AsyncSession, ctx: deps.BrandCtx, post: Post | None, body: PostWrite, status_code: int):
+async def _save_and_place(
+    db: AsyncSession, ctx: deps.BrandCtx, post: Post | None, body: PostWrite, status_code: int
+):
     if post is not None and post.status == PostStatus.publishing:
         raise ApiError(409, "publishing", "This post is publishing right now and can't be edited")
     creating = post is None
-    post = await svc.save_post(db, ctx.brand, ctx.user, post, content=body.content, link=body.link,
-                               media_ids=body.media_ids, campaign_id=body.campaign_id, notes=body.notes,
-                               source=body.source, targets=_targets(body.targets), pillar_id=body.pillar_id,
-                               evergreen=body.evergreen, recycle_every_days=body.recycle_every_days)
+    post = await svc.save_post(
+        db,
+        ctx.brand,
+        ctx.user,
+        post,
+        content=body.content,
+        link=body.link,
+        media_ids=body.media_ids,
+        campaign_id=body.campaign_id,
+        notes=body.notes,
+        source=body.source,
+        targets=_targets(body.targets),
+        pillar_id=body.pillar_id,
+        evergreen=body.evergreen,
+        recycle_every_days=body.recycle_every_days,
+    )
     try:
-        msg = await svc.place_post(db, ctx.brand, ctx.user, post, body.action, _when(body.scheduled_at))
+        msg = await svc.place_post(
+            db, ctx.brand, ctx.user, post, body.action, _when(body.scheduled_at)
+        )
     except svc.PlaceError as e:
         await db.commit()
         return _cannot_place(e, await _reload(db, post))
@@ -150,30 +227,56 @@ async def _save_and_place(db: AsyncSession, ctx: deps.BrandCtx, post: Post | Non
             idea.post_id = post.id
             if idea.status in ("idea", "drafting"):
                 idea.status = "ready"
-    activity.record(db, ctx.brand.id, ctx.user, "created" if creating else "updated", "post", post.id, post.content[:120],
-                    {"action": body.action, "status": post.status.value})
+    activity.record(
+        db,
+        ctx.brand.id,
+        ctx.user,
+        "created" if creating else "updated",
+        "post",
+        post.id,
+        post.content[:120],
+        {"action": body.action, "status": post.status.value},
+    )
     await db.commit()
     await svc.enqueue_due(post)
     await events.publish("posts", ctx.brand.id, ids=[post.id])
     await db.refresh(post, ["targets"])
-    return JSONResponse(PostResult(message=msg, post=PostOut.of(post)).model_dump(mode="json"), status_code)
+    return JSONResponse(
+        PostResult(message=msg, post=PostOut.of(post)).model_dump(mode="json"), status_code
+    )
 
 
-@router.post(B + "/posts", response_model=PostResult, status_code=201,
-             responses={422: {"description": "cannot_place: saved as a draft, with problems"}})
-async def create_post(body: PostWrite, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+@router.post(
+    B + "/posts",
+    response_model=PostResult,
+    status_code=201,
+    responses={422: {"description": "cannot_place: saved as a draft, with problems"}},
+)
+async def create_post(
+    body: PostWrite,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     return await _save_and_place(db, ctx, None, body, 201)
 
 
 @router.patch(B + "/posts/{post_id}", response_model=PostResult)
-async def update_post(post_id: int, body: PostWrite, db: AsyncSession = Depends(get_db),
-                      ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def update_post(
+    post_id: int,
+    body: PostWrite,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     post = await _post(db, ctx, post_id, allow_autosave=True)
     return await _save_and_place(db, ctx, post, body, 200)
 
 
 @router.delete(B + "/posts/{post_id}", status_code=204)
-async def delete_post(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def delete_post(
+    post_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     post = await _post(db, ctx, post_id, allow_autosave=True)
     activity.record(db, ctx.brand.id, ctx.user, "deleted", "post", post.id, post.content[:120])
     await db.delete(post)
@@ -182,16 +285,32 @@ async def delete_post(post_id: int, db: AsyncSession = Depends(get_db), ctx: dep
 
 
 @router.post(B + "/posts/{post_id}/place", response_model=PostResult)
-async def place(post_id: int, body: PlaceIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def place(
+    post_id: int,
+    body: PlaceIn,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     post = await _post(db, ctx, post_id)
     if post.status in (PostStatus.publishing, PostStatus.published):
         raise ApiError(409, "already_published", f"This post is {post.status.value}")
     try:
-        msg = await svc.place_post(db, ctx.brand, ctx.user, post, body.action, _when(body.scheduled_at))
+        msg = await svc.place_post(
+            db, ctx.brand, ctx.user, post, body.action, _when(body.scheduled_at)
+        )
     except svc.PlaceError as e:
         await db.commit()
         return _cannot_place(e, await _reload(db, post))
-    activity.record(db, ctx.brand.id, ctx.user, "placed", "post", post.id, post.content[:120], {"action": body.action, "status": post.status.value})
+    activity.record(
+        db,
+        ctx.brand.id,
+        ctx.user,
+        "placed",
+        "post",
+        post.id,
+        post.content[:120],
+        {"action": body.action, "status": post.status.value},
+    )
     await db.commit()
     await svc.enqueue_due(post)
     await events.publish("posts", ctx.brand.id, ids=[post.id])
@@ -199,7 +318,11 @@ async def place(post_id: int, body: PlaceIn, db: AsyncSession = Depends(get_db),
 
 
 @router.post(B + "/posts/{post_id}/unschedule", response_model=PostResult)
-async def unschedule(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def unschedule(
+    post_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     post = await _post(db, ctx, post_id)
     if post.status in (PostStatus.publishing, PostStatus.published):
         raise ApiError(409, "already_published", f"This post is {post.status.value}")
@@ -209,10 +332,16 @@ async def unschedule(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps
 
 
 @router.post(B + "/posts/{post_id}/approve", response_model=PostResult)
-async def approve(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.approver_brand)):
+async def approve(
+    post_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.approver_brand),
+):
     post = await _post(db, ctx, post_id)
     if post.status != PostStatus.pending_approval:
-        raise ApiError(409, "not_pending", f"This post is {post.status.value}, not waiting for approval")
+        raise ApiError(
+            409, "not_pending", f"This post is {post.status.value}, not waiting for approval"
+        )
     scheduler.approve(post)
     activity.record(db, ctx.brand.id, ctx.user, "approved", "post", post.id, post.content[:120])
     await db.commit()
@@ -222,25 +351,42 @@ async def approve(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.Br
 
 
 @router.post(B + "/posts/{post_id}/retry", response_model=RetryResult)
-async def retry(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def retry(
+    post_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     post = await _post(db, ctx, post_id)
     n = svc.retry_failed(post)
     if n:
         activity.record(db, ctx.brand.id, ctx.user, "retried", "post", post.id, post.content[:120])
     await db.commit()
     await svc.enqueue_due(post)
-    return RetryResult(message=f"Retrying {n} channel(s)" if n else "Nothing failed on this post", post=PostOut.of(post), retried=n)
+    return RetryResult(
+        message=f"Retrying {n} channel(s)" if n else "Nothing failed on this post",
+        post=PostOut.of(post),
+        retried=n,
+    )
 
 
 @router.post(B + "/posts/{post_id}/duplicate", response_model=PostResult, status_code=201)
-async def duplicate(post_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def duplicate(
+    post_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     src = await _post(db, ctx, post_id)
     post = await svc.duplicate_post(db, ctx.brand, ctx.user, src)
     return PostResult(message="Duplicated as a draft", post=PostOut.of(post))
 
 
 @router.post(B + "/posts/{post_id}/move", response_model=PostResult)
-async def move(post_id: int, body: MoveIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def move(
+    post_id: int,
+    body: MoveIn,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     """Drag and drop: onto a calendar day (keeps the time) or onto an exact queue slot."""
     post = await _post(db, ctx, post_id)
     if post.status in (PostStatus.publishing, PostStatus.published):
@@ -249,13 +395,19 @@ async def move(post_id: int, body: MoveIn, db: AsyncSession = Depends(get_db), c
         when = _when(body.when)
         if when < datetime.now(UTC):
             raise ApiError(422, "in_the_past", "That slot is in the past")
-        status = scheduler.schedule(post, when.astimezone(UTC), ctx.user, ctx.brand, ctx.can_approve())
-        msg = f"Moved to {svc._fmt(when, ctx.brand)}" + (" (awaiting approval)" if status == PostStatus.pending_approval else "")
+        status = scheduler.schedule(
+            post, when.astimezone(UTC), ctx.user, ctx.brand, ctx.can_approve()
+        )
+        msg = f"Moved to {svc._fmt(when, ctx.brand)}" + (
+            " (awaiting approval)" if status == PostStatus.pending_approval else ""
+        )
     elif body.day:
         try:
             when = svc.move_to_day(post, date.fromisoformat(body.day), ctx.brand)
         except svc.PlaceError as e:
-            raise ApiError(422, "in_the_past" if "past" in e.problems[0] else "cannot_move", e.problems[0])
+            raise ApiError(
+                422, "in_the_past" if "past" in e.problems[0] else "cannot_move", e.problems[0]
+            )
         msg = f"Moved to {svc._fmt(when, ctx.brand)}"
     else:
         raise ApiError(422, "validation", "Pass day or when")

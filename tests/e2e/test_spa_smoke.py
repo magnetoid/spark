@@ -36,7 +36,9 @@ async def test_spa_publishing_loop(page, server_url, seeded_brand):
     assert await page.get_by_role("radio", name="Pick a time").is_checked()
     await page.get_by_role("button", name="Schedule").click()
     await page.get_by_text(re.compile("^Scheduled")).first.wait_for()  # toast
-    await page.get_by_role("button", name=re.compile("Hello from the React composer")).first.wait_for()
+    await page.get_by_role(
+        "button", name=re.compile("Hello from the React composer")
+    ).first.wait_for()
 
     # the calendar shows it too
     await page.get_by_role("tab", name="Calendar").click()
@@ -52,7 +54,10 @@ async def test_spa_publishing_loop(page, server_url, seeded_brand):
     await page.get_by_role("button", name="Idea actions", exact=True).first.click()
     await page.get_by_role("menuitem", name="Turn into a post").click()
     await page.get_by_placeholder(re.compile("What do you want to say")).wait_for()
-    assert "Three things we learned this week" in await page.get_by_placeholder(re.compile("What do you want to say")).input_value()
+    assert (
+        "Three things we learned this week"
+        in await page.get_by_placeholder(re.compile("What do you want to say")).input_value()
+    )
     await page.keyboard.press("Escape")
 
     # library: templates tab renders its empty state

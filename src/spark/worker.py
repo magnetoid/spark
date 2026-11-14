@@ -16,8 +16,10 @@ from spark.services import (
     analytics,
     email,
     evergreen,
+    hooks,
     inbox,
     notify,
+    outbox,
     publisher,
     reports,
     rss,
@@ -116,7 +118,9 @@ async def poll_feeds(ctx) -> int:
     created = 0
     async with httpx.AsyncClient(timeout=30) as http, SessionLocal() as db:
         cutoff = datetime.now(UTC) - timedelta(minutes=30)
-        feeds = (await db.execute(select(RssFeed).where(RssFeed.is_active.is_(True)))).scalars().all()
+        feeds = (
+            (await db.execute(select(RssFeed).where(RssFeed.is_active.is_(True)))).scalars().all()
+        )
         for feed in feeds:
             last = publisher.as_utc(feed.last_checked_at)
             if last and last > cutoff:
@@ -137,13 +141,17 @@ async def send_email_campaign(ctx, campaign_id: int) -> int:
 async def send_scheduled_emails(ctx) -> None:
     async with SessionLocal() as db:
         due = (
-            await db.execute(
-                select(EmailCampaign.id).where(
-                    EmailCampaign.status == "scheduled",
-                    EmailCampaign.scheduled_at <= datetime.now(UTC),
+            (
+                await db.execute(
+                    select(EmailCampaign.id).where(
+                        EmailCampaign.status == "scheduled",
+                        EmailCampaign.scheduled_at <= datetime.now(UTC),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     for cid in due:
         async with SessionLocal() as db:
             await email.send_campaign(db, cid)
@@ -152,7 +160,21 @@ async def send_scheduled_emails(ctx) -> None:
 async def send_notifications(ctx) -> int:
     """Failed posts and pending approvals, once each."""
     async with SessionLocal() as db:
-        return await notify.notify_failed(db) + await notify.notify_approvals(db)
+        sent = await notify.notify_failed(db) + await notify.notify_approvals(db)
+        await outbox.process(db)
+        return sent
+
+
+async def deliver_outbox(ctx) -> int:
+    """Events on their way out: chat messages now, webhook deliveries queued and sent."""
+    async with SessionLocal() as db:
+        n = await outbox.process(db)
+        return n + await hooks.deliver_due(db)
+
+
+async def prune_webhook_log(ctx) -> int:
+    async with SessionLocal() as db:
+        return await hooks.prune(db)
 
 
 async def send_weekly_digest(ctx) -> int:
@@ -191,6 +213,8 @@ class WorkerSettings:
         cron(snapshot_followers, hour={0}, minute=35),
         cron(classify_inbox, minute=set(range(2, 60, 5))),
         cron(send_notifications, second=50),
+        cron(deliver_outbox, second={5, 20, 35}),
+        cron(prune_webhook_log, hour={3}, minute=40),
         cron(send_weekly_digest, weekday=0, hour=7, minute=0),  # Mondays 07:00 UTC
     ]
     max_jobs = 10

@@ -23,7 +23,11 @@ async def _idea(db: AsyncSession, ctx: deps.BrandCtx, idea_id: int) -> Idea:
 
 
 @router.get(B + "/ideas", response_model=IdeaBoard)
-async def board(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx), tag: str | None = None):
+async def board(
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.brand_ctx),
+    tag: str | None = None,
+):
     ideas = await svc.list_ideas(db, ctx.brand)
     tags = sorted({t for i in ideas for t in (i.tags or [])})
     if tag:
@@ -32,14 +36,31 @@ async def board(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends
 
 
 @router.post(B + "/ideas", response_model=IdeaOut, status_code=201)
-async def create(body: IdeaIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
-    idea = await svc.create(db, ctx.brand, ctx.user, title=body.title, body=body.body, tags=body.tags,
-                            source_url=body.source_url, status=body.status)
+async def create(
+    body: IdeaIn,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
+    idea = await svc.create(
+        db,
+        ctx.brand,
+        ctx.user,
+        title=body.title,
+        body=body.body,
+        tags=body.tags,
+        source_url=body.source_url,
+        status=body.status,
+    )
     return IdeaOut.of(idea)
 
 
 @router.patch(B + "/ideas/{idea_id}", response_model=IdeaOut)
-async def update(idea_id: int, body: IdeaUpdate, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def update(
+    idea_id: int,
+    body: IdeaUpdate,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     idea = await _idea(db, ctx, idea_id)
     svc.update(idea, **body.model_dump(exclude_unset=True))
     await db.commit()
@@ -47,7 +68,12 @@ async def update(idea_id: int, body: IdeaUpdate, db: AsyncSession = Depends(get_
 
 
 @router.post(B + "/ideas/{idea_id}/move", response_model=IdeaOut)
-async def move(idea_id: int, body: IdeaMove, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def move(
+    idea_id: int,
+    body: IdeaMove,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     idea = await _idea(db, ctx, idea_id)
     try:
         svc.move(idea, body.status, body.position)
@@ -58,7 +84,11 @@ async def move(idea_id: int, body: IdeaMove, db: AsyncSession = Depends(get_db),
 
 
 @router.delete(B + "/ideas/{idea_id}", status_code=204)
-async def delete(idea_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def delete(
+    idea_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     idea = await _idea(db, ctx, idea_id)
     await db.delete(idea)
     await db.commit()
@@ -66,14 +96,25 @@ async def delete(idea_id: int, db: AsyncSession = Depends(get_db), ctx: deps.Bra
 
 
 @router.post(B + "/ideas/{idea_id}/to-post", response_model=PostResult, status_code=201)
-async def to_post(idea_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def to_post(
+    idea_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     idea = await _idea(db, ctx, idea_id)
     post, created = await svc.to_post(db, ctx.brand, ctx.user, idea)
-    return PostResult(message="Draft created from your idea" if created else "This idea already has a post", post=PostOut.of(post))
+    return PostResult(
+        message="Draft created from your idea" if created else "This idea already has a post",
+        post=PostOut.of(post),
+    )
 
 
 @router.post(B + "/ideas/{idea_id}/ai", response_model=IdeaOut)
-async def ai_expand(idea_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def ai_expand(
+    idea_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     idea = await _idea(db, ctx, idea_id)
     try:
         await svc.ai_expand(db, ctx.brand, idea)

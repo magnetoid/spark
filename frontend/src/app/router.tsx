@@ -10,6 +10,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/shell/app-shell";
 import { LoginPage } from "@/pages/login";
 import { SetupPage } from "@/pages/setup";
+import { TwoFactorPage } from "@/pages/two-factor";
 import { ReviewPage } from "@/pages/review";
 import { ReportPage } from "@/pages/report";
 import { TodayPage } from "@/pages/today";
@@ -46,6 +47,17 @@ const loginRoute = createRoute({
 });
 
 const setupRoute = createRoute({ getParentRoute: () => rootRoute, path: "/setup", component: SetupPage });
+const twoFactorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/two-factor",
+  beforeLoad: async ({ context }) => {
+    // asked fresh: a cached session may predate the owner switching the rule on
+    const session = await context.queryClient.fetchQuery({ ...sessionQuery, staleTime: 0 });
+    if (!session.user) throw redirect({ to: "/login", search: { next: "/two-factor" } });
+    if (session.user.two_factor) throw redirect({ to: "/" });
+  },
+  component: TwoFactorPage,
+});
 const reviewRoute = createRoute({ getParentRoute: () => rootRoute, path: "/review/$token", component: ReviewPage });
 const reportRoute = createRoute({ getParentRoute: () => rootRoute, path: "/brands/$brandId/reports/$reportId", component: ReportPage });
 
@@ -56,6 +68,7 @@ const shellRoute = createRoute({
     const session = await context.queryClient.ensureQueryData(sessionQuery);
     if (session.needs_setup) throw redirect({ to: "/setup" });
     if (!session.user) throw redirect({ to: "/login", search: { next: location.href } });
+    if (session.two_factor_setup_required) throw redirect({ to: "/two-factor" });
     if (session.brands.length === 0 && !location.pathname.startsWith("/brands/new")) throw redirect({ to: "/brands/new" });
     return { session };
   },
@@ -68,6 +81,7 @@ const page = <P extends string>(path: P, component: () => React.JSX.Element) =>
 export const routeTree = rootRoute.addChildren([
   loginRoute,
   setupRoute,
+  twoFactorRoute,
   reviewRoute,
   reportRoute,
   shellRoute.addChildren([

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import type { AccountOut, MediaOut, PostOut, PostWrite } from "@/features/posts/api";
 import { autosavePost, validateTargets } from "@/features/posts/api";
 import { insertHashtags, splitThread } from "@/features/composer/thread";
+import { cleanExtras, hasExtras, noExtras, type Extras } from "@/features/composer/extras";
 
 export type Action = PostWrite["action"];
 
@@ -20,6 +21,7 @@ export interface ComposerDraft {
   firstComments: Record<number, string>;
   threads: Record<number, string[]>;
   postTypes: Record<number, string>;
+  options: Record<number, Extras>;
   campaignId: number | null;
   notes: string;
   action: Action;
@@ -34,22 +36,23 @@ export interface ComposerDraft {
 type Patch = Partial<ComposerDraft> | ((d: ComposerDraft) => Partial<ComposerDraft>);
 
 export const emptyDraft = (over: Partial<ComposerDraft> = {}): ComposerDraft => ({
-  postId: null, content: "", link: "", media: [], selected: [], overrides: {}, firstComments: {}, threads: {}, postTypes: {},
+  postId: null, content: "", link: "", media: [], selected: [], overrides: {}, firstComments: {}, threads: {}, postTypes: {}, options: {},
   campaignId: null, notes: "", action: "queue", scheduledAt: "", source: "manual", ideaId: null, pillarId: null, evergreen: false, recycleEveryDays: 30, ...over,
 });
 
 export function draftFromPost(post: PostOut, media: MediaOut[], toLocal: (iso: string | null) => string, asCopy = false): ComposerDraft {
-  const overrides: Record<number, string> = {}, firstComments: Record<number, string> = {}, threads: Record<number, string[]> = {}, postTypes: Record<number, string> = {};
+  const overrides: Record<number, string> = {}, firstComments: Record<number, string> = {}, threads: Record<number, string[]> = {}, postTypes: Record<number, string> = {}, options: Record<number, Extras> = {};
   for (const t of post.targets) {
     if (t.content_override) overrides[t.account_id] = t.content_override;
     if (t.first_comment) firstComments[t.account_id] = t.first_comment;
     if (t.thread?.length) threads[t.account_id] = t.thread;
     if (t.post_type && t.post_type !== "post") postTypes[t.account_id] = t.post_type;
+    if (hasExtras(t.options)) options[t.account_id] = cleanExtras(t.options);
   }
   const scheduled = !asCopy && ["scheduled", "pending_approval"].includes(post.status);
   return emptyDraft({
     postId: asCopy ? null : post.id, content: post.content, link: post.link ?? "", media,
-    selected: post.targets.map((t) => t.account_id), overrides, firstComments, threads, postTypes,
+    selected: post.targets.map((t) => t.account_id), overrides, firstComments, threads, postTypes, options,
     campaignId: post.campaign_id, notes: asCopy ? "" : post.notes ?? "", source: asCopy ? "manual" : post.source,
     action: scheduled ? "schedule" : "queue", scheduledAt: scheduled ? toLocal(post.scheduled_at) : "",
     pillarId: post.pillar_id ?? null, evergreen: asCopy ? false : Boolean(post.evergreen), recycleEveryDays: post.recycle_every_days ?? 30,
@@ -79,10 +82,11 @@ export function useComposerState(initial: ComposerDraft, brandId: number, accoun
     if (!draft.selected.length) return;
     validateTimer.current = window.setTimeout(() => {
       const targets = Object.fromEntries(draft.selected.map((id) => [String(id), textFor(id)]));
-      validateTargets(brandId, targets, draft.media.map((m) => m.id), draft.link || null, Object.fromEntries(draft.selected.map((id) => [String(id), draft.postTypes[id] ?? "post"]))).then((r) => { setProblems(r.problems); setWarnings(r.warnings); }).catch(() => { /* offline: keep client checks */ });
+      validateTargets(brandId, targets, draft.media.map((m) => m.id), draft.link || null, Object.fromEntries(draft.selected.map((id) => [String(id), draft.postTypes[id] ?? "post"])),
+        Object.fromEntries(draft.selected.filter((id) => draft.options[id]).map((id) => [String(id), draft.options[id]]))).then((r) => { setProblems(r.problems); setWarnings(r.warnings); }).catch(() => { /* offline: keep client checks */ });
     }, 300);
     return () => { if (validateTimer.current) window.clearTimeout(validateTimer.current); };
-  }, [brandId, draft.selected, draft.content, draft.overrides, draft.media, draft.link, draft.postTypes, textFor]);
+  }, [brandId, draft.selected, draft.content, draft.overrides, draft.media, draft.link, draft.postTypes, draft.options, textFor]);
 
   // autosave: keep an unfinished post as a hidden draft, two seconds after the last change
   const autosaveTimer = useRef<number | null>(null);
@@ -98,7 +102,7 @@ export function useComposerState(initial: ComposerDraft, brandId: number, accoun
           post_id: draft.postId, content: draft.content, link: draft.link || null, media_ids: draft.media.map((m) => m.id),
           source: draft.source, targets: draft.selected.map((id) => ({
             account_id: id, override: draft.overrides[id] || null, first_comment: draft.firstComments[id] || null, thread: draft.threads[id] ?? [],
-            post_type: draft.postTypes[id] ?? "post",
+            post_type: draft.postTypes[id] ?? "post", options: draft.options[id] ?? noExtras,
           })),
         });
         if (r.post_id && r.post_id !== draft.postId) dispatch({ postId: r.post_id });
@@ -107,13 +111,14 @@ export function useComposerState(initial: ComposerDraft, brandId: number, accoun
     }, 2000);
     return () => { if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autosave, brandId, draft.content, draft.link, draft.media, draft.selected, draft.overrides, draft.firstComments, draft.threads]);
+  }, [autosave, brandId, draft.content, draft.link, draft.media, draft.selected, draft.overrides, draft.firstComments, draft.threads, draft.postTypes, draft.options]);
 
   const toggle = (id: number) => set((d) => ({ selected: d.selected.includes(id) ? d.selected.filter((x) => x !== id) : [...d.selected, id] }));
   const setOverride = (id: number, text: string) => set((d) => ({ overrides: { ...d.overrides, [id]: text } }));
   const setFirstComment = (id: number, text: string) => set((d) => ({ firstComments: { ...d.firstComments, [id]: text } }));
   const setThread = (id: number, items: string[]) => set((d) => ({ threads: { ...d.threads, [id]: items } }));
   const setPostType = (id: number, kind: string) => set((d) => ({ postTypes: { ...d.postTypes, [id]: kind } }));
+  const setOptions = (id: number, next: Extras) => set((d) => ({ options: { ...d.options, [id]: next } }));
   const split = (id: number) => {
     const parts = splitThread(draft.overrides[id] || draft.content, limit(id));
     if (!parts.length) return;
@@ -132,12 +137,12 @@ export function useComposerState(initial: ComposerDraft, brandId: number, accoun
     scheduled_at: draft.action === "schedule" && draft.scheduledAt ? localToIso(draft.scheduledAt) : null,
     targets: draft.selected.map((id) => ({
       account_id: id, override: draft.overrides[id] || null, first_comment: draft.firstComments[id] || null, thread: draft.threads[id] ?? [],
-      post_type: draft.postTypes[id] ?? "post",
+      post_type: draft.postTypes[id] ?? "post", options: draft.options[id] ?? noExtras,
     })),
   });
 
   return { draft, set, problems, warnings, savedAt, byId, textFor, limit, over, threadOver, hasProblems, toggle, setOverride,
-           setFirstComment, setThread, setPostType, split, addMedia, removeMedia, moveMedia, useTemplate, addHashtags, toWrite };
+           setFirstComment, setThread, setPostType, setOptions, split, addMedia, removeMedia, moveMedia, useTemplate, addHashtags, toWrite };
 }
 
 export type ComposerState = ReturnType<typeof useComposerState>;

@@ -63,12 +63,16 @@ async def process_feed(
     accounts = []
     if feed.account_ids:
         accounts = (
-            await db.execute(
-                select(SocialAccount).where(
-                    SocialAccount.id.in_(feed.account_ids), SocialAccount.is_active.is_(True)
+            (
+                await db.execute(
+                    select(SocialAccount).where(
+                        SocialAccount.id.in_(feed.account_ids), SocialAccount.is_active.is_(True)
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     owner = await db.scalar(select(User).where(User.role == "owner").limit(1))
     created = 0
     for e in reversed(new):
@@ -106,7 +110,9 @@ async def process_feed(
         if feed.auto_queue and accounts:
             when = await next_free_slot(db, brand)
             post.scheduled_at = when
-            post.status = PostStatus.pending_approval if brand.require_approval else PostStatus.scheduled
+            post.status = (
+                PostStatus.pending_approval if brand.require_approval else PostStatus.scheduled
+            )
             for t in post.targets:
                 t.status, t.scheduled_at = post.status, when
         await db.flush()

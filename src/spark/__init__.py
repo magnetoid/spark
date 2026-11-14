@@ -20,12 +20,34 @@ def _create_user(args) -> None:
             if await db.scalar(select(User).where(User.email == args.email.lower())):
                 print("User already exists")
                 return
-            db.add(User(email=args.email.lower(), name=args.name, role=Role(args.role),
-                        password_hash=hash_password(password)))
+            db.add(
+                User(
+                    email=args.email.lower(),
+                    name=args.name,
+                    role=Role(args.role),
+                    password_hash=hash_password(password),
+                )
+            )
             await db.commit()
             print(f"Created {args.role} {args.email}")
 
     asyncio.run(run())
+
+
+def _reset_two_factor(args) -> None:
+    import asyncio
+
+    from spark.db import SessionLocal
+    from spark.services import twofactor
+
+    async def run() -> bool:
+        async with SessionLocal() as db:
+            return await twofactor.reset_by_email(db, args.email)
+
+    if asyncio.run(run()):
+        print(f"Two-factor is off for {args.email}. They sign in with their password alone.")
+    else:
+        raise SystemExit(f"No user with the email {args.email}")
 
 
 def _init_db(args) -> None:
@@ -78,6 +100,11 @@ def main(argv: list[str] | None = None) -> None:
     u.add_argument("--role", default="owner", choices=["owner", "editor", "viewer"])
     u.add_argument("--password")
     u.set_defaults(fn=_create_user)
+    r = sub.add_parser(
+        "reset-two-factor", help="Turn off two-factor for someone locked out of their account"
+    )
+    r.add_argument("email")
+    r.set_defaults(fn=_reset_two_factor)
     args = p.parse_args(argv)
     args.fn(args)
 

@@ -99,12 +99,22 @@ class Post(TimestampMixin, Base):
     # Written by the composer's autosave; hidden from lists until the user saves for real
     is_autosave: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str | None] = mapped_column(Text)
-    pillar_id: Mapped[int | None] = mapped_column(ForeignKey("content_pillars.id", ondelete="SET NULL"))
-    evergreen: Mapped[bool] = mapped_column(Boolean, default=False)  # comes back every recycle_every_days into an empty slot
+    pillar_id: Mapped[int | None] = mapped_column(
+        ForeignKey("content_pillars.id", ondelete="SET NULL")
+    )
+    evergreen: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )  # comes back every recycle_every_days into an empty slot
     recycle_every_days: Mapped[int | None] = mapped_column(Integer)
-    recycled_from_id: Mapped[int | None] = mapped_column(ForeignKey("posts.id", ondelete="SET NULL"))
-    agent_run_id: Mapped[int | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"))  # proposed by this run
-    proposed_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # the time the agent suggested
+    recycled_from_id: Mapped[int | None] = mapped_column(
+        ForeignKey("posts.id", ondelete="SET NULL")
+    )
+    agent_run_id: Mapped[int | None] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="SET NULL")
+    )  # proposed by this run
+    proposed_for: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )  # the time the agent suggested
     # When owners were emailed that this post waits for approval (None = not yet)
     approval_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -143,9 +153,13 @@ class PostTarget(TimestampMixin, Base):
     content_override: Mapped[str | None] = mapped_column(Text)
     # Posted as the first reply right after publishing (Buffer's "first comment")
     first_comment: Mapped[str | None] = mapped_column(Text)
-    post_type: Mapped[str] = mapped_column(String(16), default="post")  # post | carousel | reel | story | document
+    post_type: Mapped[str] = mapped_column(
+        String(16), default="post"
+    )  # post | carousel | reel | story | document
     # Follow-up items of a thread (the root is `text`); X, Threads, Bluesky, Mastodon
     thread: Mapped[list] = mapped_column(JSON, default=list)
+    # Extras only some networks carry: ai_generated, paid_partnership, collaborators, poll
+    options: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[PostStatus] = mapped_column(
         Enum(PostStatus, native_enum=False), default=PostStatus.draft, index=True
     )
@@ -177,7 +191,9 @@ class QueueSlot(Base):
     brand_id: Mapped[int] = mapped_column(ForeignKey("brands.id", ondelete="CASCADE"), index=True)
     weekday: Mapped[int] = mapped_column(Integer)  # 0 = Monday
     time: Mapped[str] = mapped_column(String(5))  # "HH:MM"
-    account_id: Mapped[int | None] = mapped_column(ForeignKey("social_accounts.id", ondelete="CASCADE"))  # None = every channel
+    account_id: Mapped[int | None] = mapped_column(
+        ForeignKey("social_accounts.id", ondelete="CASCADE")
+    )  # None = every channel
 
 
 class RssFeed(TimestampMixin, Base):

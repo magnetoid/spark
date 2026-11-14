@@ -81,6 +81,8 @@ async def recycle(db: AsyncSession, now: datetime | None = None, per_brand: int 
                     content_override=t.content_override,
                     first_comment=t.first_comment,
                     thread=list(t.thread or []),
+                    post_type=t.post_type or "post",
+                    options=dict(t.options or {}),
                 )
                 for t in src.targets
             ]

@@ -33,7 +33,8 @@ class TelegramAdapter(PlatformAdapter):
         if not data.get("ok"):
             code = data.get("error_code", resp.status_code)
             raise PlatformError(
-                f"Telegram {method}: {data.get('description')}", retryable=code == 429 or code >= 500
+                f"Telegram {method}: {data.get('description')}",
+                retryable=code == 429 or code >= 500,
             )
         return data["result"]
 

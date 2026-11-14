@@ -258,7 +258,11 @@ async def import_posts(
             pillar_id=pillar.id if pillar else None,
         )
         if when is not None and when < datetime.now(UTC) - timedelta(minutes=1):
-            errors.append(ImportRowError(row=i, error=f"The date {when:%Y-%m-%d %H:%M} is in the past; kept as a draft"))
+            errors.append(
+                ImportRowError(
+                    row=i, error=f"The date {when:%Y-%m-%d %H:%M} is in the past; kept as a draft"
+                )
+            )
         elif when is not None:
             try:
                 await svc.place_post(db, ctx.brand, ctx.user, post, "schedule", when)

@@ -5,6 +5,7 @@
  */
 import { Heart, MessageCircle, Repeat2 } from "lucide-react";
 import type { AccountOut, MediaOut } from "@/features/posts/api";
+import type { Poll } from "@/features/composer/extras";
 import { PlatformMark, platformLabel } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 
@@ -16,9 +17,12 @@ export interface PreviewData {
   media: MediaOut[];
   link: string;
   brandColor: string;
+  poll?: Poll | null;
+  labels?: string[];
 }
 
-export function PostPreview({ account, text, thread, firstComment, media, link, brandColor }: PreviewData) {
+export function PostPreview({ account, text, thread, firstComment, media, link, brandColor, poll, labels = [] }: PreviewData) {
+  const choices = (poll?.options ?? []).filter((o) => o.trim());
   const square = account.platform === "instagram";
   const compact = ["x", "bluesky", "mastodon", "threads"].includes(account.platform);
   return (
@@ -31,10 +35,18 @@ export function PostPreview({ account, text, thread, firstComment, media, link, 
         </div>
         <PlatformMark platform={account.platform} size={16} />
       </header>
+      {labels.length > 0 && <div className="px-3 pt-1.5 text-[11px] text-ink-2">{labels.join(", ")}</div>}
       <div className={cn("px-3 pt-2", compact ? "text-[14px]" : "text-[14px] leading-relaxed")}>
         <Text text={text} />
       </div>
       {media.length > 0 && <MediaGrid media={media} square={square} />}
+      {poll && choices.length > 0 && (
+        <div className="space-y-1.5 px-3 pt-2.5">
+          {poll.question.trim() && <div className="font-medium">{poll.question}</div>}
+          {choices.map((c, i) => <div key={i} className="rounded-control border border-line px-2.5 py-1.5 text-[13px]">{c}</div>)}
+          <div className="text-[11px] text-ink-2">Open for {poll.days === 1 ? "1 day" : `${poll.days} days`}</div>
+        </div>
+      )}
       {!media.length && link && (
         <div className="mx-3 mt-2 overflow-hidden rounded-control border border-line">
           <div className="h-20 bg-hover" aria-hidden />

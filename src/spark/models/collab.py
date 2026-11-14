@@ -35,7 +35,9 @@ class ActivityLog(Base):
     actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     actor_name: Mapped[str] = mapped_column(String(160), default="")
     verb: Mapped[str] = mapped_column(String(40))  # created, placed, approved, requested changes, …
-    object_type: Mapped[str] = mapped_column(String(32))  # post, member, channel, campaign, share_link, …
+    object_type: Mapped[str] = mapped_column(
+        String(32)
+    )  # post, member, channel, campaign, share_link, …
     object_id: Mapped[int | None] = mapped_column(Integer)
     summary: Mapped[str] = mapped_column(String(500), default="")
     data: Mapped[dict] = mapped_column(JSON, default=dict)
@@ -52,7 +54,9 @@ class PostComment(TimestampMixin, Base):
     post_id: Mapped[int] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"), index=True)
     author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     guest_name: Mapped[str | None] = mapped_column(String(160))
-    share_link_id: Mapped[int | None] = mapped_column(ForeignKey("share_links.id", ondelete="SET NULL"))
+    share_link_id: Mapped[int | None] = mapped_column(
+        ForeignKey("share_links.id", ondelete="SET NULL")
+    )
     body: Mapped[str] = mapped_column(Text)
     kind: Mapped[str] = mapped_column(String(16), default="comment")
 
@@ -69,7 +73,9 @@ class ShareLink(TimestampMixin, Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     prefix: Mapped[str] = mapped_column(String(12))
     kind: Mapped[str] = mapped_column(String(16), default="approval")
-    scope: Mapped[dict] = mapped_column(JSON, default=dict)  # {"post_ids": [...]} or {} = everything awaiting review
+    scope: Mapped[dict] = mapped_column(
+        JSON, default=dict
+    )  # {"post_ids": [...]} or {} = everything awaiting review
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

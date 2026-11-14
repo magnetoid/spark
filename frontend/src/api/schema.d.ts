@@ -1797,6 +1797,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/two-factor/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Two Factor Disable */
+        post: operations["two_factor_disable_me_two_factor_disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/two-factor/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Two Factor Enable
+         * @description Step 2: a code from the app proves it was set up. Recovery codes are shown this once.
+         */
+        post: operations["two_factor_enable_me_two_factor_enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/two-factor/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Two Factor Recovery Codes
+         * @description A new set of ten; the old ones stop working.
+         */
+        post: operations["two_factor_recovery_codes_me_two_factor_recovery_codes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/two-factor/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Two Factor Setup
+         * @description Step 1: a secret for the authenticator app. Nothing changes at sign-in until step 2.
+         */
+        post: operations["two_factor_setup_me_two_factor_setup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/public/review/{token}": {
         parameters: {
             query?: never;
@@ -1958,6 +2035,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/security": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Security */
+        get: operations["security_settings_security_get"];
+        /** Security Save */
+        put: operations["security_save_settings_security_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings/zernio/webhook": {
         parameters: {
             query?: never;
@@ -2025,6 +2120,97 @@ export interface paths {
         head?: never;
         /** Team Update */
         patch: operations["team_update_team__user_id__patch"];
+        trace?: never;
+    };
+    "/team/{user_id}/two-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Team Two Factor Off
+         * @description For a member who lost their phone and their recovery codes. They sign in with the password
+         *     alone until they set two-factor up again (at once, when the workspace requires it).
+         */
+        delete: operations["team_two_factor_off_team__user_id__two_factor_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Webhooks */
+        get: operations["list_webhooks_webhooks_get"];
+        put?: never;
+        /** Create Webhook */
+        post: operations["create_webhook_webhooks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/{webhook_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Webhook */
+        delete: operations["delete_webhook_webhooks__webhook_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Webhook */
+        patch: operations["update_webhook_webhooks__webhook_id__patch"];
+        trace?: never;
+    };
+    "/webhooks/{webhook_id}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Deliveries */
+        get: operations["list_deliveries_webhooks__webhook_id__deliveries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/{webhook_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Webhook */
+        post: operations["test_webhook_webhooks__webhook_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -2536,6 +2722,11 @@ export interface components {
             /** Max */
             max: number;
             /**
+             * Options
+             * @default []
+             */
+            options: string[];
+            /**
              * Post Types
              * @default [
              *       "post"
@@ -2700,6 +2891,34 @@ export interface components {
             label: string;
             /** Name */
             name: string;
+        };
+        /** DeliveryList */
+        DeliveryList: {
+            /** Items */
+            items: components["schemas"]["DeliveryOut"][];
+        };
+        /** DeliveryOut */
+        DeliveryOut: {
+            /** Attempts */
+            attempts: number;
+            /** Created At */
+            created_at: string | null;
+            /** Delivered At */
+            delivered_at: string | null;
+            /** Error */
+            error: string | null;
+            /** Event */
+            event: string;
+            /** Event Id */
+            event_id: string;
+            /** Id */
+            id: number;
+            /** Next Attempt At */
+            next_attempt_at: string | null;
+            /** Response Status */
+            response_status: number | null;
+            /** Status */
+            status: string;
         };
         /** EmailCreate */
         EmailCreate: {
@@ -3309,6 +3528,8 @@ export interface components {
         };
         /** LoginIn */
         LoginIn: {
+            /** Code */
+            code?: string | null;
             /** Email */
             email: string;
             /** Password */
@@ -3615,6 +3836,24 @@ export interface components {
             /** Zernio Ready */
             zernio_ready: boolean;
         };
+        /** PollIn */
+        PollIn: {
+            /**
+             * Days
+             * @default 3
+             */
+            days: number;
+            /**
+             * Options
+             * @default []
+             */
+            options: string[];
+            /**
+             * Question
+             * @default
+             */
+            question: string;
+        };
         /** PostImportIn */
         PostImportIn: {
             /** Csv */
@@ -3760,6 +3999,11 @@ export interface components {
             items: components["schemas"]["QueueItem"][];
             /** Slots */
             slots: components["schemas"]["SlotOut"][];
+        };
+        /** RecoveryCodes */
+        RecoveryCodes: {
+            /** Recovery Codes */
+            recovery_codes: string[];
         };
         /** ReportIn */
         ReportIn: {
@@ -3969,6 +4213,11 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /** SecuritySettings */
+        SecuritySettings: {
+            /** Require Two Factor */
+            require_two_factor: boolean;
+        };
         /** SessionOut */
         SessionOut: {
             /** Brands */
@@ -3981,6 +4230,11 @@ export interface components {
             };
             /** Needs Setup */
             needs_setup: boolean;
+            /**
+             * Two Factor Setup Required
+             * @default false
+             */
+            two_factor_setup_required: boolean;
             user: components["schemas"]["UserOut"] | null;
         };
         /** SetupIn */
@@ -4092,6 +4346,13 @@ export interface components {
             account_id: number;
             /** First Comment */
             first_comment?: string | null;
+            /**
+             * @default {
+             *       "collaborators": [],
+             *       "paid_partnership": false
+             *     }
+             */
+            options: components["schemas"]["TargetOptions"];
             /** Override */
             override?: string | null;
             /**
@@ -4104,6 +4365,25 @@ export interface components {
              * @default []
              */
             thread: string[];
+        };
+        /**
+         * TargetOptions
+         * @description Extras a channel may carry. `ai_generated` unset means: label media the image model made.
+         */
+        TargetOptions: {
+            /** Ai Generated */
+            ai_generated?: boolean | null;
+            /**
+             * Collaborators
+             * @default []
+             */
+            collaborators: string[];
+            /**
+             * Paid Partnership
+             * @default false
+             */
+            paid_partnership: boolean;
+            poll?: components["schemas"]["PollIn"] | null;
         };
         /** TargetOut */
         TargetOut: {
@@ -4119,6 +4399,13 @@ export interface components {
             handle: string;
             /** Id */
             id: number;
+            /**
+             * @default {
+             *       "collaborators": [],
+             *       "paid_partnership": false
+             *     }
+             */
+            options: components["schemas"]["TargetOptions"];
             /** Platform */
             platform: string;
             /**
@@ -4169,6 +4456,11 @@ export interface components {
             name: string;
             /** Role */
             role: string;
+            /**
+             * Two Factor
+             * @default false
+             */
+            two_factor: boolean;
         };
         /** TeamUpdate */
         TeamUpdate: {
@@ -4303,6 +4595,30 @@ export interface components {
             /** Url */
             url: string | null;
         };
+        /** TwoFactorCode */
+        TwoFactorCode: {
+            /** Code */
+            code: string;
+        };
+        /** TwoFactorDisable */
+        TwoFactorDisable: {
+            /** Code */
+            code: string;
+            /** Password */
+            password: string;
+        };
+        /** TwoFactorPassword */
+        TwoFactorPassword: {
+            /** Password */
+            password: string;
+        };
+        /** TwoFactorSetup */
+        TwoFactorSetup: {
+            /** Otpauth Uri */
+            otpauth_uri: string;
+            /** Secret */
+            secret: string;
+        };
         /** UserOut */
         UserOut: {
             /** Email */
@@ -4318,8 +4634,18 @@ export interface components {
             prefs: {
                 [key: string]: unknown;
             };
+            /**
+             * Recovery Codes Left
+             * @default 0
+             */
+            recovery_codes_left: number;
             /** Role */
             role: string;
+            /**
+             * Two Factor
+             * @default false
+             */
+            two_factor: boolean;
         };
         /** ValidateIn */
         ValidateIn: {
@@ -4330,6 +4656,13 @@ export interface components {
              * @default []
              */
             media_ids: number[];
+            /**
+             * Options
+             * @default {}
+             */
+            options: {
+                [key: string]: components["schemas"]["TargetOptions"];
+            };
             /**
              * Post Types
              * @default {}
@@ -4365,6 +4698,106 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** WebhookCreated */
+        WebhookCreated: {
+            /** Brand Id */
+            brand_id: number | null;
+            /** Created At */
+            created_at: string | null;
+            /** Description */
+            description: string;
+            /** Disabled Reason */
+            disabled_reason: string | null;
+            /** Enabled */
+            enabled: boolean;
+            /** Events */
+            events: string[];
+            /** Failures */
+            failures: number;
+            /** Id */
+            id: number;
+            /** Last Delivery At */
+            last_delivery_at: string | null;
+            /** Last Error */
+            last_error: string | null;
+            /** Last Status */
+            last_status: number | null;
+            /** Secret */
+            secret: string;
+            /** Url */
+            url: string;
+        };
+        /** WebhookEventInfo */
+        WebhookEventInfo: {
+            /** Description */
+            description: string;
+            /** Name */
+            name: string;
+        };
+        /** WebhookIn */
+        WebhookIn: {
+            /** Brand Id */
+            brand_id?: number | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Events
+             * @default []
+             */
+            events: string[];
+            /** Url */
+            url: string;
+        };
+        /** WebhookList */
+        WebhookList: {
+            /** Events */
+            events: components["schemas"]["WebhookEventInfo"][];
+            /** Items */
+            items: components["schemas"]["WebhookOut"][];
+        };
+        /** WebhookOut */
+        WebhookOut: {
+            /** Brand Id */
+            brand_id: number | null;
+            /** Created At */
+            created_at: string | null;
+            /** Description */
+            description: string;
+            /** Disabled Reason */
+            disabled_reason: string | null;
+            /** Enabled */
+            enabled: boolean;
+            /** Events */
+            events: string[];
+            /** Failures */
+            failures: number;
+            /** Id */
+            id: number;
+            /** Last Delivery At */
+            last_delivery_at: string | null;
+            /** Last Error */
+            last_error: string | null;
+            /** Last Status */
+            last_status: number | null;
+            /** Url */
+            url: string;
+        };
+        /** WebhookUpdate */
+        WebhookUpdate: {
+            /** Brand Id */
+            brand_id?: number | null;
+            /** Description */
+            description?: string | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Events */
+            events?: string[] | null;
+            /** Url */
+            url?: string | null;
         };
         /** WeekOut */
         WeekOut: {
@@ -9114,6 +9547,138 @@ export interface operations {
             };
         };
     };
+    two_factor_disable_me_two_factor_disable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorDisable"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    two_factor_enable_me_two_factor_enable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorCode"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodes"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    two_factor_recovery_codes_me_two_factor_recovery_codes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorPassword"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodes"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    two_factor_setup_me_two_factor_setup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorPassword"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFactorSetup"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     review_page_public_review__token__get: {
         parameters: {
             query?: never;
@@ -9394,6 +9959,59 @@ export interface operations {
             };
         };
     };
+    security_settings_security_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecuritySettings"];
+                };
+            };
+        };
+    };
+    security_save_settings_security_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SecuritySettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecuritySettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     zernio_webhook_register_settings_zernio_webhook_post: {
         parameters: {
             query?: never;
@@ -9509,6 +10127,214 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    team_two_factor_off_team__user_id__two_factor_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_webhooks_webhooks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookList"];
+                };
+            };
+        };
+    };
+    create_webhook_webhooks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_webhook_webhooks__webhook_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_webhook_webhooks__webhook_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_deliveries_webhooks__webhook_id__deliveries_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_webhook_webhooks__webhook_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryOut"];
                 };
             };
             /** @description Validation Error */

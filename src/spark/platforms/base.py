@@ -87,6 +87,9 @@ class PublishPayload:
     first_comment: str | None = None  # posted as the first reply after publishing, if supported
     thread: list[str] = field(default_factory=list)  # follow-up items; `text` is the root
     post_type: str = "post"  # post | carousel | reel | story | document; shapes the media checks
+    # ai_generated (bool), paid_partnership (bool), collaborators ([handle]),
+    # poll ({question, options, days}). An adapter reads only the keys it lists in `option_keys`.
+    options: dict = field(default_factory=dict)
 
     def media_path(self, m: Media) -> Path:
         return get_settings().media_dir / m.path
@@ -107,6 +110,10 @@ class PlatformAdapter(abc.ABC):
     supports_first_comment: ClassVar[bool] = False  # a reply posted right after publishing
     supports_thread: ClassVar[bool] = False  # follow-up items as a thread of replies
     post_types: ClassVar[tuple[str, ...]] = ("post",)  # formats the composer may offer
+    # Extras this adapter sends: ai_generated | paid_partnership | collaborators | poll
+    option_keys: ClassVar[tuple[str, ...]] = ()
+    poll_option_chars: ClassVar[int] = 25
+    poll_question_chars: ClassVar[int] = 0  # 0 = the poll has no question of its own
 
     def __init__(self, http: httpx.AsyncClient | None = None):
         self._http = http
@@ -158,6 +165,44 @@ class PlatformAdapter(abc.ABC):
         if sum(1 for m in payload.media if m.is_video) > 1:
             problems.append(f"{self.label}: only one video per post")
         problems += self.validate_format(payload)
+        problems += self.validate_options(payload)
+        return problems
+
+    def validate_options(self, payload: PublishPayload) -> list[str]:
+        """Extras the network would refuse, said before publishing. Only what this adapter sends."""
+        opts = payload.options or {}
+        story = payload.post_type == "story"
+        problems: list[str] = []
+        if story and self.supports_first_comment and payload.first_comment:
+            problems.append(f"{self.label}: a story cannot carry a first comment")
+        if "paid_partnership" in self.option_keys and story and opts.get("paid_partnership"):
+            problems.append(f"{self.label}: a story cannot carry the paid partnership label")
+        people = opts.get("collaborators") or []
+        if "collaborators" in self.option_keys and people:
+            if story:
+                problems.append(f"{self.label}: a story cannot have collaborators")
+            if len(people) > 3:
+                problems.append(f"{self.label}: at most 3 collaborators")
+        poll = opts.get("poll")
+        if "poll" in self.option_keys and poll:
+            choices = poll.get("options") or []
+            if not 2 <= len(choices) <= 4:
+                problems.append(f"{self.label}: a poll needs 2 to 4 options")
+            if any(len(c) > self.poll_option_chars for c in choices):
+                problems.append(
+                    f"{self.label}: a poll option can be up to {self.poll_option_chars} characters"
+                )
+            if self.poll_question_chars and len(poll.get("question") or "") > (
+                self.poll_question_chars
+            ):
+                problems.append(
+                    f"{self.label}: a poll question can be up to "
+                    f"{self.poll_question_chars} characters"
+                )
+            if payload.media:
+                problems.append(f"{self.label}: a poll cannot have images or video")
+            if payload.thread:
+                problems.append(f"{self.label}: a poll cannot be part of a thread")
         return problems
 
     def validate_format(self, payload: PublishPayload) -> list[str]:
@@ -227,13 +272,16 @@ def get_adapter(
     reg = registry()
     if name not in reg and name not in ZERNIO_PLATFORMS:
         raise KeyError(f"Unknown platform: {name}")
+    if provider == "zernio" or name not in reg:
+        real: PlatformAdapter = ZernioAdapter.for_platform(name, http)
+    else:
+        real = reg[name](http)
     if get_settings().force_dry_run:
         from spark.platforms.dry_run import DryRunAdapter
 
-        return DryRunAdapter(http, impersonate=reg.get(name) or ZernioAdapter.for_platform(name))
-    if provider == "zernio" or name not in reg:
-        return ZernioAdapter.for_platform(name, http)
-    return reg[name](http)
+        # stands in for the connector this channel really uses, so the composer offers the same
+        return DryRunAdapter(http, impersonate=real)
+    return real
 
 
 def adapter_for(account, http: httpx.AsyncClient | None = None) -> PlatformAdapter:

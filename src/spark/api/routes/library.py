@@ -35,18 +35,27 @@ B = "/brands/{brand_id}"
 
 # ---- media ---------------------------------------------------------------------------------
 @router.get(B + "/media", response_model=MediaPage)
-async def list_media(tag: str | None = None, q: str | None = None, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)):
+async def list_media(
+    tag: str | None = None,
+    q: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.brand_ctx),
+):
     rows = await media_svc.list_media(db, ctx.brand)
     if tag:
         rows = [m for m in rows if tag.lower() in [t.lower() for t in (m.tags or [])]]
     if q:
         needle = q.lower()
-        rows = [m for m in rows if needle in m.filename.lower() or needle in (m.alt_text or "").lower()]
+        rows = [
+            m for m in rows if needle in m.filename.lower() or needle in (m.alt_text or "").lower()
+        ]
     return MediaPage(items=[MediaOut.of(m) for m in rows])
 
 
 @router.get(B + "/media/tags", response_model=list[TagCount])
-async def media_tags(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)):
+async def media_tags(
+    db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)
+):
     counts: dict[str, int] = {}
     for m in await media_svc.list_media(db, ctx.brand):
         for t in m.tags or []:
@@ -55,9 +64,17 @@ async def media_tags(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = De
 
 
 @router.post(B + "/media/generate", response_model=MediaOut, status_code=201)
-async def generate_media(body: MediaGenerateIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def generate_media(
+    body: MediaGenerateIn,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     if not images.configured():
-        raise ApiError(409, "images_not_configured", "Image generation is not set up. Add a key under Settings → Connectors → Image generation.")
+        raise ApiError(
+            409,
+            "images_not_configured",
+            "Image generation is not set up. Add a key under Settings → Connectors → Image generation.",
+        )
     try:
         m = await images.generate(db, ctx.brand, body.prompt, body.size)
     except images.ImagesUnavailable as e:
@@ -68,9 +85,17 @@ async def generate_media(body: MediaGenerateIn, db: AsyncSession = Depends(get_d
 
 
 @router.post(B + "/media", response_model=MediaUploadOut, status_code=201)
-async def upload_media(files: list[UploadFile] = File(...), db: AsyncSession = Depends(get_db),
-                       ctx: deps.BrandCtx = Depends(deps.editor_brand)):
-    uploads = [media_svc.Upload(name=f.filename or "upload", content_type=f.content_type or "", data=await f.read()) for f in files]
+async def upload_media(
+    files: list[UploadFile] = File(...),
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
+    uploads = [
+        media_svc.Upload(
+            name=f.filename or "upload", content_type=f.content_type or "", data=await f.read()
+        )
+        for f in files
+    ]
     saved, rejected = await media_svc.save_uploads(db, ctx.brand, uploads)
     return MediaUploadOut(items=[MediaOut.of(m) for m in saved], rejected=rejected)
 
@@ -83,7 +108,12 @@ async def _media(db: AsyncSession, ctx: deps.BrandCtx, media_id: int) -> Media:
 
 
 @router.patch(B + "/media/{media_id}", response_model=MediaOut)
-async def update_media(media_id: int, body: MediaUpdate, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def update_media(
+    media_id: int,
+    body: MediaUpdate,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     m = await _media(db, ctx, media_id)
     if "alt_text" in body.model_fields_set:
         m.alt_text = (body.alt_text or "").strip() or None
@@ -99,7 +129,11 @@ async def update_media(media_id: int, body: MediaUpdate, db: AsyncSession = Depe
 
 
 @router.post(B + "/media/{media_id}/alt-text", response_model=MediaOut)
-async def write_alt_text(media_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def write_alt_text(
+    media_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     m = await _media(db, ctx, media_id)
     if not m.content_type.startswith("image/"):
         raise ApiError(422, "not_an_image", "Alt text is for images")
@@ -108,7 +142,9 @@ async def write_alt_text(media_id: int, db: AsyncSession = Depends(get_db), ctx:
     except ai_svc.AIUnavailable as e:
         raise ApiError(400, "ai_unavailable", str(e)) from e
     try:
-        data, ctype = await images.for_vision((get_settings().media_dir / m.path).read_bytes(), m.content_type)
+        data, ctype = await images.for_vision(
+            (get_settings().media_dir / m.path).read_bytes(), m.content_type
+        )
     except images.BadImage as e:
         raise ApiError(422, "bad_image", str(e)) from e
     try:
@@ -120,7 +156,12 @@ async def write_alt_text(media_id: int, db: AsyncSession = Depends(get_db), ctx:
 
 
 @router.post(B + "/media/{media_id}/crop", response_model=MediaOut, status_code=201)
-async def crop_media(media_id: int, body: MediaCropIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def crop_media(
+    media_id: int,
+    body: MediaCropIn,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     m = await _media(db, ctx, media_id)
     if not m.content_type.startswith("image/"):
         raise ApiError(422, "not_an_image", "Only images can be cropped")
@@ -131,29 +172,55 @@ async def crop_media(media_id: int, body: MediaCropIn, db: AsyncSession = Depend
 
 
 @router.delete(B + "/media/{media_id}", status_code=204)
-async def delete_media(media_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def delete_media(
+    media_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     await media_svc.delete_media(db, await _media(db, ctx, media_id))
     return Response(status_code=204)
 
 
 # ---- hashtag groups -------------------------------------------------------------------------
 @router.get(B + "/hashtag-groups", response_model=list[HashtagGroupOut])
-async def hashtag_groups(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)):
-    rows = (await db.execute(select(HashtagGroup).where(HashtagGroup.brand_id == ctx.brand.id).order_by(HashtagGroup.name))).scalars().all()
+async def hashtag_groups(
+    db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)
+):
+    rows = (
+        (
+            await db.execute(
+                select(HashtagGroup)
+                .where(HashtagGroup.brand_id == ctx.brand.id)
+                .order_by(HashtagGroup.name)
+            )
+        )
+        .scalars()
+        .all()
+    )
     return [HashtagGroupOut(id=g.id, name=g.name, tags=list(g.tags or [])) for g in rows]
 
 
 @router.post(B + "/hashtag-groups", response_model=HashtagGroupOut, status_code=201)
-async def create_hashtag_group(body: HashtagGroupIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
-    g = HashtagGroup(brand_id=ctx.brand.id, name=body.name.strip(), tags=parse_hashtags(" ".join(body.tags)))
+async def create_hashtag_group(
+    body: HashtagGroupIn,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
+    g = HashtagGroup(
+        brand_id=ctx.brand.id, name=body.name.strip(), tags=parse_hashtags(" ".join(body.tags))
+    )
     db.add(g)
     await db.commit()
     return HashtagGroupOut(id=g.id, name=g.name, tags=list(g.tags))
 
 
 @router.patch(B + "/hashtag-groups/{group_id}", response_model=HashtagGroupOut)
-async def update_hashtag_group(group_id: int, body: HashtagGroupUpdate, db: AsyncSession = Depends(get_db),
-                               ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def update_hashtag_group(
+    group_id: int,
+    body: HashtagGroupUpdate,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     g = await db.get(HashtagGroup, group_id)
     if not g or g.brand_id != ctx.brand.id:
         raise not_found("No such group")
@@ -166,7 +233,11 @@ async def update_hashtag_group(group_id: int, body: HashtagGroupUpdate, db: Asyn
 
 
 @router.delete(B + "/hashtag-groups/{group_id}", status_code=204)
-async def delete_hashtag_group(group_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def delete_hashtag_group(
+    group_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     g = await db.get(HashtagGroup, group_id)
     if not g or g.brand_id != ctx.brand.id:
         raise not_found("No such group")
@@ -177,22 +248,47 @@ async def delete_hashtag_group(group_id: int, db: AsyncSession = Depends(get_db)
 
 # ---- templates ------------------------------------------------------------------------------
 @router.get(B + "/templates", response_model=list[TemplateOut])
-async def templates(db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)):
-    rows = (await db.execute(select(PostTemplate).where(PostTemplate.brand_id == ctx.brand.id).order_by(PostTemplate.name))).scalars().all()
+async def templates(
+    db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.brand_ctx)
+):
+    rows = (
+        (
+            await db.execute(
+                select(PostTemplate)
+                .where(PostTemplate.brand_id == ctx.brand.id)
+                .order_by(PostTemplate.name)
+            )
+        )
+        .scalars()
+        .all()
+    )
     return [TemplateOut.model_validate(t) for t in rows]
 
 
 @router.post(B + "/templates", response_model=TemplateOut, status_code=201)
-async def create_template(body: TemplateIn, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
-    t = PostTemplate(brand_id=ctx.brand.id, name=body.name.strip(), body=body.body.strip(), category=(body.category or "").strip()[:40] or None)
+async def create_template(
+    body: TemplateIn,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
+    t = PostTemplate(
+        brand_id=ctx.brand.id,
+        name=body.name.strip(),
+        body=body.body.strip(),
+        category=(body.category or "").strip()[:40] or None,
+    )
     db.add(t)
     await db.commit()
     return TemplateOut.model_validate(t)
 
 
 @router.patch(B + "/templates/{template_id}", response_model=TemplateOut)
-async def update_template(template_id: int, body: TemplateUpdate, db: AsyncSession = Depends(get_db),
-                          ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def update_template(
+    template_id: int,
+    body: TemplateUpdate,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     t = await db.get(PostTemplate, template_id)
     if not t or t.brand_id != ctx.brand.id:
         raise not_found("No such template")
@@ -208,7 +304,11 @@ async def update_template(template_id: int, body: TemplateUpdate, db: AsyncSessi
 
 
 @router.delete(B + "/templates/{template_id}", status_code=204)
-async def delete_template(template_id: int, db: AsyncSession = Depends(get_db), ctx: deps.BrandCtx = Depends(deps.editor_brand)):
+async def delete_template(
+    template_id: int,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.editor_brand),
+):
     t = await db.get(PostTemplate, template_id)
     if not t or t.brand_id != ctx.brand.id:
         raise not_found("No such template")

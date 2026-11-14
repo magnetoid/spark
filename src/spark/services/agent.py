@@ -110,12 +110,16 @@ async def _context(
     return accounts, pillars, "\n".join(lines)
 
 
-async def _task(db: AsyncSession, brand: Brand, kind: str, prompt: str | None, extra: dict | None = None) -> str:
+async def _task(
+    db: AsyncSession, brand: Brand, kind: str, prompt: str | None, extra: dict | None = None
+) -> str:
     cfg = guardrails.config(brand)
     if kind == "repurpose" and extra:
         from spark.services import repurpose
 
-        return repurpose.task_text(extra["text"], extra.get("link"), extra.get("accounts") or [], prompt)
+        return repurpose.task_text(
+            extra["text"], extra.get("link"), extra.get("accounts") or [], prompt
+        )
     if kind == "weekly_plan":
         wp = cfg.get("weekly_plan") or {}
         n = int(wp.get("posts") or 5)
@@ -155,8 +159,14 @@ async def _task(db: AsyncSession, brand: Brand, kind: str, prompt: str | None, e
 
 
 # ---- starting ------------------------------------------------------------------------------------
-async def start(db: AsyncSession, brand: Brand, user: User | None, kind: str, prompt: str | None = None,
-                extra: dict | None = None) -> AgentRun:
+async def start(
+    db: AsyncSession,
+    brand: Brand,
+    user: User | None,
+    kind: str,
+    prompt: str | None = None,
+    extra: dict | None = None,
+) -> AgentRun:
     if kind not in AgentRun.KINDS:
         raise ValueError(f"Unknown run kind {kind!r}")
     if not configured():
@@ -218,12 +228,26 @@ STALE_AFTER = timedelta(minutes=15)
 async def sweep_stale(db: AsyncSession, after: timedelta = STALE_AFTER) -> int:
     """Fail runs that have had no news for a while: a lost stream, a dead worker, a hung Janus."""
     cutoff = datetime.now(UTC) - after
-    rows = (await db.execute(select(AgentRun).where(AgentRun.status.in_(["queued", "running", "waiting_approval"])))).scalars().all()
+    rows = (
+        (
+            await db.execute(
+                select(AgentRun).where(
+                    AgentRun.status.in_(["queued", "running", "waiting_approval"])
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
     n = 0
     for run in rows:
         seen = as_utc(run.updated_at) or as_utc(run.created_at)
         if seen and seen < cutoff:
-            run.status, run.error, run.finished_at = "failed", "No news from Janus for a while; the run was closed. Try again.", datetime.now(UTC)
+            run.status, run.error, run.finished_at = (
+                "failed",
+                "No news from Janus for a while; the run was closed. Try again.",
+                datetime.now(UTC),
+            )
             n += 1
     if n:
         await db.commit()
@@ -292,8 +316,14 @@ async def follow(db: AsyncSession, run_id: int) -> str:
             await events.publish("agent", run.brand_id, ids=[run.id])
     except JanusError as e:
         run.status, run.error, run.finished_at = "failed", str(e), datetime.now(UTC)
-    except asyncio.CancelledError:  # the worker's job timeout: record it, then let the cancellation through
-        run.status, run.error, run.finished_at = "failed", "The run took too long and was stopped", datetime.now(UTC)
+    except (
+        asyncio.CancelledError
+    ):  # the worker's job timeout: record it, then let the cancellation through
+        run.status, run.error, run.finished_at = (
+            "failed",
+            "The run took too long and was stopped",
+            datetime.now(UTC),
+        )
         await db.commit()
         raise
     except Exception as e:  # network drop mid-stream: keep what we have, mark failed
@@ -490,7 +520,12 @@ async def apply(
     await db.commit()
     await events.publish("posts", brand.id, ids=created)
     await events.publish("agent", brand.id, ids=[run.id])
-    return {"created": len(created), "post_ids": created, "voice_applied": voice_applied, "skipped": skipped}
+    return {
+        "created": len(created),
+        "post_ids": created,
+        "voice_applied": voice_applied,
+        "skipped": skipped,
+    }
 
 
 # ---- the plan tray ------------------------------------------------------------------------------------
@@ -582,13 +617,31 @@ async def status(force: bool = False) -> dict:
     """What the UI shows about Janus. Health and version are cached for a minute; the flags are live."""
     now = datetime.now(UTC)
     s = get_settings()
-    out = {"configured": configured(), "healthy": False, "version": None, "base_url": s.janus_base_url, "checked_at": now,
-           "can_update": bool(s.janus_managed or s.janus_update_webhook), "managed": bool(s.janus_managed)}
+    out = {
+        "configured": configured(),
+        "healthy": False,
+        "version": None,
+        "base_url": s.janus_base_url,
+        "checked_at": now,
+        "can_update": bool(s.janus_managed or s.janus_update_webhook),
+        "managed": bool(s.janus_managed),
+    }
     if not out["configured"]:
         return out
     cached = _status_cache["value"]
-    if not force and cached and _status_cache["at"] and now - _status_cache["at"] < timedelta(seconds=60) and cached.get("base_url") == s.janus_base_url:
-        return {**out, "healthy": cached["healthy"], "version": cached["version"], "checked_at": cached["checked_at"]}
+    if (
+        not force
+        and cached
+        and _status_cache["at"]
+        and now - _status_cache["at"] < timedelta(seconds=60)
+        and cached.get("base_url") == s.janus_base_url
+    ):
+        return {
+            **out,
+            "healthy": cached["healthy"],
+            "version": cached["version"],
+            "checked_at": cached["checked_at"],
+        }
     client = Janus()
     out["healthy"] = await client.health()
     if out["healthy"]:

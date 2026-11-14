@@ -49,7 +49,12 @@ async def _brand(request: Request, db: AsyncSession, user: User | None = None) -
 
 
 @router.get("/accounts/connect/{platform}")
-async def connect(platform: str, request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(editor)):
+async def connect(
+    platform: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(editor),
+):
     brand = await _brand(request, db, user)
     if brand is None:
         return _back("You are not a member of that brand", "error")
@@ -60,23 +65,46 @@ async def connect(platform: str, request: Request, db: AsyncSession = Depends(ge
     except KeyError:
         return _back("Unknown platform", "error", brand)
     if adapter.connect_mode != "oauth":
-        return _back(f"{adapter.label} connects with credentials on the Channels page", "error", brand)
+        return _back(
+            f"{adapter.label} connects with credentials on the Channels page", "error", brand
+        )
     if not adapter.is_configured():
-        return _back(f"{adapter.label} developer app is not configured on this server", "error", brand)
+        return _back(
+            f"{adapter.label} developer app is not configured on this server", "error", brand
+        )
     state = token(16)
     start = adapter.oauth_start(state)
-    request.session["oauth"] = {"state": state, "platform": platform, "brand_id": brand.id, "data": start.session_data}
+    request.session["oauth"] = {
+        "state": state,
+        "platform": platform,
+        "brand_id": brand.id,
+        "data": start.session_data,
+    }
     return RedirectResponse(start.url, 303)
 
 
 @router.get("/accounts/callback/{platform}")
-async def callback(platform: str, request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(editor)):
+async def callback(
+    platform: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(editor),
+):
     pending = request.session.pop("oauth", None)
     params = request.query_params
     brand = await db.get(Brand, pending["brand_id"]) if pending else None
     if params.get("error"):
-        return _back(f"Connection cancelled: {params.get('error_description') or params['error']}", "error", brand)
-    if not pending or pending["platform"] != platform or pending["state"] != params.get("state") or brand is None:
+        return _back(
+            f"Connection cancelled: {params.get('error_description') or params['error']}",
+            "error",
+            brand,
+        )
+    if (
+        not pending
+        or pending["platform"] != platform
+        or pending["state"] != params.get("state")
+        or brand is None
+    ):
         return _back("OAuth state mismatch; please try again", "error", brand)
     adapter = get_adapter(platform)
     try:
@@ -90,7 +118,12 @@ async def callback(platform: str, request: Request, db: AsyncSession = Depends(g
 
 
 @router.get("/accounts/zernio/connect/{platform}")
-async def zernio_connect(platform: str, request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(editor)):
+async def zernio_connect(
+    platform: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(editor),
+):
     brand = await _brand(request, db, user)
     if brand is None:
         return _back("You are not a member of that brand", "error")
@@ -111,12 +144,16 @@ async def zernio_connect(platform: str, request: Request, db: AsyncSession = Dep
 
 
 @router.get("/accounts/zernio/callback")
-async def zernio_callback(request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(editor)):
+async def zernio_callback(
+    request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(editor)
+):
     pending = request.session.pop("zernio_oauth", None)
     q = request.query_params
     brand = await db.get(Brand, pending["brand_id"]) if pending else None
     if q.get("error"):
-        return _back(f"Zernio connection failed: {q.get('error_description') or q['error']}", "error", brand)
+        return _back(
+            f"Zernio connection failed: {q.get('error_description') or q['error']}", "error", brand
+        )
     if not pending or pending["state"] != q.get("state") or brand is None:
         return _back("Connection state mismatch; please try again", "error", brand)
     adapter = ZernioAdapter.for_platform(pending["platform"])
@@ -134,4 +171,6 @@ async def zernio_callback(request: Request, db: AsyncSession = Depends(get_db), 
     await db.commit()
     if n:
         return _back(f"Connected {n} account(s) through Zernio", "success", brand)
-    return _back("Zernio did not return the connected account yet; use “Import from Zernio”", "error", brand)
+    return _back(
+        "Zernio did not return the connected account yet; use “Import from Zernio”", "error", brand
+    )

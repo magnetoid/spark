@@ -73,7 +73,9 @@ class BlueskyAdapter(PlatformAdapter):
         handle = data["handle"].strip().lstrip("@")
         sess = await self._session(service, handle, data["app_password"].strip())
         prof = (
-            await self.http.get(f"{APPVIEW}/app.bsky.actor.getProfile", params={"actor": sess["did"]})
+            await self.http.get(
+                f"{APPVIEW}/app.bsky.actor.getProfile", params={"actor": sess["did"]}
+            )
         ).json()
         return [
             ConnectedAccount(
@@ -134,10 +136,17 @@ class BlueskyAdapter(PlatformAdapter):
             if f := facets(body_text):
                 rec["facets"] = f
             try:
-                out = self.check(await self.http.post(
-                    f"{service}/xrpc/com.atproto.repo.createRecord", headers=auth,
-                    json={"repo": sess["did"], "collection": "app.bsky.feed.post", "record": rec},
-                )).json()
+                out = self.check(
+                    await self.http.post(
+                        f"{service}/xrpc/com.atproto.repo.createRecord",
+                        headers=auth,
+                        json={
+                            "repo": sess["did"],
+                            "collection": "app.bsky.feed.post",
+                            "record": rec,
+                        },
+                    )
+                ).json()
                 return {"uri": out["uri"], "cid": out["cid"]}
             except PlatformError as e:
                 log.warning("Bluesky reply failed under %s: %s", parent["uri"], e)

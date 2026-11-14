@@ -15,7 +15,9 @@ async def test_event_lines_say_hello_and_relay_published_events():
 
     gen = event_lines(7, disconnected)
     assert (await gen.__anext__()).startswith("event: hello")
-    asyncio.get_running_loop().call_later(0.2, lambda: asyncio.ensure_future(events.publish("posts", 1, ids=[42])))
+    asyncio.get_running_loop().call_later(
+        0.2, lambda: asyncio.ensure_future(events.publish("posts", 1, ids=[42]))
+    )
     line = await asyncio.wait_for(gen.__anext__(), timeout=5)
     assert line.startswith("event: update")
     data = json.loads(line.split("data: ", 1)[1].strip())

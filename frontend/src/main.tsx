@@ -6,7 +6,7 @@ import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { makeRouter } from "@/app/router";
 import { readTheme, setTheme } from "@/app/session";
-import { ApiError, setUnauthorizedHandler } from "@/lib/api";
+import { ApiError, setTwoFactorSetupHandler, setUnauthorizedHandler } from "@/lib/api";
 import "@/styles/app.css";
 
 const queryClient = new QueryClient({
@@ -24,6 +24,11 @@ setTheme(readTheme());
 setUnauthorizedHandler(() => {
   void queryClient.invalidateQueries({ queryKey: ["session"] });
   void router.navigate({ to: "/login", search: { next: window.location.pathname + window.location.search } });
+});
+
+setTwoFactorSetupHandler(() => {
+  if (window.location.pathname.endsWith("/two-factor")) return;
+  void router.navigate({ to: "/two-factor" });
 });
 
 createRoot(document.getElementById("root")!).render(

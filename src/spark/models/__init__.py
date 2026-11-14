@@ -14,6 +14,7 @@ from spark.models.marketing import (
     PostTemplate,
     ShortLink,
 )
+from spark.models.outbound import OutboundEvent, WebhookDelivery, WebhookEndpoint
 from spark.models.planning import ContentPillar
 from spark.models.reports import FollowerSnapshot, Report
 from spark.models.social import (
@@ -42,6 +43,9 @@ __all__ = [
     "InboxRule",
     "SavedReply",
     "ContentPillar",
+    "OutboundEvent",
+    "WebhookDelivery",
+    "WebhookEndpoint",
     "BioPage",
     "Brand",
     "Campaign",

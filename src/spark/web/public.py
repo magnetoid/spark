@@ -33,9 +33,14 @@ async def short_link(code: str, request: Request, db: AsyncSession = Depends(get
     if not link:
         return HTMLResponse("<h1>Link not found</h1>", 404)
     link.clicks += 1
-    db.add(LinkClick(link_id=link.id, clicked_at=datetime.now(UTC),
-                     referrer=request.headers.get("referer", "")[:1000] or None,
-                     user_agent=request.headers.get("user-agent", "")[:500] or None))
+    db.add(
+        LinkClick(
+            link_id=link.id,
+            clicked_at=datetime.now(UTC),
+            referrer=request.headers.get("referer", "")[:1000] or None,
+            user_agent=request.headers.get("user-agent", "")[:500] or None,
+        )
+    )
     await db.commit()
     return RedirectResponse(link.destination, 302)
 
@@ -94,22 +99,35 @@ async def bio_page(slug: str, request: Request, db: AsyncSession = Depends(get_d
         return HTMLResponse("<h1>Page not found</h1>", 404)
     page.views += 1
     await db.commit()
-    return templates.TemplateResponse(request, "public/bio.html",
-                                      {"brand": brand, "page": page, "avatar": avatar, "done": False})
+    return templates.TemplateResponse(
+        request, "public/bio.html", {"brand": brand, "page": page, "avatar": avatar, "done": False}
+    )
 
 
 @router.post("/b/{slug}/subscribe")
-async def bio_subscribe(slug: str, request: Request, email: str = Form(...), name: str = Form(""),
-                        db: AsyncSession = Depends(get_db)):
+async def bio_subscribe(
+    slug: str,
+    request: Request,
+    email: str = Form(...),
+    name: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
     brand, page, avatar = await _bio(db, slug)
     if not page or not page.capture_email:
         return HTMLResponse("<h1>Not found</h1>", 404)
     email = email.strip().lower()
     if "@" in email:
-        contact = await db.scalar(select(Contact).where(Contact.brand_id == brand.id, Contact.email == email))
+        contact = await db.scalar(
+            select(Contact).where(Contact.brand_id == brand.id, Contact.email == email)
+        )
         if contact is None:
-            contact = Contact(brand_id=brand.id, email=email, first_name=name.strip() or None,
-                              source="bio", unsubscribe_token=token(16))
+            contact = Contact(
+                brand_id=brand.id,
+                email=email,
+                first_name=name.strip() or None,
+                source="bio",
+                unsubscribe_token=token(16),
+            )
             db.add(contact)
             await db.flush()
         contact.subscribed = True
@@ -118,5 +136,6 @@ async def bio_subscribe(slug: str, request: Request, email: str = Form(...), nam
             if clist and clist not in contact.lists:
                 contact.lists.append(clist)
         await db.commit()
-    return templates.TemplateResponse(request, "public/bio.html",
-                                      {"brand": brand, "page": page, "avatar": avatar, "done": True})
+    return templates.TemplateResponse(
+        request, "public/bio.html", {"brand": brand, "page": page, "avatar": avatar, "done": True}
+    )

@@ -62,7 +62,9 @@ class MastodonAdapter(PlatformAdapter):
                 await self.http.post(
                     f"{base}/api/v2/media",
                     headers=auth,
-                    files={"file": (m.filename, payload.media_path(m).read_bytes(), m.content_type)},
+                    files={
+                        "file": (m.filename, payload.media_path(m).read_bytes(), m.content_type)
+                    },
                     data={"description": m.alt_text or ""},
                 )
             )
@@ -72,7 +74,9 @@ class MastodonAdapter(PlatformAdapter):
                 if resp.status_code != 202 and media.get("url"):
                     break
                 await asyncio.sleep(2)
-                resp = self.check(await self.http.get(f"{base}/api/v1/media/{media['id']}", headers=auth))
+                resp = self.check(
+                    await self.http.get(f"{base}/api/v1/media/{media['id']}", headers=auth)
+                )
                 media = resp.json()
             media_ids.append(media["id"])
         text = payload.text
@@ -88,20 +92,26 @@ class MastodonAdapter(PlatformAdapter):
         last_id = res["id"]
         for i, item in enumerate(payload.thread, start=2):
             try:
-                reply = self.check(await self.http.post(
-                    f"{base}/api/v1/statuses", headers=auth,
-                    json={"status": item, "in_reply_to_id": last_id},
-                )).json()
+                reply = self.check(
+                    await self.http.post(
+                        f"{base}/api/v1/statuses",
+                        headers=auth,
+                        json={"status": item, "in_reply_to_id": last_id},
+                    )
+                ).json()
                 last_id = reply["id"]
             except PlatformError as e:
                 log.warning("Mastodon thread item %d failed after %s: %s", i, last_id, e)
                 break
         if payload.first_comment:
             try:
-                self.check(await self.http.post(
-                    f"{base}/api/v1/statuses", headers=auth,
-                    json={"status": payload.first_comment, "in_reply_to_id": res["id"]},
-                ))
+                self.check(
+                    await self.http.post(
+                        f"{base}/api/v1/statuses",
+                        headers=auth,
+                        json={"status": payload.first_comment, "in_reply_to_id": res["id"]},
+                    )
+                )
             except PlatformError as e:
                 log.warning("Mastodon first comment failed for %s: %s", res["id"], e)
         return PublishResult(res["id"], res.get("url"))

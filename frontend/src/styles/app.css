@@ -12,6 +12,7 @@
   with a label. Three radii follow hierarchy: controls, cards, overlays.
 */
 :root {
+  color-scheme: light; /* native checkboxes and scrollbars follow the app's theme, not the OS */
   --paper: #f7f8fa;
   --surface: #ffffff;
   --ink: #171a21;
@@ -62,6 +63,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --paper: #16181d;
   --surface: #1e2128;
   --ink: #eceef2;

@@ -23,23 +23,55 @@ def parse_tags(raw: str | list[str]) -> list[str]:
 
 
 async def list_ideas(db: AsyncSession, brand: Brand) -> list[Idea]:
-    return (await db.execute(select(Idea).where(Idea.brand_id == brand.id)
-                             .order_by(Idea.position, Idea.id.desc()))).scalars().all()
+    return (
+        (
+            await db.execute(
+                select(Idea)
+                .where(Idea.brand_id == brand.id)
+                .order_by(Idea.position, Idea.id.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
 
 
-async def create(db: AsyncSession, brand: Brand, user: User, *, title: str, body: str | None = None,
-                 tags: list[str] | str = (), source_url: str | None = None, status: str = "idea") -> Idea:
+async def create(
+    db: AsyncSession,
+    brand: Brand,
+    user: User,
+    *,
+    title: str,
+    body: str | None = None,
+    tags: list[str] | str = (),
+    source_url: str | None = None,
+    status: str = "idea",
+) -> Idea:
     status = status if status in Idea.STATUSES else "idea"
     top = (await db.scalar(select(func.min(Idea.position)).where(Idea.brand_id == brand.id))) or 0
-    idea = Idea(brand_id=brand.id, author_id=user.id, title=title.strip()[:200], body=(body or "").strip() or None,
-                tags=parse_tags(tags), source_url=(source_url or "").strip() or None, status=status, position=top - 1)
+    idea = Idea(
+        brand_id=brand.id,
+        author_id=user.id,
+        title=title.strip()[:200],
+        body=(body or "").strip() or None,
+        tags=parse_tags(tags),
+        source_url=(source_url or "").strip() or None,
+        status=status,
+        position=top - 1,
+    )
     db.add(idea)
     await db.commit()
     return idea
 
 
-def update(idea: Idea, *, title: str | None = None, body: str | None = None, tags: list[str] | str | None = None,
-           source_url: str | None = None) -> None:
+def update(
+    idea: Idea,
+    *,
+    title: str | None = None,
+    body: str | None = None,
+    tags: list[str] | str | None = None,
+    source_url: str | None = None,
+) -> None:
     if title is not None:
         idea.title = title.strip()[:200] or idea.title
     if body is not None:
@@ -62,8 +94,15 @@ async def to_post(db: AsyncSession, brand: Brand, user: User, idea: Idea) -> tup
         existing = await db.get(Post, idea.post_id)
         if existing and existing.brand_id == brand.id:
             return existing, False
-    post = Post(brand_id=brand.id, author_id=user.id, content=idea.body or idea.title, link=idea.source_url,
-                media_ids=list(idea.media_ids or []), source="idea", notes=f"From idea: {idea.title}")
+    post = Post(
+        brand_id=brand.id,
+        author_id=user.id,
+        content=idea.body or idea.title,
+        link=idea.source_url,
+        media_ids=list(idea.media_ids or []),
+        source="idea",
+        notes=f"From idea: {idea.title}",
+    )
     post.targets = []
     db.add(post)
     await db.flush()
@@ -77,11 +116,23 @@ async def to_post(db: AsyncSession, brand: Brand, user: User, idea: Idea) -> tup
 
 async def ai_expand(db: AsyncSession, brand: Brand, idea: Idea) -> Idea:
     """Expand a one-line idea into a post in the brand voice (raises AIUnavailable)."""
-    platforms = sorted({a.platform for a in (await db.execute(
-        select(SocialAccount).where(SocialAccount.brand_id == brand.id, SocialAccount.is_active.is_(True))
-    )).scalars().all()}) or ["linkedin"]
-    drafts = await ContentAI().generate(brand, f"{idea.title}\n\n{idea.body or ''}".strip(), platforms[:1],
-                                        link=idea.source_url)
+    platforms = sorted(
+        {
+            a.platform
+            for a in (
+                await db.execute(
+                    select(SocialAccount).where(
+                        SocialAccount.brand_id == brand.id, SocialAccount.is_active.is_(True)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        }
+    ) or ["linkedin"]
+    drafts = await ContentAI().generate(
+        brand, f"{idea.title}\n\n{idea.body or ''}".strip(), platforms[:1], link=idea.source_url
+    )
     if not drafts:
         raise AIUnavailable("The AI returned nothing")
     idea.body = drafts[0].text

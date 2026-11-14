@@ -183,20 +183,29 @@ class XAdapter(PlatformAdapter):
         last_id = tweet_id
         for i, item in enumerate(payload.thread, start=2):
             try:
-                res = self.check(await self.http.post(
-                    f"{API}/tweets", headers=headers,
-                    json={"text": item, "reply": {"in_reply_to_tweet_id": last_id}},
-                )).json()
+                res = self.check(
+                    await self.http.post(
+                        f"{API}/tweets",
+                        headers=headers,
+                        json={"text": item, "reply": {"in_reply_to_tweet_id": last_id}},
+                    )
+                ).json()
                 last_id = res["data"]["id"]
             except PlatformError as e:
                 log.warning("X thread item %d failed after %s: %s", i, last_id, e)
                 break
         if payload.first_comment:
             try:
-                self.check(await self.http.post(
-                    f"{API}/tweets", headers=headers,
-                    json={"text": payload.first_comment, "reply": {"in_reply_to_tweet_id": tweet_id}},
-                ))
+                self.check(
+                    await self.http.post(
+                        f"{API}/tweets",
+                        headers=headers,
+                        json={
+                            "text": payload.first_comment,
+                            "reply": {"in_reply_to_tweet_id": tweet_id},
+                        },
+                    )
+                )
             except PlatformError as e:
                 log.warning("X first comment failed for %s: %s", tweet_id, e)
         return PublishResult(tweet_id, f"https://x.com/{account.handle}/status/{tweet_id}")

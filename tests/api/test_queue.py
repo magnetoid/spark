@@ -11,7 +11,9 @@ async def test_channel_queue_merges_posts_and_free_slots(api, db, brand):
         db.add(QueueSlot(brand_id=brand.id, weekday=d, time="10:00"))
         db.add(QueueSlot(brand_id=brand.id, weekday=d, time="16:00"))
     acc = await db.scalar(select(SocialAccount).where(SocialAccount.brand_id == brand.id))
-    when = (datetime.now(UTC) + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
+    when = (datetime.now(UTC) + timedelta(days=1)).replace(
+        hour=10, minute=0, second=0, microsecond=0
+    )
     p = Post(brand_id=brand.id, content="Queued", status=PostStatus.scheduled, scheduled_at=when)
     p.targets = [PostTarget(account_id=acc.id, status=PostStatus.scheduled, scheduled_at=when)]
     d = Post(brand_id=brand.id, content="A draft", status=PostStatus.draft)

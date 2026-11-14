@@ -22,8 +22,12 @@ def hash_token(raw: str) -> str:
 async def create_token(db: AsyncSession, user: User, name: str) -> tuple[str, ApiToken]:
     """Create a token for `user`; returns (raw token, row). The raw token is not stored."""
     raw = TOKEN_PREFIX + new_secret(30)
-    row = ApiToken(user_id=user.id, name=(name or "API client").strip()[:120] or "API client",
-                   token_hash=hash_token(raw), prefix=raw[:10])
+    row = ApiToken(
+        user_id=user.id,
+        name=(name or "API client").strip()[:120] or "API client",
+        token_hash=hash_token(raw),
+        prefix=raw[:10],
+    )
     db.add(row)
     await db.commit()
     return raw, row

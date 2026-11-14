@@ -59,21 +59,46 @@ def _member_out(m: BrandMember) -> MemberOut:
     """A workspace owner is an owner everywhere, whatever their row says, so the row shows as fixed."""
     wo = m.user.role == Role.owner
     return MemberOut(
-        id=m.id, user_id=m.user_id, name=m.user.name, email=m.user.email, role="owner" if wo else m.role,
-        is_active=m.user.is_active, workspace_owner=wo,
+        id=m.id,
+        user_id=m.user_id,
+        name=m.user.name,
+        email=m.user.email,
+        role="owner" if wo else m.role,
+        is_active=m.user.is_active,
+        workspace_owner=wo,
     )
 
 
 async def _members(db: AsyncSession, brand_id: int) -> list[MemberOut]:
     """Explicit members plus the workspace owners, who see every brand without a membership row."""
     rows = (
-        await db.execute(select(BrandMember).where(BrandMember.brand_id == brand_id).options(selectinload(BrandMember.user)))
-    ).scalars().all()
+        (
+            await db.execute(
+                select(BrandMember)
+                .where(BrandMember.brand_id == brand_id)
+                .options(selectinload(BrandMember.user))
+            )
+        )
+        .scalars()
+        .all()
+    )
     out = [_member_out(m) for m in rows]
     seen = {m.user_id for m in rows}
-    owners = (await db.execute(select(User).where(User.role == Role.owner, User.id.not_in(seen)))).scalars().all()
+    owners = (
+        (await db.execute(select(User).where(User.role == Role.owner, User.id.not_in(seen))))
+        .scalars()
+        .all()
+    )
     out += [
-        MemberOut(id=None, user_id=u.id, name=u.name, email=u.email, role="owner", is_active=u.is_active, workspace_owner=True)
+        MemberOut(
+            id=None,
+            user_id=u.id,
+            name=u.name,
+            email=u.email,
+            role="owner",
+            is_active=u.is_active,
+            workspace_owner=True,
+        )
         for u in owners
     ]
     return sorted(out, key=lambda m: (m.role != "owner", m.name.lower()))
@@ -222,9 +247,7 @@ async def _brand_post(db: AsyncSession, brand_id: int, post_id: int) -> Post:
     post = await db.scalar(
         select(Post)
         .where(Post.id == post_id, Post.brand_id == brand_id)
-        .options(
-            selectinload(Post.targets).selectinload(PostTarget.account)
-        )
+        .options(selectinload(Post.targets).selectinload(PostTarget.account))
     )
     if post is None:
         raise not_found("No such post")
@@ -374,9 +397,7 @@ async def _review_posts(db: AsyncSession, link: ShareLink) -> list[Post]:
     q = (
         select(Post)
         .where(Post.brand_id == link.brand_id, Post.is_autosave.is_(False))
-        .options(
-            selectinload(Post.targets).selectinload(PostTarget.account)
-        )
+        .options(selectinload(Post.targets).selectinload(PostTarget.account))
     )
     ids = (link.scope or {}).get("post_ids")
     if ids:
@@ -415,7 +436,17 @@ async def _review_post(db: AsyncSession, p: Post) -> ReviewPost:
         .scalars()
         .all()
     )
-    media = (await db.execute(select(Media).where(Media.id.in_(p.media_ids), Media.brand_id == p.brand_id))).scalars().all() if p.media_ids else []
+    media = (
+        (
+            await db.execute(
+                select(Media).where(Media.id.in_(p.media_ids), Media.brand_id == p.brand_id)
+            )
+        )
+        .scalars()
+        .all()
+        if p.media_ids
+        else []
+    )
     return ReviewPost(
         id=p.id,
         content=p.content,
@@ -424,8 +455,14 @@ async def _review_post(db: AsyncSession, p: Post) -> ReviewPost:
         scheduled_at=as_utc(p.scheduled_at),
         media=[f"{get_settings().base_url}{m.url}" for m in media],
         channels=[
-            ReviewChannel(platform=t.account.platform, handle=t.account.handle, text=t.content_override or p.content,
-                          first_comment=t.first_comment or None, thread=list(t.thread or []), post_type=t.post_type or "post")
+            ReviewChannel(
+                platform=t.account.platform,
+                handle=t.account.handle,
+                text=t.content_override or p.content,
+                first_comment=t.first_comment or None,
+                thread=list(t.thread or []),
+                post_type=t.post_type or "post",
+            )
             for t in p.targets
             if t.account
         ],

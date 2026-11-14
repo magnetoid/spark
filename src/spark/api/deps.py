@@ -15,6 +15,7 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spark.api.errors import ApiError, forbidden, login_required, not_found
+from spark.config import get_settings
 from spark.db import get_db
 from spark.models import Brand, User
 from spark.services import access, tokens
@@ -46,8 +47,12 @@ async def optional_user(request: Request, db: AsyncSession = Depends(get_db)) ->
     if raw is not None:
         user = await tokens.user_for_token(db, raw)
         if user is None:
-            raise ApiError(401, "invalid_token", "Invalid or revoked API token",
-                           headers={"WWW-Authenticate": 'Bearer realm="spark"'})
+            raise ApiError(
+                401,
+                "invalid_token",
+                "Invalid or revoked API token",
+                headers={"WWW-Authenticate": 'Bearer realm="spark"'},
+            )
         request.state.auth = "bearer"
         return user
     check_csrf(request)
@@ -59,9 +64,26 @@ async def optional_user(request: Request, db: AsyncSession = Depends(get_db)) ->
     return user
 
 
-async def current_user(user: User | None = Depends(optional_user)) -> User:
+async def signed_in(user: User | None = Depends(optional_user)) -> User:
+    """Signed in, nothing more: for the routes someone needs to set up two-factor or sign out."""
     if user is None:
         raise login_required()
+    return user
+
+
+def needs_two_factor_setup(user: User, auth: str | None) -> bool:
+    """The workspace requires two-factor and this password sign-in has none yet.
+
+    API tokens are not affected: they are created by a signed-in person and can be revoked.
+    """
+    return bool(get_settings().require_two_factor and auth != "bearer" and not user.totp_enabled)
+
+
+async def current_user(request: Request, user: User = Depends(signed_in)) -> User:
+    if needs_two_factor_setup(user, getattr(request.state, "auth", None)):
+        raise ApiError(
+            403, "two_factor_setup_required", "Set up two-factor sign-in to keep using Spark"
+        )
     return user
 
 
@@ -93,7 +115,9 @@ class BrandCtx:
         return access.can_manage(self.role)
 
 
-async def brand_ctx(brand_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(current_user)) -> BrandCtx:
+async def brand_ctx(
+    brand_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(current_user)
+) -> BrandCtx:
     brand = await db.get(Brand, brand_id)
     role = await access.role_for(db, user, brand_id) if brand else None
     if brand is None or role is None:

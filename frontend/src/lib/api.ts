@@ -13,6 +13,7 @@ export type ApiPaths = paths;
 
 let csrfToken = "";
 let onUnauthorized: (() => void) | null = null;
+let onTwoFactorSetup: (() => void) | null = null;
 
 export function setCsrfToken(token: string) {
   csrfToken = token;
@@ -24,6 +25,11 @@ export function getCsrfToken() {
 
 export function setUnauthorizedHandler(fn: () => void) {
   onUnauthorized = fn;
+}
+
+/** Called when a request is refused because the workspace requires two-factor and this person has none. */
+export function setTwoFactorSetupHandler(fn: () => void) {
+  onTwoFactorSetup = fn;
 }
 
 const auth: Middleware = {
@@ -45,6 +51,7 @@ const auth: Middleware = {
         retry.headers.set("X-Spark-Retry", "1");
         return fetch(retry);
       }
+      if (body?.code === "two_factor_setup_required") onTwoFactorSetup?.();
     }
     if (response.status === 401) {
       const body = await response.clone().json().catch(() => null);
@@ -63,11 +70,14 @@ export class ApiError extends Error {
   }
 }
 
-/** Unwrap an openapi-fetch result: data, or throw an ApiError with the server's code. */
+/**
+ * Unwrap an openapi-fetch result: data, or throw an ApiError with the server's code.
+ * A successful answer with no body (204 after a delete) has no data and is not an error.
+ */
 export function unwrap<T>(result: { data?: T; error?: unknown; response: Response }): T {
-  if (result.error !== undefined || result.data === undefined) {
+  if (result.error !== undefined || !result.response.ok) {
     const e = (result.error ?? {}) as { code?: string; detail?: string };
     throw new ApiError(result.response.status, e.code ?? "error", e.detail ?? result.response.statusText);
   }
-  return result.data;
+  return result.data as T;
 }

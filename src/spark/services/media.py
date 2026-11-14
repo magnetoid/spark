@@ -12,10 +12,30 @@ from spark.models import Brand, Media
 from spark.security import token
 from spark.services.images import dimensions
 
-ALLOWED_MEDIA = {"image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/quicktime", "application/pdf"}
-EXTENSIONS = {"image/jpeg": ".jpg", "image/png": ".png", "image/gif": ".gif", "image/webp": ".webp", "video/mp4": ".mp4",
-              "video/quicktime": ".mov", "application/pdf": ".pdf"}
-_IMAGE_FORMATS = {"PNG": "image/png", "JPEG": "image/jpeg", "GIF": "image/gif", "WEBP": "image/webp"}
+ALLOWED_MEDIA = {
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "video/mp4",
+    "video/quicktime",
+    "application/pdf",
+}
+EXTENSIONS = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "video/mp4": ".mp4",
+    "video/quicktime": ".mov",
+    "application/pdf": ".pdf",
+}
+_IMAGE_FORMATS = {
+    "PNG": "image/png",
+    "JPEG": "image/jpeg",
+    "GIF": "image/gif",
+    "WEBP": "image/webp",
+}
 
 
 def sniff(data: bytes, declared: str) -> str | None:
@@ -47,11 +67,23 @@ class Upload:
 
 
 async def list_media(db: AsyncSession, brand: Brand, limit: int = 500) -> list[Media]:
-    return (await db.execute(select(Media).where(Media.brand_id == brand.id)
-                             .order_by(Media.id.desc()).limit(limit))).scalars().all()
+    return (
+        (
+            await db.execute(
+                select(Media)
+                .where(Media.brand_id == brand.id)
+                .order_by(Media.id.desc())
+                .limit(limit)
+            )
+        )
+        .scalars()
+        .all()
+    )
 
 
-async def save_uploads(db: AsyncSession, brand: Brand, uploads: list[Upload]) -> tuple[list[Media], list[dict]]:
+async def save_uploads(
+    db: AsyncSession, brand: Brand, uploads: list[Upload]
+) -> tuple[list[Media], list[dict]]:
     """Store accepted files; returns (saved, rejected [{name, reason}])."""
     s = get_settings()
     saved, rejected = [], []
@@ -64,8 +96,19 @@ async def save_uploads(db: AsyncSession, brand: Brand, uploads: list[Upload]) ->
             continue
         real = sniff(u.data, u.content_type)
         if real is None:
-            kind = "an image" if u.content_type.startswith("image/") else "a video" if u.content_type.startswith("video/") else "a PDF"
-            rejected.append({"name": u.name, "reason": f"not {kind}: the file's content does not match its type"})
+            kind = (
+                "an image"
+                if u.content_type.startswith("image/")
+                else "a video"
+                if u.content_type.startswith("video/")
+                else "a PDF"
+            )
+            rejected.append(
+                {
+                    "name": u.name,
+                    "reason": f"not {kind}: the file's content does not match its type",
+                }
+            )
             continue
         ext = EXTENSIONS[real]
         rel = f"{brand.id}/{token(12)}{ext}"
@@ -73,8 +116,17 @@ async def save_uploads(db: AsyncSession, brand: Brand, uploads: list[Upload]) ->
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(u.data)
         w, h = dimensions(u.data, real)
-        m = Media(brand_id=brand.id, filename=u.name or rel, path=rel, content_type=real, size=len(u.data), width=w, height=h,
-                  source="upload", tags=[])
+        m = Media(
+            brand_id=brand.id,
+            filename=u.name or rel,
+            path=rel,
+            content_type=real,
+            size=len(u.data),
+            width=w,
+            height=h,
+            source="upload",
+            tags=[],
+        )
         db.add(m)
         saved.append(m)
     await db.commit()

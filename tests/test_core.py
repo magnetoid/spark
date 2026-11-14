@@ -23,7 +23,9 @@ def test_password_and_crypto_roundtrip():
 
 
 def test_add_utm_keeps_existing_params():
-    url = add_utm("https://x.io/p?a=1&utm_source=keep", source="new", medium="social", campaign=None)
+    url = add_utm(
+        "https://x.io/p?a=1&utm_source=keep", source="new", medium="social", campaign=None
+    )
     assert "a=1" in url and "utm_source=keep" in url and "utm_medium=social" in url
     assert "utm_campaign" not in url
 
@@ -34,7 +36,9 @@ def test_bluesky_facets_use_byte_offsets():
     kinds = {x["features"][0]["$type"] for x in f}
     assert kinds == {"app.bsky.richtext.facet#link", "app.bsky.richtext.facet#tag"}
     link = next(x for x in f if "link" in x["features"][0]["$type"])
-    assert text.encode()[link["index"]["byteStart"]:link["index"]["byteEnd"]] == b"https://bsky.app"
+    assert (
+        text.encode()[link["index"]["byteStart"] : link["index"]["byteEnd"]] == b"https://bsky.app"
+    )
 
 
 def test_validate_limits():
@@ -57,11 +61,31 @@ async def test_zernio_publish_flow(monkeypatch):
 
     monkeypatch.setattr(get_settings(), "zernio_api_key", "sk_test")
     route = respx.post("https://zernio.com/api/v1/posts").mock(
-        return_value=httpx.Response(201, json={"post": {"_id": "p1", "platforms": [
-            {"platform": "twitter", "status": "published", "platformPostUrl": "https://x.com/a/1"}]}})
+        return_value=httpx.Response(
+            201,
+            json={
+                "post": {
+                    "_id": "p1",
+                    "platforms": [
+                        {
+                            "platform": "twitter",
+                            "status": "published",
+                            "platformPostUrl": "https://x.com/a/1",
+                        }
+                    ],
+                }
+            },
+        )
     )
-    acc = SocialAccount(id=1, brand_id=1, platform="x", provider="zernio", external_id="acc1",
-                        handle="acme", extra={})
+    acc = SocialAccount(
+        id=1,
+        brand_id=1,
+        platform="x",
+        provider="zernio",
+        external_id="acc1",
+        handle="acme",
+        extra={},
+    )
     adapter = ZernioAdapter.for_platform("x", httpx.AsyncClient())
     res = await adapter.publish(acc, PublishPayload(text="hello", media=[], link=None))
     assert res.remote_id == "p1" and res.url == "https://x.com/a/1"
@@ -76,13 +100,36 @@ async def test_zernio_failure_categories(monkeypatch):
     from spark.platforms import AuthExpired
 
     monkeypatch.setattr(get_settings(), "zernio_api_key", "sk_test")
-    respx.post("https://zernio.com/api/v1/posts").mock(return_value=httpx.Response(207, json={
-        "post": {"_id": "p2", "platforms": [{"status": "failed", "errorCategory": "auth_expired",
-                                             "errorMessage": "token dead"}]}}))
-    acc = SocialAccount(id=1, brand_id=1, platform="linkedin", provider="zernio", external_id="a", handle="h", extra={})
+    respx.post("https://zernio.com/api/v1/posts").mock(
+        return_value=httpx.Response(
+            207,
+            json={
+                "post": {
+                    "_id": "p2",
+                    "platforms": [
+                        {
+                            "status": "failed",
+                            "errorCategory": "auth_expired",
+                            "errorMessage": "token dead",
+                        }
+                    ],
+                }
+            },
+        )
+    )
+    acc = SocialAccount(
+        id=1,
+        brand_id=1,
+        platform="linkedin",
+        provider="zernio",
+        external_id="a",
+        handle="h",
+        extra={},
+    )
     with pytest.raises(AuthExpired):
         await ZernioAdapter.for_platform("linkedin", httpx.AsyncClient()).publish(
-            acc, PublishPayload(text="x", media=[]))
+            acc, PublishPayload(text="x", media=[])
+        )
 
 
 async def test_publisher_state_machine(db, brand):
@@ -107,8 +154,9 @@ async def test_publisher_state_machine(db, brand):
 async def test_publisher_permanent_failure(db, brand):
     acc = await db.scalar(select(SocialAccount))
     post = Post(brand_id=brand.id, content="this will #fail")
-    post.targets = [PostTarget(account_id=acc.id, status=PostStatus.scheduled,
-                               scheduled_at=datetime.now(UTC))]
+    post.targets = [
+        PostTarget(account_id=acc.id, status=PostStatus.scheduled, scheduled_at=datetime.now(UTC))
+    ]
     db.add(post)
     await db.commit()
     ids = await publisher.claim_due(db)
@@ -143,7 +191,9 @@ async def test_next_free_slot_skips_taken(db, brand):
 
 
 async def test_public_short_link_and_bio(client, db, brand):
-    r = await client.post(f"/api/v1/brands/{brand.id}/links", json={"destination": "example.com/x", "utm_source": "t"})
+    r = await client.post(
+        f"/api/v1/brands/{brand.id}/links", json={"destination": "example.com/x", "utm_source": "t"}
+    )
     assert r.status_code == 201
     code = r.json()["code"]
     r = await client.get(f"/l/{code}")
@@ -191,12 +241,22 @@ async def test_zernio_thread_items(monkeypatch):
 
     monkeypatch.setattr(get_settings(), "zernio_api_key", "sk_test")
     route = respx.post("https://zernio.com/api/v1/posts").mock(
-        return_value=httpx.Response(201, json={"post": {"_id": "p9", "platforms": [{"status": "published"}]}})
+        return_value=httpx.Response(
+            201, json={"post": {"_id": "p9", "platforms": [{"status": "published"}]}}
+        )
     )
-    acc = SocialAccount(id=1, brand_id=1, platform="x", provider="zernio", external_id="acc1",
-                        handle="acme", extra={})
+    acc = SocialAccount(
+        id=1,
+        brand_id=1,
+        platform="x",
+        provider="zernio",
+        external_id="acc1",
+        handle="acme",
+        extra={},
+    )
     await ZernioAdapter.for_platform("x", httpx.AsyncClient()).publish(
-        acc, PublishPayload(text="root (1/3)", media=[], thread=["two (2/3)", "three (3/3)"]))
+        acc, PublishPayload(text="root (1/3)", media=[], thread=["two (2/3)", "three (3/3)"])
+    )
     body = _json.loads(route.calls.last.request.content)
     items = body["platforms"][0]["platformSpecificData"]["threadItems"]
     assert [i["content"] for i in items] == ["root (1/3)", "two (2/3)", "three (3/3)"]
@@ -208,16 +268,31 @@ async def test_zernio_list_accounts_all_profiles(monkeypatch):
     from spark.config import get_settings
 
     monkeypatch.setattr(get_settings(), "zernio_api_key", "sk_test")
-    route = respx.get("https://zernio.com/api/v1/accounts").mock(return_value=httpx.Response(200, json={
-        "accounts": [
-            {"_id": "a1", "platform": "linkedin", "username": "Imba Marketing", "isActive": True,
-             "profileId": {"_id": "p-default", "name": "Default"}},
-            {"_id": "a2", "platform": "twitter", "username": "@imba", "isActive": True,
-             "profileId": {"_id": "p-default", "name": "Default"}},
-            {"_id": "a3", "platform": "whatsapp", "username": "+381", "isActive": True},
-        ],
-        "pagination": {"nextCursor": None},
-    }))
+    route = respx.get("https://zernio.com/api/v1/accounts").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "accounts": [
+                    {
+                        "_id": "a1",
+                        "platform": "linkedin",
+                        "username": "Imba Marketing",
+                        "isActive": True,
+                        "profileId": {"_id": "p-default", "name": "Default"},
+                    },
+                    {
+                        "_id": "a2",
+                        "platform": "twitter",
+                        "username": "@imba",
+                        "isActive": True,
+                        "profileId": {"_id": "p-default", "name": "Default"},
+                    },
+                    {"_id": "a3", "platform": "whatsapp", "username": "+381", "isActive": True},
+                ],
+                "pagination": {"nextCursor": None},
+            },
+        )
+    )
     pairs = await ZernioAdapter(httpx.AsyncClient()).list_accounts(None)
     assert "profileId" not in dict(route.calls.last.request.url.params)
     assert [(p, a.external_id) for p, a in pairs] == [("linkedin", "a1"), ("x", "a2")]
@@ -230,31 +305,64 @@ async def test_zernio_inbox_filters_to_brand_accounts(monkeypatch):
     from spark.config import get_settings
 
     monkeypatch.setattr(get_settings(), "zernio_api_key", "sk_test")
-    respx.get("https://zernio.com/api/v1/inbox/comments").mock(return_value=httpx.Response(200, json={
-        "data": [
-            {"id": "p1", "platform": "linkedin", "accountId": "a1", "commentCount": 3, "isAd": False},
-            {"id": "p2", "platform": "facebook", "accountId": "other", "commentCount": 1, "isAd": False},
-            {"id": "ad", "platform": "facebook", "accountId": "a1", "commentCount": 9, "isAd": True},
-        ],
-        "pagination": {"hasMore": False, "nextCursor": None},
-    }))
+    respx.get("https://zernio.com/api/v1/inbox/comments").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "data": [
+                    {
+                        "id": "p1",
+                        "platform": "linkedin",
+                        "accountId": "a1",
+                        "commentCount": 3,
+                        "isAd": False,
+                    },
+                    {
+                        "id": "p2",
+                        "platform": "facebook",
+                        "accountId": "other",
+                        "commentCount": 1,
+                        "isAd": False,
+                    },
+                    {
+                        "id": "ad",
+                        "platform": "facebook",
+                        "accountId": "a1",
+                        "commentCount": 9,
+                        "isAd": True,
+                    },
+                ],
+                "pagination": {"hasMore": False, "nextCursor": None},
+            },
+        )
+    )
     reply = respx.post("https://zernio.com/api/v1/inbox/comments/p1").mock(
-        return_value=httpx.Response(200, json={"success": True, "data": {}}))
+        return_value=httpx.Response(200, json={"success": True, "data": {}})
+    )
     z = ZernioAdapter(httpx.AsyncClient())
     rows = await z.commented_posts({"a1"}, since="2026-10-01")
     assert [r["id"] for r in rows] == ["p1"]
     await z.reply("p1", "a1", "Thanks!", comment_id="c7")
     import json as _json
 
-    assert _json.loads(reply.calls.last.request.content) == {"accountId": "a1", "message": "Thanks!", "commentId": "c7"}
+    assert _json.loads(reply.calls.last.request.content) == {
+        "accountId": "a1",
+        "message": "Thanks!",
+        "commentId": "c7",
+    }
     assert "Idempotency-Key" in reply.calls.last.request.headers
 
 
 async def test_bio_links_are_tracked(client, db, brand):
     from spark.models import ShortLink
 
-    body = {"title": "Acme", "theme": "light", "capture_email": True, "is_published": True,
-            "links": [{"label": "Pricing", "url": "https://acme.example.com/pricing"}]}
+    body = {
+        "title": "Acme",
+        "theme": "light",
+        "capture_email": True,
+        "is_published": True,
+        "links": [{"label": "Pricing", "url": "https://acme.example.com/pricing"}],
+    }
     r = await client.put(f"/api/v1/brands/{brand.id}/bio", json=body)
     assert r.status_code == 200, r.text
     code = r.json()["links"][0]["code"]
@@ -264,16 +372,29 @@ async def test_bio_links_are_tracked(client, db, brand):
     assert f'href="/l/{code}"' in r.text
     assert (await client.get(f"/l/{code}")).status_code == 302
     # re-saving the same link keeps the code (and its click history)
-    r = await client.put(f"/api/v1/brands/{brand.id}/bio", json={**body, "links": [{**body["links"][0], "code": code}]})
-    assert r.json()["links"][0]["code"] == code and r.json()["links"][0]["clicks"] == 1 and r.json()["total_clicks"] == 1
+    r = await client.put(
+        f"/api/v1/brands/{brand.id}/bio",
+        json={**body, "links": [{**body["links"][0], "code": code}]},
+    )
+    assert (
+        r.json()["links"][0]["code"] == code
+        and r.json()["links"][0]["clicks"] == 1
+        and r.json()["total_clicks"] == 1
+    )
 
 
 async def test_csrf_required(client, db, brand):
     saved = client.headers.pop("X-CSRF-Token")
-    r = await client.post(f"/api/v1/brands/{brand.id}/links", json={"destination": "https://example.com"})
+    r = await client.post(
+        f"/api/v1/brands/{brand.id}/links", json={"destination": "https://example.com"}
+    )
     assert r.status_code == 403 and r.json()["code"] == "csrf"
     client.headers["X-CSRF-Token"] = saved
-    assert (await client.post(f"/api/v1/brands/{brand.id}/links", json={"destination": "https://example.com"})).status_code == 201
+    assert (
+        await client.post(
+            f"/api/v1/brands/{brand.id}/links", json={"destination": "https://example.com"}
+        )
+    ).status_code == 201
     # the public bio form still takes the token as a form field
     await client.get(f"/api/v1/brands/{brand.id}/bio")
     r = await client.post("/b/acme/subscribe", data={"email": "f@example.com", "csrf": saved})
@@ -302,18 +423,23 @@ def test_every_write_route_requires_a_role():
 
 async def test_rate_limit_and_security_headers(client, db, brand, monkeypatch):
     r = await client.get("/api/v1/session")
-    assert r.headers.get("X-Content-Type-Options") == "nosniff" and "script-src 'self'" in r.headers["Content-Security-Policy"]
+    assert (
+        r.headers.get("X-Content-Type-Options") == "nosniff"
+        and "script-src 'self'" in r.headers["Content-Security-Policy"]
+    )
     from spark import main as m
 
     m._buckets.clear()
-    monkeypatch.setattr(m, "_clock", lambda: 1000.0)  # no refill during the burst, however slow the machine
+    monkeypatch.setattr(
+        m, "_clock", lambda: 1000.0
+    )  # no refill during the burst, however slow the machine
     codes = [(await client.get("/l/nope")).status_code for _ in range(125)]
     assert 429 in codes and codes[0] == 404
     m._buckets.clear()
 
 
-
 # ---- Phase E: notifications, preferences, webhooks ------------------------------------
+
 
 async def _failed_target(db, brand, content="Broken post", error="Platform said no"):
     from spark.models import Post, PostStatus, PostTarget, SocialAccount
@@ -322,7 +448,9 @@ async def _failed_target(db, brand, content="Broken post", error="Platform said 
     post = Post(brand_id=brand.id, content=content, status=PostStatus.failed)
     db.add(post)
     await db.flush()
-    t = PostTarget(post_id=post.id, account_id=acc.id, status=PostStatus.failed, error=error, attempts=3)
+    t = PostTarget(
+        post_id=post.id, account_id=acc.id, status=PostStatus.failed, error=error, attempts=3
+    )
     db.add(t)
     await db.commit()
     return post, t
@@ -361,12 +489,20 @@ async def test_notify_approvals(db, brand):
 
     ConsoleSender.sent.clear()
     user = await db.scalar(select(User))
-    post = Post(brand_id=brand.id, content="Please approve me", status=PostStatus.pending_approval,
-                author_id=user.id, scheduled_at=datetime.now(UTC) + timedelta(hours=2))
+    post = Post(
+        brand_id=brand.id,
+        content="Please approve me",
+        status=PostStatus.pending_approval,
+        author_id=user.id,
+        scheduled_at=datetime.now(UTC) + timedelta(hours=2),
+    )
     db.add(post)
     await db.commit()
     assert await notify.notify_approvals(db, ConsoleSender()) == 1
-    assert "approval" in ConsoleSender.sent[-1]["subject"] and "Please approve me" in ConsoleSender.sent[-1]["html"]
+    assert (
+        "approval" in ConsoleSender.sent[-1]["subject"]
+        and "Please approve me" in ConsoleSender.sent[-1]["html"]
+    )
     assert await notify.notify_approvals(db, ConsoleSender()) == 0
 
 
@@ -393,9 +529,13 @@ def _signed(body: dict) -> tuple[bytes, dict]:
 
 async def test_zernio_webhook_signature_and_dedupe(client, db, brand):
     raw, headers = _signed({"id": "evt-1", "event": "webhook.test", "test": True})
-    r = await client.post("/webhooks/zernio", content=raw, headers={"Content-Type": "application/json"})
+    r = await client.post(
+        "/webhooks/zernio", content=raw, headers={"Content-Type": "application/json"}
+    )
     assert r.status_code == 401  # no signature, no CSRF either: signature is the auth
-    r = await client.post("/webhooks/zernio", content=raw, headers={**headers, "X-Zernio-Signature": "deadbeef"})
+    r = await client.post(
+        "/webhooks/zernio", content=raw, headers={**headers, "X-Zernio-Signature": "deadbeef"}
+    )
     assert r.status_code == 401
     r = await client.post("/webhooks/zernio", content=raw, headers=headers)
     assert r.status_code == 200 and r.json()["result"] == "test"
@@ -406,21 +546,37 @@ async def test_zernio_webhook_signature_and_dedupe(client, db, brand):
 async def test_zernio_webhook_marks_target_published_and_failed(client, db, brand):
     from spark.models import Post, PostStatus, PostTarget, SocialAccount
 
-    acc = SocialAccount(brand_id=brand.id, platform="linkedin", provider="zernio", external_id="z-acc-1",
-                        handle="imba")
+    acc = SocialAccount(
+        brand_id=brand.id,
+        platform="linkedin",
+        provider="zernio",
+        external_id="z-acc-1",
+        handle="imba",
+    )
     db.add(acc)
     await db.flush()
     post = Post(brand_id=brand.id, content="Out via Zernio", status=PostStatus.publishing)
     db.add(post)
     await db.flush()
-    t = PostTarget(post_id=post.id, account_id=acc.id, status=PostStatus.publishing, remote_id="zpost-9")
+    t = PostTarget(
+        post_id=post.id, account_id=acc.id, status=PostStatus.publishing, remote_id="zpost-9"
+    )
     db.add(t)
     await db.commit()
 
-    raw, headers = _signed({"id": "evt-pub", "event": "post.platform.published",
-                            "post": {"id": "zpost-9"}, "account": {"accountId": "z-acc-1", "platform": "linkedin"},
-                            "platform": {"name": "linkedin", "status": "published",
-                                         "publishedUrl": "https://linkedin.com/posts/1"}})
+    raw, headers = _signed(
+        {
+            "id": "evt-pub",
+            "event": "post.platform.published",
+            "post": {"id": "zpost-9"},
+            "account": {"accountId": "z-acc-1", "platform": "linkedin"},
+            "platform": {
+                "name": "linkedin",
+                "status": "published",
+                "publishedUrl": "https://linkedin.com/posts/1",
+            },
+        }
+    )
     r = await client.post("/webhooks/zernio", content=raw, headers=headers)
     assert r.json()["result"] == "updated"
     await db.refresh(t)
@@ -432,45 +588,93 @@ async def test_zernio_webhook_marks_target_published_and_failed(client, db, bran
     post2 = Post(brand_id=brand.id, content="Second", status=PostStatus.publishing)
     db.add(post2)
     await db.flush()
-    t2 = PostTarget(post_id=post2.id, account_id=acc.id, status=PostStatus.publishing, remote_id="zpost-10")
+    t2 = PostTarget(
+        post_id=post2.id, account_id=acc.id, status=PostStatus.publishing, remote_id="zpost-10"
+    )
     db.add(t2)
     await db.commit()
-    raw, headers = _signed({"id": "evt-fail", "event": "post.failed",
-                            "post": {"id": "zpost-10", "platforms": [{"accountId": "z-acc-1", "status": "failed",
-                                                                       "error": "Token expired"}]}})
+    raw, headers = _signed(
+        {
+            "id": "evt-fail",
+            "event": "post.failed",
+            "post": {
+                "id": "zpost-10",
+                "platforms": [
+                    {"accountId": "z-acc-1", "status": "failed", "error": "Token expired"}
+                ],
+            },
+        }
+    )
     r = await client.post("/webhooks/zernio", content=raw, headers=headers)
     assert r.json()["result"] == "updated"
     await db.refresh(t2)
     assert t2.status == PostStatus.failed and "Token expired" in t2.error
 
     # the same failure reported again per platform is not a second change
-    raw, headers = _signed({"id": "evt-fail-2", "event": "post.platform.failed",
-                            "post": {"id": "zpost-10"}, "account": {"accountId": "z-acc-1"},
-                            "platform": {"status": "failed", "error": "Token expired"}})
-    assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()["result"] == "unchanged"
+    raw, headers = _signed(
+        {
+            "id": "evt-fail-2",
+            "event": "post.platform.failed",
+            "post": {"id": "zpost-10"},
+            "account": {"accountId": "z-acc-1"},
+            "platform": {"status": "failed", "error": "Token expired"},
+        }
+    )
+    assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()[
+        "result"
+    ] == "unchanged"
 
     # removed on the platform after it went out: still published, not a failure
-    raw, headers = _signed({"id": "evt-del", "event": "post.platform.deleted",
-                            "post": {"id": "zpost-9"}, "account": {"accountId": "z-acc-1"},
-                            "platform": {"status": "deleted"}})
-    assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()["result"] == "updated"
+    raw, headers = _signed(
+        {
+            "id": "evt-del",
+            "event": "post.platform.deleted",
+            "post": {"id": "zpost-9"},
+            "account": {"accountId": "z-acc-1"},
+            "platform": {"status": "deleted"},
+        }
+    )
+    assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()[
+        "result"
+    ] == "updated"
     await db.refresh(t)
     assert t.status == PostStatus.published and t.remote_url is None and "Deleted" in t.error
 
     # account disconnected -> paused with a reason; connected again -> back
-    raw, headers = _signed({"id": "evt-dc", "event": "account.disconnected",
-                            "account": {"accountId": "z-acc-1", "disconnectionType": "unintentional",
-                                        "reason": "token revoked"}})
-    assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()["result"] == "disconnected"
+    raw, headers = _signed(
+        {
+            "id": "evt-dc",
+            "event": "account.disconnected",
+            "account": {
+                "accountId": "z-acc-1",
+                "disconnectionType": "unintentional",
+                "reason": "token revoked",
+            },
+        }
+    )
+    assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()[
+        "result"
+    ] == "disconnected"
     await db.refresh(acc)
     assert acc.is_active is False and "token revoked" in acc.last_error
 
     brand.zernio_profile_id = "prof-1"
     await db.commit()
-    raw, headers = _signed({"id": "evt-c", "event": "account.connected",
-                            "account": {"accountId": "z-acc-1", "profileId": "prof-1", "platform": "linkedin",
-                                        "username": "imba-new"}})
-    assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()["result"] == "connected"
+    raw, headers = _signed(
+        {
+            "id": "evt-c",
+            "event": "account.connected",
+            "account": {
+                "accountId": "z-acc-1",
+                "profileId": "prof-1",
+                "platform": "linkedin",
+                "username": "imba-new",
+            },
+        }
+    )
+    assert (await client.post("/webhooks/zernio", content=raw, headers=headers)).json()[
+        "result"
+    ] == "connected"
     await db.refresh(acc)
     assert acc.is_active is True and acc.handle == "imba-new" and acc.last_error is None
 
@@ -494,7 +698,12 @@ async def test_notify_approvals_again_after_resubmit(db, brand):
 
     user = await db.scalar(select(User))
     brand.require_approval = True
-    post = Post(brand_id=brand.id, content="Needs a look", status=PostStatus.pending_approval, author_id=user.id)
+    post = Post(
+        brand_id=brand.id,
+        content="Needs a look",
+        status=PostStatus.pending_approval,
+        author_id=user.id,
+    )
     db.add(post)
     await db.commit()
     assert await notify.notify_approvals(db, ConsoleSender()) == 1
@@ -513,15 +722,21 @@ async def test_notify_approvals_again_after_resubmit(db, brand):
     assert await notify.notify_approvals(db, ConsoleSender()) == 1
 
 
-
 # ---- Settings → Connectors and the MCP server ------------------------------------------
 
+
 async def _mcp_call(client, token, method, params=None):
-    headers = {"Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2025-06-18"}
+    headers = {
+        "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": "2025-06-18",
+    }
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    r = await client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params or {}},
-                          headers=headers)
+    r = await client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params or {}},
+        headers=headers,
+    )
     return r
 
 
@@ -589,14 +804,29 @@ async def test_mcp_create_schedule_and_list(mcp, db, brand):
     token = await _new_token(mcp)
     err, data = await _tool(mcp, token, "list_brands")
     assert not err and data["brands"][0]["slug"] == "acme" and data["you"]["role"] == "owner"
-    err, data = await _tool(mcp, token, "create_post", content="Queued by an assistant", action="queue")
+    err, data = await _tool(
+        mcp, token, "create_post", content="Queued by an assistant", action="queue"
+    )
     assert not err and data["post"]["status"] == "scheduled" and "Queued for" in data["message"]
     when = (datetime.now(UTC) + timedelta(days=2)).replace(microsecond=0)
-    err, data = await _tool(mcp, token, "create_post", content="At a time", action="schedule",
-                            scheduled_at=when.strftime("%Y-%m-%dT%H:%M"), channels=["acme"])
+    err, data = await _tool(
+        mcp,
+        token,
+        "create_post",
+        content="At a time",
+        action="schedule",
+        scheduled_at=when.strftime("%Y-%m-%dT%H:%M"),
+        channels=["acme"],
+    )
     assert not err and data["post"]["scheduled_at"].startswith(when.strftime("%Y-%m-%dT%H:%M"))
-    err, msg = await _tool(mcp, token, "create_post", content="Too early", action="schedule",
-                           scheduled_at="2020-01-01T10:00")
+    err, msg = await _tool(
+        mcp,
+        token,
+        "create_post",
+        content="Too early",
+        action="schedule",
+        scheduled_at="2020-01-01T10:00",
+    )
     assert err and "past" in msg and "draft" in msg
     err, data = await _tool(mcp, token, "list_posts", status="scheduled")
     assert {p["content"] for p in data["posts"]} == {"Queued by an assistant", "At a time"}
@@ -613,7 +843,9 @@ async def test_mcp_roles_and_approval(mcp, db, brand):
     user = await db.scalar(select(User))
     brand.require_approval = True
     user.role = Role.editor
-    member = BrandMember(brand_id=brand.id, user_id=user.id, role="editor")  # non-owners act through their membership
+    member = BrandMember(
+        brand_id=brand.id, user_id=user.id, role="editor"
+    )  # non-owners act through their membership
     db.add(member)
     await db.commit()
     err, data = await _tool(mcp, token, "create_post", content="Needs approval", action="now")

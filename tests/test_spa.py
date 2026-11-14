@@ -17,15 +17,27 @@ async def _spa(tmp_path: Path, monkeypatch) -> Path:
 
 async def test_app_routes_fall_back_to_index_html(client, tmp_path, monkeypatch):
     await _spa(tmp_path, monkeypatch)
-    for path in ("/", "/publishing", "/posts/12/edit?brand=acme", "/login", "/settings?tab=connectors"):
+    for path in (
+        "/",
+        "/publishing",
+        "/posts/12/edit?brand=acme",
+        "/login",
+        "/settings?tab=connectors",
+    ):
         r = await client.get(path)
         assert r.status_code == 200 and "id=root" in r.text, path
         assert "no-cache" in r.headers.get("cache-control", ""), path
     r = await client.get("/assets/app-abc123.js")
-    assert r.status_code == 200 and "spa" in r.text and "immutable" in r.headers.get("cache-control", "")
+    assert (
+        r.status_code == 200
+        and "spa" in r.text
+        and "immutable" in r.headers.get("cache-control", "")
+    )
     assert (await client.get("/assets/missing.js")).status_code == 404
     r = await client.get("/theme.js")
-    assert r.status_code == 200 and "classList" in r.text and "javascript" in r.headers["content-type"]
+    assert (
+        r.status_code == 200 and "classList" in r.text and "javascript" in r.headers["content-type"]
+    )
     assert "[project]" not in (await client.get("/..%2Fpyproject.toml")).text
 
 
@@ -46,7 +58,9 @@ async def test_csp_is_strict_except_the_public_bio_page(client, tmp_path, monkey
 
 async def test_api_routes_win_over_the_fallback(client, tmp_path, monkeypatch):
     await _spa(tmp_path, monkeypatch)
-    assert (await client.get("/api/v1/session")).headers["content-type"].startswith("application/json")
+    assert (
+        (await client.get("/api/v1/session")).headers["content-type"].startswith("application/json")
+    )
     assert (await client.get("/healthz")).json() == {"ok": True}
     assert (await client.get("/api/v1/nope")).status_code == 404
 

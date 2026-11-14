@@ -43,8 +43,12 @@ def next_slot_times(slots: list[QueueSlot], tz: str, after: datetime, count: int
     return out
 
 
-async def next_free_slot(db: AsyncSession, brand: Brand, after: datetime | None = None,
-                         account_ids: list[int] | None = None) -> datetime:
+async def next_free_slot(
+    db: AsyncSession,
+    brand: Brand,
+    after: datetime | None = None,
+    account_ids: list[int] | None = None,
+) -> datetime:
     """The first upcoming slot with nothing in it. With `account_ids`, only those channels' slots
     (plus brand-wide ones) count, and only posts to those channels take a slot."""
     after = after or datetime.now(UTC)
@@ -72,7 +76,9 @@ async def next_free_slot(db: AsyncSession, brand: Brand, after: datetime | None 
     return after + timedelta(hours=1)
 
 
-def schedule(post: Post, when: datetime, user: User, brand: Brand, can_approve: bool | None = None) -> PostStatus:
+def schedule(
+    post: Post, when: datetime, user: User, brand: Brand, can_approve: bool | None = None
+) -> PostStatus:
     """Move a post (and its targets) into the queue, respecting approval. `can_approve` is the user's
     standing in this brand (owner or client); the workspace role is only a fallback."""
     approver = user.can_approve() if can_approve is None else can_approve
@@ -93,17 +99,23 @@ def schedule(post: Post, when: datetime, user: User, brand: Brand, can_approve: 
     return status
 
 
-async def brand_slots(db: AsyncSession, brand: Brand, account_ids: list[int] | None = None) -> list[QueueSlot]:
+async def brand_slots(
+    db: AsyncSession, brand: Brand, account_ids: list[int] | None = None
+) -> list[QueueSlot]:
     """The brand's posting times. With `account_ids`: the slots of those channels plus the brand-wide
     ones. A brand (or channel) without any slot falls back to 09:00, 12:30 and 17:00 every day."""
-    slots = (await db.execute(select(QueueSlot).where(QueueSlot.brand_id == brand.id))).scalars().all()
+    slots = (
+        (await db.execute(select(QueueSlot).where(QueueSlot.brand_id == brand.id))).scalars().all()
+    )
     if account_ids is not None:
         ids = set(account_ids)
         slots = [s for s in slots if s.account_id is None or s.account_id in ids]
     return slots or [QueueSlot(weekday=d, time=t) for d in range(7) for t in DEFAULT_SLOTS]
 
 
-async def prioritize(db: AsyncSession, brand: Brand, post: Post, user: User, can_approve: bool | None = None) -> PostStatus:
+async def prioritize(
+    db: AsyncSession, brand: Brand, post: Post, user: User, can_approve: bool | None = None
+) -> PostStatus:
     """Buffer's "Share next": put `post` in the very next slot and bump the other queued
     posts that sit in slots one slot down. Posts at custom times keep their time."""
     now = datetime.now(UTC)
@@ -111,18 +123,24 @@ async def prioritize(db: AsyncSession, brand: Brand, post: Post, user: User, can
     slot_times = next_slot_times(slots, brand.timezone, now, count=500)
     slot_set = {t.replace(second=0, microsecond=0) for t in slot_times}
     queued = (
-        await db.execute(
-            select(Post)
-            .where(
-                Post.brand_id == brand.id,
-                Post.id != post.id,
-                Post.scheduled_at >= now,
-                Post.status.in_([PostStatus.scheduled, PostStatus.pending_approval]),
+        (
+            await db.execute(
+                select(Post)
+                .where(
+                    Post.brand_id == brand.id,
+                    Post.id != post.id,
+                    Post.scheduled_at >= now,
+                    Post.status.in_([PostStatus.scheduled, PostStatus.pending_approval]),
+                )
+                .order_by(Post.scheduled_at)
             )
-            .order_by(Post.scheduled_at)
         )
-    ).scalars().all()
-    in_slots = [p for p in queued if as_utc(p.scheduled_at).replace(second=0, microsecond=0) in slot_set]
+        .scalars()
+        .all()
+    )
+    in_slots = [
+        p for p in queued if as_utc(p.scheduled_at).replace(second=0, microsecond=0) in slot_set
+    ]
     status = schedule(post, slot_times[0], user, brand, can_approve)
     for p, when in zip(in_slots, slot_times[1:], strict=False):
         p.scheduled_at = when
@@ -132,28 +150,38 @@ async def prioritize(db: AsyncSession, brand: Brand, post: Post, user: User, can
     return status
 
 
-async def channel_queue(db: AsyncSession, brand: Brand, account: SocialAccount, days: int = 14) -> list[dict]:
+async def channel_queue(
+    db: AsyncSession, brand: Brand, account: SocialAccount, days: int = 14
+) -> list[dict]:
     """Timeline for one channel: queued targets merged with the empty upcoming slots,
     the way Buffer shows a queue. Items: {"when", "target"|None, "post"|None}."""
     now = datetime.now(UTC)
     horizon = now + timedelta(days=days)
     targets = (
-        await db.execute(
-            select(PostTarget)
-            .options(selectinload(PostTarget.post).selectinload(Post.targets))
-            .join(Post, Post.id == PostTarget.post_id)
-            .where(
-                PostTarget.account_id == account.id,
-                PostTarget.status.in_([PostStatus.scheduled, PostStatus.pending_approval, PostStatus.publishing]),
-                PostTarget.scheduled_at >= now - timedelta(hours=1),
-                PostTarget.scheduled_at <= horizon,
+        (
+            await db.execute(
+                select(PostTarget)
+                .options(selectinload(PostTarget.post).selectinload(Post.targets))
+                .join(Post, Post.id == PostTarget.post_id)
+                .where(
+                    PostTarget.account_id == account.id,
+                    PostTarget.status.in_(
+                        [PostStatus.scheduled, PostStatus.pending_approval, PostStatus.publishing]
+                    ),
+                    PostTarget.scheduled_at >= now - timedelta(hours=1),
+                    PostTarget.scheduled_at <= horizon,
+                )
+                .order_by(PostTarget.scheduled_at)
             )
-            .order_by(PostTarget.scheduled_at)
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     items = [{"when": as_utc(t.scheduled_at), "target": t, "post": t.post} for t in targets]
     taken = {i["when"].replace(second=0, microsecond=0) for i in items}
-    for when in next_slot_times(await brand_slots(db, brand, [account.id]), brand.timezone, now, count=200):
+    for when in next_slot_times(
+        await brand_slots(db, brand, [account.id]), brand.timezone, now, count=200
+    ):
         if when > horizon:
             break
         if when.replace(second=0, microsecond=0) not in taken:
@@ -197,7 +225,10 @@ async def best_times(db: AsyncSession, brand_id: int, top: int = 5) -> list[dict
         rate = m.engagements / m.impressions if m.impressions else float(m.engagements)
         buckets[(local.weekday(), local.hour)].append(rate)
     ranked = sorted(
-        ({"weekday": d, "hour": h, "score": sum(v) / len(v), "posts": len(v)} for (d, h), v in buckets.items()),
+        (
+            {"weekday": d, "hour": h, "score": sum(v) / len(v), "posts": len(v)}
+            for (d, h), v in buckets.items()
+        ),
         key=lambda r: r["score"],
         reverse=True,
     )

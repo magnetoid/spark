@@ -33,7 +33,11 @@ async def roles_for(db: AsyncSession, user: User) -> dict[int, str]:
     if user.role in (Role.owner, Role.agent):
         ids = (await db.execute(select(Brand.id))).scalars().all()
         return dict.fromkeys(ids, "owner" if user.role == Role.owner else "viewer")
-    rows = (await db.execute(select(BrandMember.brand_id, BrandMember.role).where(BrandMember.user_id == user.id))).all()
+    rows = (
+        await db.execute(
+            select(BrandMember.brand_id, BrandMember.role).where(BrandMember.user_id == user.id)
+        )
+    ).all()
     return {bid: role for bid, role in rows}
 
 
@@ -42,14 +46,22 @@ async def role_for(db: AsyncSession, user: User, brand_id: int) -> str | None:
         return "owner"
     if user.role == Role.agent:
         return "viewer"
-    return await db.scalar(select(BrandMember.role).where(BrandMember.user_id == user.id, BrandMember.brand_id == brand_id))
+    return await db.scalar(
+        select(BrandMember.role).where(
+            BrandMember.user_id == user.id, BrandMember.brand_id == brand_id
+        )
+    )
 
 
 async def visible_brands(db: AsyncSession, user: User) -> list[tuple[Brand, str]]:
     roles = await roles_for(db, user)
     if not roles:
         return []
-    brands = (await db.execute(select(Brand).where(Brand.id.in_(roles)).order_by(Brand.name))).scalars().all()
+    brands = (
+        (await db.execute(select(Brand).where(Brand.id.in_(roles)).order_by(Brand.name)))
+        .scalars()
+        .all()
+    )
     return [(b, roles[b.id]) for b in brands]
 
 
