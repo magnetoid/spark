@@ -21,6 +21,9 @@ class Settings(BaseSettings):
 
     # Everyone who signs in with a password must use two-factor (Settings → Brand & team)
     require_two_factor: bool = False
+    # When set, creating the first owner asks for this value, so a fresh install on a public
+    # address cannot be claimed by whoever opens it first
+    setup_token: str | None = None
 
     # AI
     anthropic_api_key: str | None = None

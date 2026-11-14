@@ -96,6 +96,8 @@ class SessionOut(BaseModel):
     csrf_token: str
     brands: list[BrandOut]
     needs_setup: bool
+    # the first owner must enter the token the server was started with (SPARK_SETUP_TOKEN)
+    needs_setup_token: bool = False
     features: dict[str, bool]
     # the workspace requires two-factor and this person has not set it up: show only that screen
     two_factor_setup_required: bool = False
@@ -137,6 +139,25 @@ class SetupIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
     password: str = Field(min_length=8)
+    # required when the server sets SPARK_SETUP_TOKEN (see SessionOut.needs_setup_token)
+    setup_token: str | None = Field(default=None, max_length=200)
+
+
+class SetupStep(BaseModel):
+    key: str
+    title: str
+    done: bool
+    detail: str
+    action_url: str
+    action_label: str
+    optional: bool = False
+
+
+class SetupChecklistOut(BaseModel):
+    steps: list[SetupStep]
+    done: int
+    total: int
+    complete: bool  # every step that is not optional is done
 
 
 class MeUpdate(BaseModel):

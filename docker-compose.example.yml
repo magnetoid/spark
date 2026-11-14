@@ -1,0 +1,81 @@
+# Spark with Docker Compose, for any server.
+#   cp .env.example .env    # then edit it (see docs/install.md)
+#   docker compose -f docker-compose.example.yml up -d
+# The web app listens on port 8000; put a reverse proxy with HTTPS in front of it.
+# (docker-compose.yml is the same stack written for Coolify.)
+x-spark: &spark
+  build: .
+  env_file: .env
+  environment: &spark-env
+    SPARK_DATABASE_URL: postgresql+asyncpg://spark:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/spark
+    SPARK_REDIS_URL: redis://redis:6379/0
+    SPARK_MEDIA_DIR: /data/media
+    # The built-in Janus agent: the same key on both sides, the address fixed by this file
+    SPARK_JANUS_MANAGED: "true"
+    SPARK_JANUS_BASE_URL: http://janus:8642
+    SPARK_JANUS_API_KEY: ${SPARK_JANUS_API_KEY:?set SPARK_JANUS_API_KEY in .env}
+  volumes:
+    - media:/data/media
+  restart: unless-stopped
+
+services:
+  web:
+    <<: *spark
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  worker:
+    <<: *spark
+    command: spark worker
+    healthcheck: { disable: true }   # the image's health check probes port 8000, which only web serves
+    depends_on:
+      web: { condition: service_healthy }
+
+  janus:
+    build:
+      context: .
+      dockerfile: deploy/janus/Dockerfile
+    environment:
+      API_SERVER_KEY: ${SPARK_JANUS_API_KEY:?set SPARK_JANUS_API_KEY in .env}
+      ANTHROPIC_API_KEY: ${SPARK_ANTHROPIC_API_KEY:-}
+      JANUS_AUTO_UPDATE: ${JANUS_AUTO_UPDATE:-true}
+    volumes: ["janus:/data/janus"]
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: spark
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: spark
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spark -d spark"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redis:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  media:
+  redis:
+  janus:

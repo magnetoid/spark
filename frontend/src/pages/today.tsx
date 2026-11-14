@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ActivitySection } from "@/features/collab/panels";
 import { useComposer } from "@/features/composer/composer-host";
+import { SetupChecklist } from "@/features/setup/checklist";
 
 type Today = components["schemas"]["TodayOut"];
 
@@ -48,6 +49,7 @@ function TodayBody({ data, tz }: { data: Today; tz: string }) {
 
   return (
     <div className="space-y-6">
+      <SetupChecklist />
       <section aria-labelledby="timeline-h" className="rounded-card border border-line bg-surface p-5">
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <h2 id="timeline-h" className="text-base font-semibold">Going out today</h2>

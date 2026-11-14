@@ -12,3 +12,9 @@ scratch*
 frontend/node_modules/
 frontend/dist/
 .superpowers/
+
+# Private to one install; never published
+/deploy/tetra-*
+/reports/
+/research_notes/
+/.claude/launch.json

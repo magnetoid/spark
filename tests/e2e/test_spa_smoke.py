@@ -64,3 +64,19 @@ async def test_spa_publishing_loop(page, server_url, seeded_brand):
     await page.get_by_role("link", name="Library").click()
     await page.get_by_role("tab", name="Templates").click()
     await page.get_by_text("No templates yet").wait_for()
+
+
+async def test_setup_checklist_on_first_run(page, server_url, seeded_brand):
+    """A fresh install shows the owner what is left; hiding the list keeps it hidden."""
+    await _sign_in(page, server_url)
+    card = page.get_by_role("region", name="Finish setting up Spark")
+    await card.wait_for()
+    await card.get_by_text("Send real email").wait_for()  # the console backend is not real email
+    assert await card.get_by_role("button", name="Set up email").count() == 1
+    # a test channel is not a real one, so connecting a channel is still asked for
+    assert await card.get_by_role("button", name="Connect a channel").count() == 1
+    await page.get_by_role("button", name="Hide the setup list").click()
+    await card.wait_for(state="detached")
+    await page.reload()
+    await page.get_by_role("heading", name=re.compile("^Today")).wait_for()
+    assert await card.count() == 0

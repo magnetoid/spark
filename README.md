@@ -1,136 +1,131 @@
 # Spark
 
-Social autoposter and marketing app for a team or agency. Python/FastAPI, server-rendered.
+Spark is a self-hosted social media scheduler for a team or an agency. Plan, write, approve and
+publish posts for several brands, answer comments and messages in one inbox, and show clients
+what worked. It runs on your own server with Docker Compose.
 
-- **Publish everywhere**: X, LinkedIn, Facebook Pages, Instagram, Threads, TikTok, YouTube, Pinterest, Bluesky, Mastodon, Telegram, Reddit and more. One post, per-platform text, media, live character gauges.
-- **Zernio first**: set one `SPARK_ZERNIO_API_KEY` and connect any platform through [Zernio](https://docs.zernio.com) — no developer apps to register. Direct adapters (your own OAuth apps) are there too.
-- **Queue-first, like Buffer**: per-channel Queue with visible posting slots, *Add to queue* / *Share next* (bumps the rest down) / *Share now* / pick a time, Drafts · Approvals · Sent tabs per channel.
-- **Composer**: one text, per-channel customisation with live previews and character gauges, *first comment* (X, LinkedIn, Facebook, Instagram, Threads, YouTube, Bluesky, Mastodon), *Split into thread* for X / Threads / Bluesky / Mastodon.
-- **Ideas board**: a kanban scratchpad (Ideas → Drafting → Ready → Done) with tags, AI drafting, and "Turn into post".
-- **Inbox**: comments on your posts across Zernio-connected channels — read threads, reply, like — from one page.
-- **Content library**: saved hashtag groups and post templates, one click away in the composer.
-- **Scheduling**: queue slots per brand, month and week calendar with drag-to-reschedule and channel/campaign filters, approvals (editors submit, owners approve), retries with backoff, best-time suggestions.
-- **AI**: Claude writes posts in your brand voice, adapts per platform, rewrites, suggests hashtags, plans whole campaigns, drafts emails.
-- **Grow**: analytics per post/platform, UTM builder and click-tracked short links, RSS → posts, contacts and lists with CSV import, email campaigns with open/click tracking, a link-in-bio page with email capture and per-link click counts.
-- **Multi-brand**: an agency runs every client in one install. Roles: owner / editor / viewer.
+Publishing goes through [Zernio](https://docs.zernio.com) by default: one API key reaches
+Instagram, Facebook, LinkedIn, TikTok, YouTube, X, Threads, Pinterest, Google Business and more,
+with no developer apps to register. Bluesky, Mastodon and Telegram work without any outside
+account.
 
-## Run it
+## What it does
+
+**Publish without babysitting**
+- A queue per channel with posting times, a month and week calendar with drag to reschedule,
+  and *Share now*, *Share next* or a set time.
+- One composer for every network: per-channel text, previews, first comment, threads, polls,
+  Reels, Stories, carousels and LinkedIn documents.
+- Retries with backoff and a stable idempotency key, so a post never goes out twice.
+- Channel health: Spark notices a channel that needs reconnecting or whose access runs out,
+  and tells the team once by email, chat or webhook.
+
+**Less work per client**
+- Many brands in one install, each with its own colour, voice, team and approval rules.
+- Roles: owner, editor, viewer, and client (sees one brand, reads and approves).
+- Review links that clients open without an account, comments on posts and an activity log.
+- An inbox for comments, messages, reviews and mentions, with suggested replies, saved replies,
+  assignment and rules that prepare a reply for approval.
+
+**Growth and proof**
+- Analytics per post, channel and period, follower history, and reports as CSV or a printable
+  page with a written summary.
+- Short links with click tracking, UTM tags per campaign, a link-in-bio page with email capture,
+  RSS to posts, contacts and email campaigns.
+
+**AI where it saves time (optional)**
+- Claude writes and rewrites posts in the brand's voice, suggests hashtags and replies, and
+  plans campaigns.
+- Janus, a built-in agent, drafts a weekly plan from your content pillars and best times.
+  Nothing is scheduled without a person's approval.
+- An MCP server lets Claude and other AI assistants use Spark with a personal token.
+
+## Quick start
+
+You need Docker with Compose.
 
 ```bash
-cp .env.example .env     # set SPARK_SECRET_KEY, SPARK_BASE_URL, and the keys you have
-docker compose up -d
+git clone https://github.com/magnetoid/spark.git && cd spark
+cp .env.example .env
+# Edit .env: SPARK_BASE_URL, SPARK_SETUP_TOKEN, and random values for
+# SPARK_SECRET_KEY, POSTGRES_PASSWORD and SPARK_JANUS_API_KEY (openssl rand -hex 32)
+docker compose -f docker-compose.example.yml up -d
 ```
 
-Open http://localhost:8000 — the first visit asks you to create the owner account.
+Open the address you set in `SPARK_BASE_URL`, enter the setup token and create the owner
+account. The checklist on **Today** walks through the rest: Zernio key, channels, posting times,
+email and the background worker.
 
-For a quick local look without Docker, Postgres or Redis:
+To try Spark without Docker, Postgres or Redis:
 
 ```bash
 uv sync
+(cd frontend && npm ci && npm run build)
 printf 'SPARK_FORCE_DRY_RUN=true\n' > .env
-uv run spark serve --reload       # http://localhost:8000, SQLite, fake posting
-uv run spark tick                 # publish due posts once (what the worker's cron does)
+uv run spark serve --reload       # http://localhost:8000 with SQLite and fake publishing
 ```
 
-With `SPARK_FORCE_DRY_RUN=true` every platform connects with a fake account and posts are recorded locally, so the whole flow can be tried end to end.
+With `SPARK_FORCE_DRY_RUN=true` every channel connects with a fake account and posts are only
+recorded, so the whole flow can be tried end to end.
+
+## How publishing works
+
+Spark keeps its own queue, calendar and approvals. When a post is due, the worker sends it to
+the network through the channel's provider:
+
+| Provider | Networks | What you need |
+|---|---|---|
+| Zernio (default) | Instagram, Facebook, LinkedIn, TikTok, YouTube, X, Threads, Pinterest, Google Business, Reddit, Snapchat, Bluesky, Mastodon, Telegram | A Zernio API key under **Settings → Connectors** |
+| Built in | Bluesky, Mastodon, Telegram | An app password, access token or bot token |
+| Your own apps (advanced) | X, LinkedIn, Meta, Threads, Pinterest, TikTok, YouTube | A developer app per network and its keys in the environment |
+
+See [docs/connectors.md](docs/connectors.md) for each connector.
+
+## Documentation
+
+- [Install](docs/install.md): Docker Compose, a reverse proxy, Coolify, backups.
+- [Configuration](docs/configuration.md): every `SPARK_*` setting.
+- [Connectors](docs/connectors.md): Zernio, Claude, email, chat, images, Janus, MCP, direct apps.
+- [Webhooks](docs/webhooks.md): events Spark sends to your own address.
+- [Upgrading](docs/upgrading.md) and [Troubleshooting](docs/troubleshooting.md).
 
 ## Processes
 
 | Command | What it does |
 |---|---|
-| `spark serve` | Web app (uvicorn) |
-| `spark worker` | ARQ worker: publishes due posts every 30s, retries, pulls metrics every 6h, polls RSS feeds, sends scheduled emails |
+| `spark serve` | The web app and API |
+| `spark worker` | Publishes due posts, retries, collects metrics, syncs the inbox and channels, sends emails and alerts |
 | `spark tick` | One publishing pass without Redis |
-| `spark create-user EMAIL --role owner` | Add a user from the CLI |
-| `alembic upgrade head` | Apply migrations (the Docker image runs this on start) |
-
-## Connecting accounts
-
-### Through Zernio (recommended)
-
-1. Create an API key at zernio.com and paste it under **Settings → Connectors → Zernio** (or set `SPARK_ZERNIO_API_KEY`).
-2. Social accounts → *Connect through Zernio* → pick a platform. Spark creates one Zernio profile per brand, sends you through Zernio's OAuth, and saves the returned account.
-3. *Import from Zernio* pulls accounts you connected in Zernio's own UI.
-
-Publishing goes through `POST /v1/posts` with `publishNow`; Spark keeps its own schedule, approvals and calendar. Media is uploaded to Zernio storage via presigned URLs. Metrics come from `GET /v1/analytics?postId=`.
-
-### Directly
-
-Register a developer app per platform and put the client id/secret in `.env` (`SPARK_X_CLIENT_ID`, …). The redirect URI is `{SPARK_BASE_URL}/accounts/callback/<platform>`. Notes:
-
-- **X**: posting needs a paid API tier. Scopes: tweet.read tweet.write users.read media.write offline.access.
-- **Meta** (Facebook Pages + Instagram): Instagram must be a professional account linked to a Page. Instagram and Facebook fetch media by URL, so `SPARK_BASE_URL` must be publicly reachable.
-- **TikTok / YouTube**: public posting needs app review; TikTok posts are `SELF_ONLY` until approved.
-- **Bluesky, Mastodon, Telegram**: no app needed — connect with an app password / access token / bot token.
-
-## Configuration
-
-See [.env.example](.env.example). Everything is `SPARK_*`. Secrets (OAuth tokens) are encrypted at rest with `SPARK_SECRET_KEY`; changing it invalidates stored tokens.
-
-## Deploying on Coolify
-
-Create a *Docker Compose* resource pointing at this repo, paste `.env` values into the environment, set `SPARK_BASE_URL` to the public domain, and attach the domain to the `web` service on port 8000. The `media` volume must persist.
+| `spark create-user EMAIL --role owner` | Add a user from the command line |
+| `spark reset-two-factor EMAIL` | Turn off two-factor for someone locked out |
+| `alembic upgrade head` | Apply database migrations (the Docker image does this on start) |
 
 ## Development
 
 ```bash
 uv sync
-uv run pytest
+uv run pytest -q --ignore=tests/e2e
 uv run ruff check src tests
+cd frontend && npm install && npm run dev      # http://localhost:5173, proxies /api to :8000
 ```
 
-Layout: `src/spark/platforms/` (one adapter per network + `zernio.py` provider + `dry_run.py`), `services/` (publisher, scheduler, ai, analytics, links, rss, email), `web/` (routers: posts, queue, ideas, accounts, marketing…), `templates/` (Jinja + HTMX + Alpine on [Basecoat](https://basecoatui.com)), `worker.py`.
-
-Schema changes go through Alembic: `uv run alembic revision --autogenerate -m "..."`, then `uv run alembic upgrade head` (the Docker image runs this on start). A dev database created by `create_all` needs `uv run alembic stamp <initial revision>` once before upgrading.
-
-## v2: modal composer, live pages, hardening
-
-- **Publish modal** from anywhere: sidebar "New post", the `c` key, empty queue slots, calendar days, idea cards and "Reuse" on sent posts open the composer in a dialog (a full-screen sheet on phones), prefilled from the context. `/compose` still works as a page.
-- **Autosave and resume**: drafts are saved every 2 s while you type; reopening an empty composer offers to resume or discard the last one (hidden from the Posts and Queue lists).
-- **Media**: drop or paste images into the composer, upload progress per file, drag thumbnails to reorder.
-- **No reloads**: Queue, Calendar, Ideas, Inbox and the Overview update in place (HTMX partials + `HX-Trigger` events `toast`, `post-saved`, `posts-changed`); the Overview table and Inbox poll in the background.
-- **Keyboard**: `c` new post, `g` + `o/q/c/i/p/n/a/s` to jump, `/` or `⌘K` command palette, `?` help.
-- **Onboarding**: the Overview shows a five-step checklist (channel, brand voice, posting times, first post, Zernio key) until it is complete or dismissed (per user, `User.prefs`).
-- **Hardening**: CSRF on every state-changing request, rate limits on login/setup and public link routes, security headers (CSP, nosniff, frame options), friendly 500 page, and a test that every write route requires a role.
-- **CI**: `.github/workflows/ci.yml` runs ruff, pytest and a Playwright browser flow (`tests/e2e/`), then builds the Docker image. Locally: `uv run playwright install chromium` once, then `uv run pytest tests/e2e -o addopts=""`.
-
-## Notifications, preferences and Zernio webhooks
-
-- **Email notifications** (worker, every minute): editors and owners get one email when a post fails for good; owners get one per post waiting for approval. **Weekly digest** on Monday 07:00 UTC per brand: published count, impressions, engagements, link clicks, top posts, what is scheduled. Each user opts in or out under **Preferences** (`/me`), which also holds the composer's default action, keyboard shortcuts on/off and the password.
-- **Zernio webhooks** replace polling for the moments that matter. Under *Settings → Connectors → Zernio* an owner presses **Enable webhooks**; Spark registers `{SPARK_BASE_URL}/webhooks/zernio` with Zernio for post and account events. Deliveries are verified with HMAC-SHA256 (`X-Zernio-Signature`; secret from `SPARK_ZERNIO_WEBHOOK_SECRET`, or derived from `SPARK_SECRET_KEY`) and de-duplicated by event id. `post.platform.published/failed`, `post.published/failed/partial` update the matching post target; `account.disconnected` pauses the channel with the reason; `account.connected` adds the channel to the brand whose Zernio profile it belongs to.
-
-## v3: the React app
-
-The interface is a React app (Vite + React 19 + TanStack Router/Query + Tailwind v4 + shadcn/ui) served by FastAPI at `/`, talking to the JSON API at `/api/v1` (`src/spark/api/`, OpenAPI at `/api/v1/openapi.json`). The whole app takes its accent colour from the active brand. Server-rendered pages remain only where they must: the public bio page, short links, email tracking, OAuth callbacks and webhooks. Every page is now in the React app (Today, Publishing with queue/calendar, composer, Ideas, Library, Inbox, Analytics, Campaigns, Links and bio, Audience, Channels, Settings with connectors). Live updates arrive over `GET /api/v1/events` (SSE; hints only, fanned out through Redis). Old `/app/...` links redirect to the same path at `/`.
+The backend is FastAPI with SQLAlchemy and an ARQ worker (`src/spark/`). The JSON API lives at
+`/api/v1` (`src/spark/api/`, OpenAPI at `/api/v1/openapi.json`). The interface is a React app in
+`frontend/` built with Vite, TanStack Router and Query, and Tailwind. After an API change,
+regenerate the client types:
 
 ```bash
-cd frontend && npm install && npm run dev      # dev server on :5173, proxies /api to :8000
-npm run build                                  # frontend/dist, which FastAPI serves at /
-uv run python -m spark.api.openapi frontend/src/api/openapi.json && (cd frontend && npm run api:types)  # after API changes
+uv run python -m spark.api.openapi frontend/src/api/openapi.json && (cd frontend && npm run api:types)
 ```
 
-The Docker image builds the frontend in a Node stage, so Coolify needs nothing extra.
+Database changes go through Alembic. See [CONTRIBUTING.md](CONTRIBUTING.md) for tests, style and
+pull requests.
 
-## Settings, connectors and MCP
+## Security
 
-**Settings** has three tabs: *Brand & team*, *Connectors* and *Preferences*. *Connectors* lists the services Spark talks to, Zernio first:
+Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
-| Connector | What it does | Saved in the UI |
-|---|---|---|
-| Zernio | Publishing, inbox and analytics for 14 networks | API key, base URL; webhooks, import, connection test |
-| Claude AI | Generate, rewrite, hashtags, campaign plans | Anthropic API key, model, effort |
-| Email delivery | Notifications, digest, email campaigns | Console / SMTP / Resend and their credentials; test email |
-| MCP access | Lets AI assistants use Spark | Personal tokens |
-| Direct platform apps | Your own X, LinkedIn, Meta… apps | Read-only status; stays in the environment (OAuth redirect URLs) |
+## License
 
-Only owners change connectors. A value saved in the UI is Fernet-encrypted with `SPARK_SECRET_KEY` in `connector_settings` and wins over the `SPARK_*` variable; *Remove the saved value* falls back to the environment. Web and worker processes pick up changes within 30 seconds.
-
-### MCP server
-
-Spark is an MCP server at `{SPARK_BASE_URL}/mcp` (Streamable HTTP, stateless, JSON responses). Create a token under *Settings → Connectors → MCP access*; only its SHA-256 hash is stored and it is shown once. Then, for Claude Code:
-
-```bash
-claude mcp add --transport http spark https://spark.imbamarketing.com/mcp --header "Authorization: Bearer spk_..."
-```
-
-Tools run as the token's owner and respect roles (viewers read, editors draft and schedule, owners approve): `list_brands`, `list_channels`, `list_posts`, `get_post`, `create_post` (draft / queue / next / schedule / now), `reschedule_post`, `move_to_drafts`, `approve_post`, `retry_post`, `list_ideas`, `add_idea`, `get_analytics`, `best_posting_times`, `write_posts` (AI drafts in the brand voice, not saved). Posts created through MCP go through the same validation, queue slots and approval rules as the composer and are marked `source = mcp`. Revoking a token cuts access on the next request.
+Not yet chosen. Until a license is added, the code is visible but no rights to use, copy or
+modify it are granted.

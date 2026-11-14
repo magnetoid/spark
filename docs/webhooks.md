@@ -110,6 +110,9 @@ never retried and does not count toward switching the webhook off.
 | `inbox.message` | A new direct message arrived |
 | `inbox.review` | A new review arrived |
 | `inbox.mention` | The brand was mentioned |
+| `channel.reconnect_needed` | A channel stopped working and needs reconnecting |
+| `channel.expiring` | A channel's access runs out soon (7, 3 and 1 days before) |
+| `channel.recovered` | A channel works again |
 
 ### Post events
 
@@ -152,6 +155,28 @@ target's `url` can be `null`.
 ```
 
 `rating` is set for reviews (1 to 5). `permalink` can be `null`.
+
+### Channel events
+
+```json
+{
+  "channel": {
+    "id": 9,
+    "platform": "instagram",
+    "handle": "acme",
+    "provider": "zernio",
+    "health": "reconnect",
+    "days_left": null,
+    "expires_at": "2026-12-01T00:00:00+00:00",
+    "error": "Reconnect needed: the network revoked access",
+    "url": "https://spark.example.com/channels"
+  }
+}
+```
+
+`health` is `ok`, `expiring`, `reconnect` or `paused`. `days_left` is set only for
+`channel.expiring`. Each event is sent once per change: a channel that stays broken does not
+send `channel.reconnect_needed` again.
 
 ## Addresses Spark refuses
 

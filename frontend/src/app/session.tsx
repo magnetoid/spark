@@ -5,7 +5,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import { api, setCsrfToken, unwrap } from "@/lib/api";
 import type { components } from "@/api/schema";
 import { applyBrandColor } from "@/lib/brand-color";
@@ -70,6 +70,7 @@ const WorkspaceContext = createContext<WorkspaceValue | null>(null);
 
 export function WorkspaceProvider({ session, children }: { session: Session; children: ReactNode }) {
   const search = useSearch({ strict: false }) as { brand?: string };
+  const pathname = useLocation({ select: (l) => l.pathname });
   const navigate = useNavigate();
   const qc = useQueryClient();
   const brands = session.brands;
@@ -105,6 +106,10 @@ export function WorkspaceProvider({ session, children }: { session: Session; chi
   } : null, [session, brands, brand, setBrand, signOut]);
 
   if (!value) return null;
+  // Right after the first brand is made the router can show the next page before this provider
+  // has the refreshed brand list. Wait for it (a moment) instead of rendering a page with no brand;
+  // with truly no brands the shell route sends people to /brands/new on their next step.
+  if (!brand && !pathname.startsWith("/brands/new")) return null;
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
 

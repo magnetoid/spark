@@ -1,5 +1,7 @@
 """Who am I, sign in, sign out, first-run setup, my preferences."""
 
+import hmac
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,6 +63,7 @@ async def _session(request: Request, db: AsyncSession, user: User | None) -> Ses
         csrf_token=deps.new_csrf(request),
         brands=[BrandOut.of(b, role) for b, role in brands],
         needs_setup=needs_setup,
+        needs_setup_token=needs_setup and bool(s.setup_token),
         two_factor_setup_required=bool(
             user and deps.needs_two_factor_setup(user, getattr(request.state, "auth", None))
         ),
@@ -110,6 +113,13 @@ async def setup(body: SetupIn, request: Request, db: AsyncSession = Depends(get_
     """First run only: create the owner account."""
     if await db.scalar(select(func.count(User.id))):
         raise ApiError(409, "already_set_up", "Spark already has an owner; sign in instead")
+    expected = get_settings().setup_token
+    if expected and not hmac.compare_digest((body.setup_token or "").encode(), expected.encode()):
+        raise ApiError(
+            403,
+            "setup_token",
+            "Enter the setup token this server was started with (SPARK_SETUP_TOKEN)",
+        )
     user = User(
         name=body.name.strip(),
         email=body.email.lower(),

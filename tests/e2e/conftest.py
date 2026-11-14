@@ -17,8 +17,8 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
-@pytest.fixture(scope="session")
-def server_url():
+def _start_server(**extra_env):
+    """A Spark server on a free port with its own SQLite database and media folder."""
     tmp = tempfile.mkdtemp(prefix="spark-e2e-")
     port = _free_port()
     env = {
@@ -31,6 +31,7 @@ def server_url():
         "SPARK_ENV": "development",
         "SPARK_ZERNIO_API_KEY": "",
         "SPARK_ANTHROPIC_API_KEY": "",
+        **extra_env,
     }
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "spark.main:app", "--port", str(port)],
@@ -48,9 +49,31 @@ def server_url():
     else:
         proc.kill()
         raise RuntimeError("server did not start")
-    yield url
+    return url, proc
+
+
+def _stop(proc):
     proc.terminate()
-    proc.wait(timeout=10)
+    try:
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:  # an open live-updates stream can hold a graceful stop
+        proc.kill()
+        proc.wait(timeout=10)
+
+
+@pytest.fixture(scope="session")
+def server_url():
+    url, proc = _start_server()
+    yield url
+    _stop(proc)
+
+
+@pytest.fixture
+def fresh_server_url():
+    """A brand-new install nobody has set up yet, started with a setup token."""
+    url, proc = _start_server(SPARK_SETUP_TOKEN="e2e-setup-token")
+    yield url
+    _stop(proc)
 
 
 @pytest.fixture

@@ -36,6 +36,7 @@ from spark.api.routes import (
     reports,
     session,
     settings,
+    setup,
     today,
     webhooks,
 )
@@ -70,6 +71,7 @@ for r in (
     agent.router,
     reports.router,
     webhooks.router,
+    setup.router,
 ):
     api.include_router(r)
 

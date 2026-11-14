@@ -6437,6 +6437,11 @@
             "title": "Needs Setup",
             "type": "boolean"
           },
+          "needs_setup_token": {
+            "default": false,
+            "title": "Needs Setup Token",
+            "type": "boolean"
+          },
           "two_factor_setup_required": {
             "default": false,
             "title": "Two Factor Setup Required",
@@ -6481,6 +6486,37 @@
         "title": "SettingOption",
         "type": "object"
       },
+      "SetupChecklistOut": {
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/SetupStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "steps",
+          "done",
+          "total",
+          "complete"
+        ],
+        "title": "SetupChecklistOut",
+        "type": "object"
+      },
       "SetupIn": {
         "properties": {
           "email": {
@@ -6498,6 +6534,18 @@
             "minLength": 8,
             "title": "Password",
             "type": "string"
+          },
+          "setup_token": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setup Token"
           }
         },
         "required": [
@@ -6506,6 +6554,49 @@
           "password"
         ],
         "title": "SetupIn",
+        "type": "object"
+      },
+      "SetupStep": {
+        "properties": {
+          "action_label": {
+            "title": "Action Label",
+            "type": "string"
+          },
+          "action_url": {
+            "title": "Action Url",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "optional": {
+            "default": false,
+            "title": "Optional",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "done",
+          "detail",
+          "action_url",
+          "action_label"
+        ],
+        "title": "SetupStep",
         "type": "object"
       },
       "ShareLinkCreated": {
@@ -16476,6 +16567,28 @@
         "summary": "Zernio Webhook Test",
         "tags": [
           "settings"
+        ]
+      }
+    },
+    "/setup/checklist": {
+      "get": {
+        "description": "What this install still needs: publishing, email, address, secret, worker, two-factor.",
+        "operationId": "checklist_setup_checklist_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupChecklistOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Checklist",
+        "tags": [
+          "setup"
         ]
       }
     },

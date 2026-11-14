@@ -2151,6 +2151,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/setup/checklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Checklist
+         * @description What this install still needs: publishing, email, address, secret, worker, two-factor.
+         */
+        get: operations["checklist_setup_checklist_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/team": {
         parameters: {
             query?: never;
@@ -4397,6 +4417,11 @@ export interface components {
             /** Needs Setup */
             needs_setup: boolean;
             /**
+             * Needs Setup Token
+             * @default false
+             */
+            needs_setup_token: boolean;
+            /**
              * Two Factor Setup Required
              * @default false
              */
@@ -4410,6 +4435,17 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** SetupChecklistOut */
+        SetupChecklistOut: {
+            /** Complete */
+            complete: boolean;
+            /** Done */
+            done: number;
+            /** Steps */
+            steps: components["schemas"]["SetupStep"][];
+            /** Total */
+            total: number;
+        };
         /** SetupIn */
         SetupIn: {
             /**
@@ -4421,6 +4457,28 @@ export interface components {
             name: string;
             /** Password */
             password: string;
+            /** Setup Token */
+            setup_token?: string | null;
+        };
+        /** SetupStep */
+        SetupStep: {
+            /** Action Label */
+            action_label: string;
+            /** Action Url */
+            action_url: string;
+            /** Detail */
+            detail: string;
+            /** Done */
+            done: boolean;
+            /** Key */
+            key: string;
+            /**
+             * Optional
+             * @default false
+             */
+            optional: boolean;
+            /** Title */
+            title: string;
         };
         /** ShareLinkCreated */
         ShareLinkCreated: {
@@ -10350,6 +10408,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    checklist_setup_checklist_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupChecklistOut"];
                 };
             };
         };
