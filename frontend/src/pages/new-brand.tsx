@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api, unwrap } from "@/lib/api";
+import { copySetup, type SetupPart } from "@/features/agency/api";
+import { ALL_SETUP_PARTS, PartPicker, SourceSelect, useCopySources } from "@/features/agency/copy-setup";
 
 const TIMEZONES: string[] = (() => { try { return (Intl as unknown as { supportedValuesOf: (k: string) => string[] }).supportedValuesOf("timeZone"); } catch { return ["UTC"]; } })();
 const GUESS_TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return "UTC"; } })();
@@ -28,14 +30,26 @@ function BrandForm() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [color, setColor] = useState("#F2A516");
+  const sources = useCopySources();
+  const [from, setFrom] = useState("none");
+  const [parts, setParts] = useState<SetupPart[]>(ALL_SETUP_PARTS);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     setBusy(true);
     try {
       const b = unwrap(await api.POST("/brands", { body: { name: String(fd.get("name")), website: String(fd.get("website")) || null, timezone: String(fd.get("timezone")), color } }));
+      let copied = "";
+      if (from !== "none" && parts.length) {
+        try {
+          await copySetup(b.id, Number(from), parts);
+          copied = ` with the setup of ${sources.find((x) => String(x.id) === from)?.name ?? "the other brand"}`;
+        } catch (err) {
+          toast.error(`Brand created, but its setup was not copied: ${err instanceof Error ? err.message : "error"}`);
+        }
+      }
       await qc.invalidateQueries({ queryKey: sessionQuery.queryKey });
-      toast.success(`Brand “${b.name}” created. Connect a channel next.`);
+      toast.success(`Brand “${b.name}” created${copied}. Connect a channel next.`);
       void navigate({ to: "/channels", search: { brand: b.slug } });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not create the brand");
@@ -50,7 +64,13 @@ function BrandForm() {
         <div className="space-y-1.5"><Label>Timezone</Label><Select name="timezone" defaultValue={TIMEZONES.includes(GUESS_TZ) ? GUESS_TZ : "UTC"}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent className="max-h-72">{TIMEZONES.map((tz) => <SelectItem key={tz} value={tz}>{tz}</SelectItem>)}</SelectContent></Select></div>
         <div className="space-y-1.5"><Label htmlFor="nb-color">Colour</Label><input id="nb-color" type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-9 w-14 rounded-control border border-line bg-surface p-1" /></div>
       </div>
-      <p className="text-xs text-ink-2">Posting slots start at 09:00, 12:30 and 17:00 on weekdays; change them under Settings.</p>
+      {sources.length > 0 && (
+        <div className="space-y-3 border-t border-line pt-4">
+          <div className="space-y-1.5"><Label htmlFor="nb-from">Start from</Label><SourceSelect id="nb-from" value={from} onChange={setFrom} sources={sources} blank="A blank brand" /></div>
+          {from !== "none" && <PartPicker value={parts} onChange={setParts} idPrefix="nb" />}
+        </div>
+      )}
+      <p className="text-xs text-ink-2">{from !== "none" && parts.includes("slots") ? "Posting times come from the brand you copy." : "Posting slots start at 09:00, 12:30 and 17:00 on weekdays; change them under Settings."}</p>
       <Button type="submit" className="w-full" disabled={busy}>{busy ? "Creating…" : "Create brand"}</Button>
     </form>
   );

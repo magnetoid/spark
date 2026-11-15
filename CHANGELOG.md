@@ -4,6 +4,12 @@ Changes that matter to people who run Spark. Dates are when the change reached `
 
 ## Unreleased
 
+### Agency tools
+- **All clients** (`/overview`): every brand you work on with failed posts, channels to reconnect, approvals waiting or past due, replies waiting and empty days in the next week, the most urgent first.
+- **Approval deadlines**: a brand can ask for approval some hours before a post's time. Approvers get one reminder before it; after it the post keeps waiting or goes back to drafts and its author is told. A deadline never publishes a post.
+- **Copy setup**: start a new brand from another brand's voice, pillars, posting times, guardrails, saved replies, templates and hashtag groups, or copy them later from Settings.
+- Fixed a type error that failed the frontend CI check on the last release.
+
 **Before you upgrade:** nothing to do. Scheduled reports go out through the email settings you
 already have; check **Settings → Connectors → Email** sends real mail first.
 

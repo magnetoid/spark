@@ -121,6 +121,8 @@ class Post(TimestampMixin, Base):
     )  # the time the agent suggested
     # When owners were emailed that this post waits for approval (None = not yet)
     approval_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approval_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approval_reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     targets: Mapped[list["PostTarget"]] = relationship(
         back_populates="post", cascade="all, delete-orphan", lazy="selectin"

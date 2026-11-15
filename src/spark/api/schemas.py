@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from spark.models import Brand, Post, PostTarget, SocialAccount, User
+from spark.models import Brand, Post, PostStatus, PostTarget, SocialAccount, User
 from spark.services.posts import channel_capabilities
 from spark.services.publisher import as_utc
 
@@ -51,6 +51,8 @@ class BrandOut(Out):
     timezone: str
     website: str | None = None
     require_approval: bool
+    approval_lead_hours: int | None = None
+    approval_timeout: str = "wait"
     auto_shorten_links: bool
     voice_tone: str | None = None
     voice_audience: str | None = None
@@ -72,6 +74,8 @@ class BrandOut(Out):
             timezone=b.timezone,
             website=b.website,
             require_approval=b.require_approval,
+            approval_lead_hours=b.approval_lead_hours,
+            approval_timeout=b.approval_timeout or "wait",
             auto_shorten_links=b.auto_shorten_links,
             voice_tone=b.voice_tone,
             voice_audience=b.voice_audience,
@@ -184,6 +188,10 @@ class BrandUpdate(BaseModel):
     timezone: str | None = None
     color: Color | None = None
     require_approval: bool | None = None
+    # hours before a post's time that approval is due; null = no deadline (at most two weeks)
+    approval_lead_hours: int | None = Field(default=None, ge=1, le=336)
+    # after the deadline: keep waiting, or move back to drafts. Never publish.
+    approval_timeout: Literal["wait", "drafts"] | None = None
     auto_shorten_links: bool | None = None
     voice_tone: str | None = None
     voice_audience: str | None = None
@@ -323,6 +331,7 @@ class PostOut(Out):
     recycled_from_id: int | None = None
     agent_run_id: int | None = None
     proposed_for: datetime | None = None
+    approval_due_at: datetime | None = None
 
     @classmethod
     def of(cls, p: Post) -> PostOut:
@@ -338,6 +347,9 @@ class PostOut(Out):
             recycled_from_id=p.recycled_from_id,
             agent_run_id=p.agent_run_id,
             proposed_for=_dt(p.proposed_for),
+            approval_due_at=_dt(p.approval_due_at)
+            if p.status == PostStatus.pending_approval
+            else None,
             scheduled_at=_dt(p.scheduled_at),
             source=p.source,
             campaign_id=p.campaign_id,
@@ -1706,3 +1718,54 @@ class ReportScheduleOut(BaseModel):
     last_sent_at: datetime | None
     last_error: str | None
     next_period: NextPeriod
+
+
+# ---- agency tools: overview of every client, copy setup ------------------------------------------
+class OverviewBrand(BaseModel):
+    brand_id: int
+    slug: str
+    name: str
+    color: str
+    timezone: str
+    role: str
+    channels_total: int
+    failed: int
+    channels: int  # channels that need reconnecting or run out soon
+    approvals: int
+    approvals_overdue: int
+    replies: int
+    drafts: int
+    scheduled_week: int  # posts going out in the next seven days
+    empty_days: int  # of the next seven days, how many have nothing going out
+    next_post_at: datetime | None
+    attention: int
+
+
+class OverviewTotals(BaseModel):
+    failed: int
+    channels: int
+    approvals: int
+    approvals_overdue: int
+    replies: int
+    scheduled_week: int
+
+
+class OverviewOut(BaseModel):
+    brands: list[OverviewBrand]
+    totals: OverviewTotals
+    now: datetime
+
+
+SetupPart = Literal[
+    "pillars", "slots", "guardrails", "saved_replies", "templates", "hashtags", "voice"
+]
+
+
+class CopySetupIn(BaseModel):
+    from_brand_id: int
+    parts: list[SetupPart] = Field(min_length=1)
+
+
+class CopySetupOut(BaseModel):
+    copied: dict[str, int]
+    brand: BrandOut

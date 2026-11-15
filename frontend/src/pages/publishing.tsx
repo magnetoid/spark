@@ -324,6 +324,8 @@ function ListView({ status }: { status: "draft" | "pending_approval" | "publishe
               {status === "published" && p.scheduled_at && <span className="tnum">{fmtDateTime(p.scheduled_at, brand.timezone)}</span>}
               {status === "failed" && p.targets.filter((t) => t.error).map((t) => <span key={t.id} className="text-st-failed">{t.handle}: {t.error}</span>)}
               {status === "published" && p.targets.filter((t) => t.remote_url).map((t) => <a key={t.id} href={t.remote_url!} target="_blank" rel="noopener" className="underline">View on {platformLabel(t.platform)}</a>)}
+              {status === "pending_approval" && p.scheduled_at && <span className="tnum">goes out {fmtDateTime(p.scheduled_at, brand.timezone)}</span>}
+              {status === "pending_approval" && p.approval_due_at && <span className={cn("tnum", new Date(p.approval_due_at) <= new Date() && "font-medium text-st-failed")}>approval due {fmtDateTime(p.approval_due_at, brand.timezone)}</span>}
               {status !== "published" && p.updated_at && <span className="tnum">updated {fmtDateTime(p.updated_at, brand.timezone)}</span>}
             </div>
           </div>

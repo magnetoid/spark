@@ -88,6 +88,10 @@ def schedule(
         post.approval_notified_at = None  # owners hear about each new request for approval
     post.scheduled_at = when
     post.status = status
+    if status == PostStatus.pending_approval:
+        from spark.services import approvals
+
+        approvals.set_due(post, brand)
     for t in post.targets:
         if t.status in (PostStatus.published,):
             continue

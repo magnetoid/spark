@@ -26,6 +26,7 @@ import { ChannelsPage } from "@/pages/channels";
 import { SettingsPage } from "@/pages/settings";
 import { InboxPage } from "@/pages/inbox";
 import { NewBrandPage } from "@/pages/new-brand";
+import { OverviewPage } from "@/pages/overview";
 import { sessionQuery } from "@/app/session";
 
 interface RouterContext {
@@ -88,6 +89,7 @@ export const routeTree = rootRoute.addChildren([
   reportRoute,
   shellRoute.addChildren([
     page("/", TodayPage),
+    page("/overview", OverviewPage),
     page("/brands/new", NewBrandPage),
     page("/publishing", PublishingPage),
     page("/compose", ComposePage),

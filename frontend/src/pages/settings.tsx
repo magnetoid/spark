@@ -9,6 +9,7 @@ import { AgentSection, JanusSection } from "@/features/agent/panels";
 import { GuardrailsSection, PillarsSection } from "@/features/planning/panels";
 import { RulesSection, SavedRepliesSection } from "@/features/inbox/panels";
 import { WebhooksSection } from "@/features/webhooks/panels";
+import { CopySetupCard } from "@/features/agency/copy-setup";
 import { RequireTwoFactor, TwoFactorCard } from "@/features/two-factor/card";
 import { useAccounts } from "@/features/posts/api";
 import { PlatformMark, platformLabel } from "@/lib/platforms";
@@ -67,7 +68,9 @@ function BrandTab() {
     const s = (k: string) => String(fd.get(k) ?? "");
     update.mutate({ name: s("name"), website: s("website") || null, timezone: s("timezone"), color: s("color"), voice_tone: s("voice_tone") || null,
       voice_audience: s("voice_audience") || null, voice_rules: s("voice_rules") || null, voice_examples: s("voice_examples") || null,
-      default_hashtags: s("default_hashtags") || null, utm_campaign: s("utm_campaign") || null, require_approval: fd.get("require_approval") === "on", auto_shorten_links: fd.get("auto_shorten_links") === "on" });
+      default_hashtags: s("default_hashtags") || null, utm_campaign: s("utm_campaign") || null, require_approval: fd.get("require_approval") === "on",
+      approval_lead_hours: s("approval_lead_hours") && s("approval_lead_hours") !== "none" ? Number(s("approval_lead_hours")) : null,
+      approval_timeout: s("approval_timeout") === "drafts" ? "drafts" : "wait", auto_shorten_links: fd.get("auto_shorten_links") === "on" });
   };
   return (
     <div className="grid gap-8 lg:grid-cols-3">
@@ -96,6 +99,30 @@ function BrandTab() {
             <div className="space-y-3 border-t border-line pt-4">
               <h3 className="font-semibold">Workflow</h3>
               <label className="flex items-start gap-3 text-sm"><Switch name="require_approval" defaultChecked={brand.require_approval} /><span>Owners approve posts before they go out<span className="block text-xs text-ink-2">Editors' posts wait in “awaiting approval”.</span></span></label>
+              <div className="grid gap-4 pl-12 sm:grid-cols-2">
+                <div className="space-y-1.5"><Label htmlFor="b-lead">Approval deadline</Label>
+                  <Select name="approval_lead_hours" defaultValue={brand.approval_lead_hours ? String(brand.approval_lead_hours) : "none"}>
+                    <SelectTrigger id="b-lead"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No deadline</SelectItem>
+                      {[...new Set([2, 6, 12, 24, 48, 72, ...(brand.approval_lead_hours ? [brand.approval_lead_hours] : [])])].sort((a, b) => a - b).map((h) => (
+                        <SelectItem key={h} value={String(h)}>{h < 24 || h % 24 ? `${h} hours` : h === 24 ? "1 day" : `${h / 24} days`} before the post</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="block text-xs text-ink-2">Approvers get a reminder before it.</span>
+                </div>
+                <div className="space-y-1.5"><Label htmlFor="b-timeout">If nobody approves in time</Label>
+                  <Select name="approval_timeout" defaultValue={brand.approval_timeout === "drafts" ? "drafts" : "wait"}>
+                    <SelectTrigger id="b-timeout"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="wait">Keep it waiting</SelectItem>
+                      <SelectItem value="drafts">Move it back to drafts</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="block text-xs text-ink-2">A post is never published without approval.</span>
+                </div>
+              </div>
               <label className="flex items-start gap-3 text-sm"><Switch name="auto_shorten_links" defaultChecked={brand.auto_shorten_links} /><span>Track links automatically<span className="block text-xs text-ink-2">URLs in posts become short links with UTM tags.</span></span></label>
             </div>
           </fieldset>
@@ -103,6 +130,7 @@ function BrandTab() {
           {!isOwner && <p className="text-xs text-ink-2">Only owners change brand settings.</p>}
         </form>
         <AgentSection />
+        {isOwner && brands.length > 1 && <CopySetupCard brandId={brand.id} />}
         <PillarsSection />
         <GuardrailsSection />
         {isOwner && <MembersSection />}

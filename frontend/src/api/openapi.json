@@ -1144,6 +1144,22 @@
             "title": "Agent Config",
             "type": "object"
           },
+          "approval_lead_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Lead Hours"
+          },
+          "approval_timeout": {
+            "default": "wait",
+            "title": "Approval Timeout",
+            "type": "string"
+          },
           "auto_shorten_links": {
             "title": "Auto Shorten Links",
             "type": "boolean"
@@ -1286,6 +1302,34 @@
               }
             ],
             "title": "Agent Config"
+          },
+          "approval_lead_hours": {
+            "anyOf": [
+              {
+                "maximum": 336.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Lead Hours"
+          },
+          "approval_timeout": {
+            "anyOf": [
+              {
+                "enum": [
+                  "wait",
+                  "drafts"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Timeout"
           },
           "auto_shorten_links": {
             "anyOf": [
@@ -2481,6 +2525,57 @@
           "subscribed"
         ],
         "title": "ContactPage",
+        "type": "object"
+      },
+      "CopySetupIn": {
+        "properties": {
+          "from_brand_id": {
+            "title": "From Brand Id",
+            "type": "integer"
+          },
+          "parts": {
+            "items": {
+              "enum": [
+                "pillars",
+                "slots",
+                "guardrails",
+                "saved_replies",
+                "templates",
+                "hashtags",
+                "voice"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Parts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "from_brand_id",
+          "parts"
+        ],
+        "title": "CopySetupIn",
+        "type": "object"
+      },
+      "CopySetupOut": {
+        "properties": {
+          "brand": {
+            "$ref": "#/components/schemas/BrandOut"
+          },
+          "copied": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Copied",
+            "type": "object"
+          }
+        },
+        "required": [
+          "copied",
+          "brand"
+        ],
+        "title": "CopySetupOut",
         "type": "object"
       },
       "CredentialField": {
@@ -5350,6 +5445,171 @@
         "title": "NextPeriod",
         "type": "object"
       },
+      "OverviewBrand": {
+        "properties": {
+          "approvals": {
+            "title": "Approvals",
+            "type": "integer"
+          },
+          "approvals_overdue": {
+            "title": "Approvals Overdue",
+            "type": "integer"
+          },
+          "attention": {
+            "title": "Attention",
+            "type": "integer"
+          },
+          "brand_id": {
+            "title": "Brand Id",
+            "type": "integer"
+          },
+          "channels": {
+            "title": "Channels",
+            "type": "integer"
+          },
+          "channels_total": {
+            "title": "Channels Total",
+            "type": "integer"
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "drafts": {
+            "title": "Drafts",
+            "type": "integer"
+          },
+          "empty_days": {
+            "title": "Empty Days",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "next_post_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Post At"
+          },
+          "replies": {
+            "title": "Replies",
+            "type": "integer"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "scheduled_week": {
+            "title": "Scheduled Week",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "brand_id",
+          "slug",
+          "name",
+          "color",
+          "timezone",
+          "role",
+          "channels_total",
+          "failed",
+          "channels",
+          "approvals",
+          "approvals_overdue",
+          "replies",
+          "drafts",
+          "scheduled_week",
+          "empty_days",
+          "next_post_at",
+          "attention"
+        ],
+        "title": "OverviewBrand",
+        "type": "object"
+      },
+      "OverviewOut": {
+        "properties": {
+          "brands": {
+            "items": {
+              "$ref": "#/components/schemas/OverviewBrand"
+            },
+            "title": "Brands",
+            "type": "array"
+          },
+          "now": {
+            "format": "date-time",
+            "title": "Now",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/OverviewTotals"
+          }
+        },
+        "required": [
+          "brands",
+          "totals",
+          "now"
+        ],
+        "title": "OverviewOut",
+        "type": "object"
+      },
+      "OverviewTotals": {
+        "properties": {
+          "approvals": {
+            "title": "Approvals",
+            "type": "integer"
+          },
+          "approvals_overdue": {
+            "title": "Approvals Overdue",
+            "type": "integer"
+          },
+          "channels": {
+            "title": "Channels",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "replies": {
+            "title": "Replies",
+            "type": "integer"
+          },
+          "scheduled_week": {
+            "title": "Scheduled Week",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "failed",
+          "channels",
+          "approvals",
+          "approvals_overdue",
+          "replies",
+          "scheduled_week"
+        ],
+        "title": "OverviewTotals",
+        "type": "object"
+      },
       "PaletteItem": {
         "properties": {
           "action": {
@@ -5852,6 +6112,18 @@
               }
             ],
             "title": "Agent Run Id"
+          },
+          "approval_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Due At"
           },
           "author_id": {
             "anyOf": [
@@ -11454,6 +11726,59 @@
         "summary": "Delete Contact",
         "tags": [
           "audience"
+        ]
+      }
+    },
+    "/brands/{brand_id}/copy-setup": {
+      "post": {
+        "description": "Copy pillars, posting times, guardrails, saved replies, templates, hashtag groups or the\nbrand voice from another brand you work on into this one.",
+        "operationId": "copy_setup_brands__brand_id__copy_setup_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopySetupIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopySetupOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Copy Setup",
+        "tags": [
+          "agency"
         ]
       }
     },
@@ -17524,6 +17849,28 @@
         "summary": "Two Factor Setup",
         "tags": [
           "session"
+        ]
+      }
+    },
+    "/overview": {
+      "get": {
+        "description": "Every brand you can see and what needs you there, the most urgent first.",
+        "operationId": "overview_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Overview",
+        "tags": [
+          "agency"
         ]
       }
     },

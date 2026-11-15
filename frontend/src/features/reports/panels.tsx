@@ -153,7 +153,7 @@ function ScheduleForm({ existing, onClose }: { existing: ReportScheduleOut | nul
     const fd = new FormData(ev.currentTarget);
     const recipients = String(fd.get("recipients")).split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean);
     if (!recipients.length) { setError("Add at least one email address."); return; }
-    const body = { cadence: cadence as "weekly" | "monthly", hour: Number(hour), recipients, share_days: Number(days), with_summary: session?.features.ai ? fd.get("with_summary") === "on" : existing?.with_summary ?? true };
+    const body = { cadence: cadence as "weekly" | "monthly", hour: Number(hour), recipients, share_days: Number(days), is_active: existing?.is_active ?? true, with_summary: session?.features.ai ? fd.get("with_summary") === "on" : existing?.with_summary ?? true };
     if (existing) update.mutate({ id: existing.id, body }, { onSuccess: onClose });
     else create.mutate(body, { onSuccess: onClose });
   };

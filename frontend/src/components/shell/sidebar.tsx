@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import {
-  BarChart3, Check, ChevronsUpDown, Inbox, LayoutGrid, Lightbulb, Link2, LogOut, Megaphone, Moon,
+  BarChart3, Building2, Check, ChevronsUpDown, Inbox, LayoutGrid, Lightbulb, Link2, LogOut, Megaphone, Moon,
   PanelLeftClose, PanelLeftOpen, Plug, Settings, Sun, SunMoon, Sunrise, Users, type LucideIcon,
 } from "lucide-react";
 import { readTheme, setTheme, useWorkspace, type ThemeMode } from "@/app/session";
@@ -74,6 +74,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto px-2">
+        {brands.length > 1 && !client && <Group items={[{ to: "/overview", label: "All clients", icon: Building2 }]} collapsed={collapsed} />}
         <Group items={only(WORK)} collapsed={collapsed} />
         {!client && <Group items={GROW} collapsed={collapsed} label="Grow" />}
         <Group items={only(SETUP)} collapsed={collapsed} label={client ? undefined : "Set up"} />

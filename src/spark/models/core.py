@@ -74,6 +74,10 @@ class Brand(TimestampMixin, Base):
     zernio_profile_id: Mapped[str | None] = mapped_column(String(64))
 
     require_approval: Mapped[bool] = mapped_column(Boolean, default=False)
+    # approval deadline: hours before the post's time; None = no deadline. After it the post
+    # stays waiting ("wait") or goes back to drafts ("drafts"). It is never published.
+    approval_lead_hours: Mapped[int | None] = mapped_column(Integer)
+    approval_timeout: Mapped[str] = mapped_column(String(16), default="wait", server_default="wait")
     auto_shorten_links: Mapped[bool] = mapped_column(Boolean, default=False)
     utm_defaults: Mapped[dict] = mapped_column(JSON, default=dict)
     agent_config: Mapped[dict] = mapped_column(

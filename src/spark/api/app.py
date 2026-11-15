@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 
 from spark.api.errors import ApiError
 from spark.api.routes import (
+    agency,
     agent,
     ai,
     audience,
@@ -74,6 +75,7 @@ for r in (
     reports.public,
     webhooks.router,
     setup.router,
+    agency.router,
 ):
     api.include_router(r)
 

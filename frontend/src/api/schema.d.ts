@@ -627,6 +627,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/brands/{brand_id}/copy-setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy Setup
+         * @description Copy pillars, posting times, guardrails, saved replies, templates, hashtag groups or the
+         *     brand voice from another brand you work on into this one.
+         */
+        post: operations["copy_setup_brands__brand_id__copy_setup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/brands/{brand_id}/email": {
         parameters: {
             query?: never;
@@ -2050,6 +2071,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Overview
+         * @description Every brand you can see and what needs you there, the most urgent first.
+         */
+        get: operations["overview_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/public/reports/{token}": {
         parameters: {
             query?: never;
@@ -2847,6 +2888,13 @@ export interface components {
             agent_config: {
                 [key: string]: unknown;
             };
+            /** Approval Lead Hours */
+            approval_lead_hours?: number | null;
+            /**
+             * Approval Timeout
+             * @default wait
+             */
+            approval_timeout: string;
             /** Auto Shorten Links */
             auto_shorten_links: boolean;
             /** Color */
@@ -2891,6 +2939,10 @@ export interface components {
             agent_config?: {
                 [key: string]: unknown;
             } | null;
+            /** Approval Lead Hours */
+            approval_lead_hours?: number | null;
+            /** Approval Timeout */
+            approval_timeout?: ("wait" | "drafts") | null;
             /** Auto Shorten Links */
             auto_shorten_links?: boolean | null;
             /** Color */
@@ -3261,6 +3313,21 @@ export interface components {
             subscribed: number;
             /** Total */
             total: number;
+        };
+        /** CopySetupIn */
+        CopySetupIn: {
+            /** From Brand Id */
+            from_brand_id: number;
+            /** Parts */
+            parts: ("pillars" | "slots" | "guardrails" | "saved_replies" | "templates" | "hashtags" | "voice")[];
+        };
+        /** CopySetupOut */
+        CopySetupOut: {
+            brand: components["schemas"]["BrandOut"];
+            /** Copied */
+            copied: {
+                [key: string]: number;
+            };
         };
         /** CredentialField */
         CredentialField: {
@@ -4183,6 +4250,69 @@ export interface components {
              */
             start: string;
         };
+        /** OverviewBrand */
+        OverviewBrand: {
+            /** Approvals */
+            approvals: number;
+            /** Approvals Overdue */
+            approvals_overdue: number;
+            /** Attention */
+            attention: number;
+            /** Brand Id */
+            brand_id: number;
+            /** Channels */
+            channels: number;
+            /** Channels Total */
+            channels_total: number;
+            /** Color */
+            color: string;
+            /** Drafts */
+            drafts: number;
+            /** Empty Days */
+            empty_days: number;
+            /** Failed */
+            failed: number;
+            /** Name */
+            name: string;
+            /** Next Post At */
+            next_post_at: string | null;
+            /** Replies */
+            replies: number;
+            /** Role */
+            role: string;
+            /** Scheduled Week */
+            scheduled_week: number;
+            /** Slug */
+            slug: string;
+            /** Timezone */
+            timezone: string;
+        };
+        /** OverviewOut */
+        OverviewOut: {
+            /** Brands */
+            brands: components["schemas"]["OverviewBrand"][];
+            /**
+             * Now
+             * Format: date-time
+             */
+            now: string;
+            totals: components["schemas"]["OverviewTotals"];
+        };
+        /** OverviewTotals */
+        OverviewTotals: {
+            /** Approvals */
+            approvals: number;
+            /** Approvals Overdue */
+            approvals_overdue: number;
+            /** Channels */
+            channels: number;
+            /** Failed */
+            failed: number;
+            /** Replies */
+            replies: number;
+            /** Scheduled Week */
+            scheduled_week: number;
+        };
         /** PaletteItem */
         PaletteItem: {
             /** Action */
@@ -4361,6 +4491,8 @@ export interface components {
         PostOut: {
             /** Agent Run Id */
             agent_run_id?: number | null;
+            /** Approval Due At */
+            approval_due_at?: string | null;
             /** Author Id */
             author_id: number | null;
             /** Campaign Id */
@@ -6946,6 +7078,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    copy_setup_brands__brand_id__copy_setup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopySetupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopySetupOut"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -10796,6 +10963,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    overview_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverviewOut"];
                 };
             };
         };

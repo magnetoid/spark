@@ -171,6 +171,14 @@ async def send_notifications(ctx) -> int:
         return sent
 
 
+async def approval_deadlines(ctx) -> int:
+    """Every five minutes: due dates for waiting posts, one reminder, the brand's rule after it."""
+    from spark.services import approvals
+
+    async with SessionLocal() as db:
+        return await approvals.run(db)
+
+
 async def worker_beat(ctx) -> None:
     """Every minute: tell /healthz and the setup checklist that the worker runs."""
     from spark.services import heartbeat
@@ -244,6 +252,7 @@ class WorkerSettings:
         cron(snapshot_followers, hour={0}, minute=35),
         cron(classify_inbox, minute=set(range(2, 60, 5))),
         cron(send_notifications, second=50),
+        cron(approval_deadlines, minute=set(range(4, 60, 5))),
         cron(deliver_outbox, second={5, 20, 35}),
         cron(sync_channels, minute={27}),
         cron(worker_beat, second={0}, run_at_startup=True),

@@ -66,6 +66,8 @@ async def update_brand(
     data = body.model_dump(exclude_unset=True)
     if "timezone" in data and data["timezone"] not in TIMEZONES:
         raise ApiError(422, "bad_timezone", f"Unknown timezone {data['timezone']!r}")
+    if "approval_timeout" in data and data["approval_timeout"] is None:
+        del data["approval_timeout"]
     utm = data.pop("utm_campaign", None)
     if utm is not None or "utm_campaign" in body.model_fields_set:
         ctx.brand.utm_defaults = {"campaign": utm} if utm else {}
