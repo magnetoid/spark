@@ -3452,6 +3452,180 @@
         "title": "GenerateIn",
         "type": "object"
       },
+      "GoalChannel": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "at_risk": {
+            "title": "At Risk",
+            "type": "boolean"
+          },
+          "best_streak": {
+            "title": "Best Streak",
+            "type": "integer"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "needed": {
+            "title": "Needed",
+            "type": "integer"
+          },
+          "planned": {
+            "title": "Planned",
+            "type": "integer"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "published": {
+            "title": "Published",
+            "type": "integer"
+          },
+          "streak": {
+            "title": "Streak",
+            "type": "integer"
+          },
+          "weeks": {
+            "items": {
+              "$ref": "#/components/schemas/GoalWeek"
+            },
+            "title": "Weeks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "account_id",
+          "platform",
+          "handle",
+          "goal",
+          "published",
+          "planned",
+          "needed",
+          "streak",
+          "best_streak",
+          "at_risk",
+          "weeks"
+        ],
+        "title": "GoalChannel",
+        "type": "object"
+      },
+      "GoalIn": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "posts_per_week": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posts Per Week"
+          }
+        },
+        "required": [
+          "account_id"
+        ],
+        "title": "GoalIn",
+        "type": "object"
+      },
+      "GoalWeek": {
+        "properties": {
+          "met": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Met"
+          },
+          "published": {
+            "title": "Published",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "published",
+          "met"
+        ],
+        "title": "GoalWeek",
+        "type": "object"
+      },
+      "GoalsIn": {
+        "properties": {
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/GoalIn"
+            },
+            "maxItems": 200,
+            "title": "Goals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "goals"
+        ],
+        "title": "GoalsIn",
+        "type": "object"
+      },
+      "GoalsOut": {
+        "properties": {
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/GoalChannel"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "days_left": {
+            "title": "Days Left",
+            "type": "integer"
+          },
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week_start",
+          "days_left",
+          "channels"
+        ],
+        "title": "GoalsOut",
+        "type": "object"
+      },
       "GridItem": {
         "properties": {
           "content": {
@@ -5655,6 +5829,11 @@
           },
           "failed": {
             "title": "Failed",
+            "type": "integer"
+          },
+          "goals": {
+            "default": 0,
+            "title": "Goals",
             "type": "integer"
           },
           "plan_ready": {
@@ -12739,6 +12918,100 @@
         "summary": "Update Feed",
         "tags": [
           "links"
+        ]
+      }
+    },
+    "/brands/{brand_id}/goals": {
+      "get": {
+        "description": "This week per channel (published, planned, still needed) and the streak of weeks met.",
+        "operationId": "get_goals_brands__brand_id__goals_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Goals",
+        "tags": [
+          "goals"
+        ]
+      },
+      "put": {
+        "description": "Set or clear weekly goals. A changed goal starts its streak again; an unchanged one keeps it.",
+        "operationId": "set_goals_brands__brand_id__goals_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoalsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Goals",
+        "tags": [
+          "goals"
         ]
       }
     },

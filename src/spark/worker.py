@@ -179,6 +179,14 @@ async def approval_deadlines(ctx) -> int:
         return await approvals.run(db)
 
 
+async def goal_gaps(ctx) -> int:
+    """Hourly: from Thursday, one email per brand and week about channels short of their goal."""
+    from spark.services import goals
+
+    async with SessionLocal() as db:
+        return await goals.alert_gaps(db)
+
+
 async def worker_beat(ctx) -> None:
     """Every minute: tell /healthz and the setup checklist that the worker runs."""
     from spark.services import heartbeat
@@ -253,6 +261,7 @@ class WorkerSettings:
         cron(classify_inbox, minute=set(range(2, 60, 5))),
         cron(send_notifications, second=50),
         cron(approval_deadlines, minute=set(range(4, 60, 5))),
+        cron(goal_gaps, minute={9}),
         cron(deliver_outbox, second={5, 20, 35}),
         cron(sync_channels, minute={27}),
         cron(worker_beat, second={0}, run_at_startup=True),

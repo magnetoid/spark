@@ -794,6 +794,30 @@ export interface paths {
         patch: operations["update_feed_brands__brand_id__feeds__feed_id__patch"];
         trace?: never;
     };
+    "/brands/{brand_id}/goals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Goals
+         * @description This week per channel (published, planned, still needed) and the streak of weeks met.
+         */
+        get: operations["get_goals_brands__brand_id__goals_get"];
+        /**
+         * Set Goals
+         * @description Set or clear weekly goals. A changed goal starts its streak again; an unchanged one keeps it.
+         */
+        put: operations["set_goals_brands__brand_id__goals_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/brands/{brand_id}/hashtag-groups": {
         parameters: {
             query?: never;
@@ -3669,6 +3693,67 @@ export interface components {
              */
             variants: number;
         };
+        /** GoalChannel */
+        GoalChannel: {
+            /** Account Id */
+            account_id: number;
+            /** At Risk */
+            at_risk: boolean;
+            /** Best Streak */
+            best_streak: number;
+            /** Goal */
+            goal: number | null;
+            /** Handle */
+            handle: string;
+            /** Needed */
+            needed: number;
+            /** Planned */
+            planned: number;
+            /** Platform */
+            platform: string;
+            /** Published */
+            published: number;
+            /** Streak */
+            streak: number;
+            /** Weeks */
+            weeks: components["schemas"]["GoalWeek"][];
+        };
+        /** GoalIn */
+        GoalIn: {
+            /** Account Id */
+            account_id: number;
+            /** Posts Per Week */
+            posts_per_week?: number | null;
+        };
+        /** GoalWeek */
+        GoalWeek: {
+            /** Met */
+            met: boolean | null;
+            /** Published */
+            published: number;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+        };
+        /** GoalsIn */
+        GoalsIn: {
+            /** Goals */
+            goals: components["schemas"]["GoalIn"][];
+        };
+        /** GoalsOut */
+        GoalsOut: {
+            /** Channels */
+            channels: components["schemas"]["GoalChannel"][];
+            /** Days Left */
+            days_left: number;
+            /**
+             * Week Start
+             * Format: date
+             */
+            week_start: string;
+        };
         /** GridItem */
         GridItem: {
             /** Content */
@@ -4366,6 +4451,11 @@ export interface components {
             drafts: number;
             /** Failed */
             failed: number;
+            /**
+             * Goals
+             * @default 0
+             */
+            goals: number;
             /**
              * Plan Ready
              * @default 0
@@ -7721,6 +7811,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FeedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_goals_brands__brand_id__goals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_goals_brands__brand_id__goals_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalsOut"];
                 };
             };
             /** @description Validation Error */

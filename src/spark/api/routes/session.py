@@ -36,6 +36,7 @@ ALLOWED_PREFS = {
     "notify_failed",
     "notify_approvals",
     "notify_channels",
+    "notify_goals",
     "digest_weekly",
     "theme",
     "sidebar_collapsed",

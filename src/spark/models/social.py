@@ -43,6 +43,8 @@ class SocialAccount(TimestampMixin, Base):
     # ("reconnect", "expiring:7", "expiring:3", "expiring:1"), so each is sent once.
     checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     alerted_for: Mapped[str | None] = mapped_column(String(24))
+    posting_goal: Mapped[int | None] = mapped_column(Integer)  # posts a week; None = no goal
+    posting_goal_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     brand: Mapped["Brand"] = relationship(back_populates="accounts")  # noqa: F821
 

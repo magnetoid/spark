@@ -26,6 +26,7 @@ from spark.api.routes import (
     collab,
     connect_links,
     events,
+    goals,
     ideas,
     inbox,
     insights,
@@ -79,6 +80,7 @@ for r in (
     agency.router,
     connect_links.router,
     connect_links.public,
+    goals.router,
 ):
     api.include_router(r)
 

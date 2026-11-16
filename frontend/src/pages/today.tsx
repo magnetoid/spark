@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, CalendarPlus, CheckCircle2, FileText, MessageSquareText, Plug, Sparkles, Sunrise } from "lucide-react";
+import { AlertTriangle, CalendarPlus, CheckCircle2, FileText, MessageSquareText, Plug, Sparkles, Sunrise, Target } from "lucide-react";
 import { useBrand } from "@/app/session";
 import { api, unwrap } from "@/lib/api";
 import type { components } from "@/api/schema";
@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ActivitySection } from "@/features/collab/panels";
 import { useComposer } from "@/features/composer/composer-host";
 import { SetupChecklist } from "@/features/setup/checklist";
+import { GoalsCard } from "@/features/goals/goals";
 
 type Today = components["schemas"]["TodayOut"];
 
@@ -42,6 +43,7 @@ function TodayBody({ data, tz }: { data: Today; tz: string }) {
     { count: n.approvals, label: "to approve", icon: CheckCircle2, to: "/publishing", search: { view: "approvals" }, tone: "text-st-pending" },
     { count: n.failed, label: n.failed === 1 ? "failed post" : "failed posts", icon: AlertTriangle, to: "/publishing", search: { view: "failed" }, tone: "text-st-failed" },
     { count: n.channels ?? 0, label: n.channels === 1 ? "channel to reconnect" : "channels to reconnect", icon: Plug, to: "/channels", search: {}, tone: "text-st-failed" },
+    { count: n.goals ?? 0, label: n.goals === 1 ? "channel short of its weekly goal" : "channels short of their weekly goal", icon: Target, to: "/", search: {}, tone: "text-st-pending" },
     { count: n.replies ?? 0, label: n.replies === 1 ? "reply waiting" : "replies waiting", icon: MessageSquareText, to: "/inbox", search: {}, tone: "text-st-scheduled" },
     { count: n.plan_ready ?? 0, label: n.plan_ready === 1 ? "post in the plan to review" : "posts in the plan to review", icon: Sparkles, to: "/publishing", search: { view: "plan" }, tone: "text-brand" },
     { count: n.drafts, label: n.drafts === 1 ? "draft waiting" : "drafts waiting", icon: FileText, to: "/publishing", search: { view: "drafts" }, tone: "text-ink-2" },
@@ -79,6 +81,7 @@ function TodayBody({ data, tz }: { data: Today; tz: string }) {
         )}
       </section>
 
+      <GoalsCard />
       <div className="grid gap-6 md:grid-cols-2">
         <section aria-labelledby="needs-h" className="rounded-card border border-line bg-surface p-5">
           <h2 id="needs-h" className="mb-3 text-base font-semibold">Needs you</h2>

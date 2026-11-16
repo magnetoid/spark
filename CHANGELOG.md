@@ -4,6 +4,17 @@ Changes that matter to people who run Spark. Dates are when the change reached `
 
 ## Unreleased
 
+### Posting goals
+- **Weekly goals per channel** on Today: how many posts a channel should get each week (Monday
+  to Sunday in the brand's timezone), this week's published and planned posts, how many are
+  still needed, the weeks in a row the goal was met and the last eight weeks at a glance.
+  "Plan" opens the composer for that channel. A changed goal starts its streak again.
+- From Thursday morning, Today lists channels short of their goal and owners and editors get
+  one email per brand that week (Preferences: "A channel is short of its weekly goal").
+
+**Before you upgrade:** a migration adds three nullable columns; it runs when the container
+starts.
+
 ### Client connect links and a wider CSV import
 - **Connect links**: on **Channels**, an owner makes a link (for chosen networks or any, for 1 to
   30 days) that a client opens without a Spark account to connect or reconnect their own

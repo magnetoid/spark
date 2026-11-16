@@ -78,6 +78,7 @@ class Brand(TimestampMixin, Base):
     # stays waiting ("wait") or goes back to drafts ("drafts"). It is never published.
     approval_lead_hours: Mapped[int | None] = mapped_column(Integer)
     approval_timeout: Mapped[str] = mapped_column(String(16), default="wait", server_default="wait")
+    goal_alert_week: Mapped[str | None] = mapped_column(String(10))  # e.g. "2026-W47"
     auto_shorten_links: Mapped[bool] = mapped_column(Boolean, default=False)
     utm_defaults: Mapped[dict] = mapped_column(JSON, default=dict)
     agent_config: Mapped[dict] = mapped_column(

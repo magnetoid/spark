@@ -445,6 +445,7 @@ class NeedsYou(BaseModel):
     plan_ready: int = 0  # drafts the agent proposed, waiting in the plan tray
     replies: int = 0  # open inbox items
     channels: int = 0  # channels that need reconnecting or whose access runs out within 7 days
+    goals: int = 0  # channels short of their weekly goal, counted from Thursday
 
 
 class WeekPoint(BaseModel):
@@ -1462,6 +1463,41 @@ class ShareLinkOut(BaseModel):
 class ShareLinkCreated(ShareLinkOut):
     token: str
     url: str
+
+
+class GoalWeek(BaseModel):
+    start: date
+    published: int
+    met: bool | None  # None: no goal that week yet, or this week is not met yet
+
+
+class GoalChannel(BaseModel):
+    account_id: int
+    platform: str
+    handle: str
+    goal: int | None
+    published: int
+    planned: int
+    needed: int
+    streak: int
+    best_streak: int
+    at_risk: bool
+    weeks: list[GoalWeek]
+
+
+class GoalsOut(BaseModel):
+    week_start: date
+    days_left: int
+    channels: list[GoalChannel]
+
+
+class GoalIn(BaseModel):
+    account_id: int
+    posts_per_week: int | None = Field(None, ge=1, le=50)
+
+
+class GoalsIn(BaseModel):
+    goals: list[GoalIn] = Field(max_length=200)
 
 
 class ConnectLinkIn(BaseModel):

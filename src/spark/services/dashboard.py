@@ -22,9 +22,11 @@ LIVE = (
 )
 
 
-async def today(db: AsyncSession, brand: Brand) -> dict:
+async def today(db: AsyncSession, brand: Brand, now: datetime | None = None) -> dict:
+    from spark.services import goals
+
     zone = ZoneInfo(brand.timezone or "UTC")
-    now = datetime.now(UTC)
+    now = now or datetime.now(UTC)
     local = now.astimezone(zone)
     start = datetime.combine(local.date(), datetime.min.time(), zone).astimezone(UTC)
     end = start + timedelta(days=1)
@@ -112,6 +114,7 @@ async def today(db: AsyncSession, brand: Brand) -> dict:
             ).scalars()
             if channel_health.health(a) in ("reconnect", "expiring")
         ),
+        "goals": await goals.at_risk_count(db, brand, now),
     }
 
     data = await analytics.overview(db, brand.id, days=7)
