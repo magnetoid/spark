@@ -4,6 +4,14 @@ Changes that matter to people who run Spark. Dates are when the change reached `
 
 ## Unreleased
 
+### Week in review
+- **Week in review** on Analytics: last week's posts (or any earlier week) against their
+  channel's own usual, the middle result of its posts in the 90 days before (from five posts
+  on), not industry averages. Each post is above, usual or below, with plain findings: the best
+  and quietest post, formats and content pillars that beat or trailed the usual, and the volume
+  against the week before.
+- The weekly plan run now gets those findings, so the next plan leans into what worked.
+
 ### Follower goals
 - **Follower goals** on Analytics: a target per channel and, optionally, a date. Spark draws a
   straight line through the channel's own daily follower counts (the last 60 days, from two

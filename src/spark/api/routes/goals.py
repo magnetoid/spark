@@ -3,17 +3,23 @@ goals with a forecast."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spark.api import deps
 from spark.api.errors import ApiError, not_found
-from spark.api.schemas import FollowerGoalsIn, FollowerGoalsOut, GoalsIn, GoalsOut
+from spark.api.schemas import (
+    FollowerGoalsIn,
+    FollowerGoalsOut,
+    GoalsIn,
+    GoalsOut,
+    WeeklyReviewOut,
+)
 from spark.db import get_db
 from spark.models import SocialAccount
-from spark.services import activity, follower_goals, goals
+from spark.services import activity, follower_goals, goals, review
 
 router = APIRouter(prefix="/brands/{brand_id}", tags=["goals"])
 
@@ -96,3 +102,14 @@ async def set_follower_goals(
         )
     await db.commit()
     return {"channels": await follower_goals.brand_goals(db, ctx.brand, today)}
+
+
+@router.get("/weekly-review", response_model=WeeklyReviewOut)
+async def weekly_review(
+    week: date | None = None,
+    db: AsyncSession = Depends(get_db),
+    ctx: deps.BrandCtx = Depends(deps.brand_ctx),
+):
+    """A week's posts against each channel's own usual, with plain findings. `week` is any day
+    of the week wanted; without it, last week."""
+    return await review.weekly_review(db, ctx.brand, week)

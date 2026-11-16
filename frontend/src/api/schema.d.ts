@@ -1997,6 +1997,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/brands/{brand_id}/weekly-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly Review
+         * @description A week's posts against each channel's own usual, with plain findings. `week` is any day
+         *     of the week wanted; without it, last week.
+         */
+        get: operations["weekly_review_brands__brand_id__weekly_review_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events": {
         parameters: {
             query?: never;
@@ -5193,6 +5214,19 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** ReviewBaseline */
+        ReviewBaseline: {
+            /** Account Id */
+            account_id: number;
+            /** Handle */
+            handle: string;
+            /** Median Engagements */
+            median_engagements: number;
+            /** Median Seen */
+            median_seen: number;
+            /** Posts */
+            posts: number;
+        };
         /** ReviewChannel */
         ReviewChannel: {
             /** First Comment */
@@ -5216,6 +5250,19 @@ export interface components {
              * @default []
              */
             thread: string[];
+        };
+        /** ReviewCounts */
+        ReviewCounts: {
+            /** Above */
+            above: number;
+            /** Below */
+            below: number;
+            /** Posts */
+            posts: number;
+            /** Unrated */
+            unrated: number;
+            /** Usual */
+            usual: number;
         };
         /** ReviewPage */
         ReviewPage: {
@@ -5248,6 +5295,42 @@ export interface components {
             scheduled_at: string | null;
             /** Status */
             status: string;
+        };
+        /** ReviewPostOut */
+        ReviewPostOut: {
+            /** Account Id */
+            account_id: number;
+            /** Engagement Rate Pct */
+            engagement_rate_pct: number | null;
+            /** Engagements */
+            engagements: number | null;
+            /** Handle */
+            handle: string;
+            /** Pillar */
+            pillar: string | null;
+            /** Platform */
+            platform: string;
+            /** Post Id */
+            post_id: number;
+            /** Post Type */
+            post_type: string;
+            /** Published At */
+            published_at: string | null;
+            /** Seen */
+            seen: number | null;
+            /** Target Id */
+            target_id: number;
+            /** Text */
+            text: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "above" | "usual" | "below" | "unrated";
+            /** Vs Usual */
+            vs_usual: number | null;
+            /** Vs Usual Seen */
+            vs_usual_seen: number | null;
         };
         /** RewriteIn */
         RewriteIn: {
@@ -5971,6 +6054,28 @@ export interface components {
             engagements: number;
             /** Impressions */
             impressions: number;
+        };
+        /** WeeklyReviewOut */
+        WeeklyReviewOut: {
+            /** Baselines */
+            baselines: components["schemas"]["ReviewBaseline"][];
+            counts: components["schemas"]["ReviewCounts"];
+            /** Findings */
+            findings: string[];
+            /** Posts */
+            posts: components["schemas"]["ReviewPostOut"][];
+            /** Previous Week Posts */
+            previous_week_posts: number;
+            /**
+             * Week End
+             * Format: date
+             */
+            week_end: string;
+            /**
+             * Week Start
+             * Format: date
+             */
+            week_start: string;
         };
     };
     responses: never;
@@ -11185,6 +11290,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodayOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    weekly_review_brands__brand_id__weekly_review_get: {
+        parameters: {
+            query?: {
+                week?: string | null;
+            };
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyReviewOut"];
                 };
             };
             /** @description Validation Error */

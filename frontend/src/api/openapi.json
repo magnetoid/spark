@@ -7961,6 +7961,39 @@
         "title": "ReviewActionOut",
         "type": "object"
       },
+      "ReviewBaseline": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "median_engagements": {
+            "title": "Median Engagements",
+            "type": "number"
+          },
+          "median_seen": {
+            "title": "Median Seen",
+            "type": "number"
+          },
+          "posts": {
+            "title": "Posts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "account_id",
+          "handle",
+          "median_engagements",
+          "median_seen",
+          "posts"
+        ],
+        "title": "ReviewBaseline",
+        "type": "object"
+      },
       "ReviewChannel": {
         "properties": {
           "first_comment": {
@@ -8006,6 +8039,39 @@
           "handle"
         ],
         "title": "ReviewChannel",
+        "type": "object"
+      },
+      "ReviewCounts": {
+        "properties": {
+          "above": {
+            "title": "Above",
+            "type": "integer"
+          },
+          "below": {
+            "title": "Below",
+            "type": "integer"
+          },
+          "posts": {
+            "title": "Posts",
+            "type": "integer"
+          },
+          "unrated": {
+            "title": "Unrated",
+            "type": "integer"
+          },
+          "usual": {
+            "title": "Usual",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "posts",
+          "above",
+          "usual",
+          "below",
+          "unrated"
+        ],
+        "title": "ReviewCounts",
         "type": "object"
       },
       "ReviewPage": {
@@ -8120,6 +8186,145 @@
           "comments"
         ],
         "title": "ReviewPost",
+        "type": "object"
+      },
+      "ReviewPostOut": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "engagement_rate_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engagement Rate Pct"
+          },
+          "engagements": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engagements"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "pillar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pillar"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "post_id": {
+            "title": "Post Id",
+            "type": "integer"
+          },
+          "post_type": {
+            "title": "Post Type",
+            "type": "string"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "seen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seen"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "above",
+              "usual",
+              "below",
+              "unrated"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          },
+          "vs_usual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vs Usual"
+          },
+          "vs_usual_seen": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vs Usual Seen"
+          }
+        },
+        "required": [
+          "post_id",
+          "target_id",
+          "account_id",
+          "handle",
+          "platform",
+          "text",
+          "post_type",
+          "pillar",
+          "published_at",
+          "engagements",
+          "seen",
+          "engagement_rate_pct",
+          "vs_usual",
+          "vs_usual_seen",
+          "verdict"
+        ],
+        "title": "ReviewPostOut",
         "type": "object"
       },
       "RewriteIn": {
@@ -10270,6 +10475,59 @@
           "engagements"
         ],
         "title": "WeekPoint",
+        "type": "object"
+      },
+      "WeeklyReviewOut": {
+        "properties": {
+          "baselines": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewBaseline"
+            },
+            "title": "Baselines",
+            "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ReviewCounts"
+          },
+          "findings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "posts": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewPostOut"
+            },
+            "title": "Posts",
+            "type": "array"
+          },
+          "previous_week_posts": {
+            "title": "Previous Week Posts",
+            "type": "integer"
+          },
+          "week_end": {
+            "format": "date",
+            "title": "Week End",
+            "type": "string"
+          },
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week_start",
+          "week_end",
+          "posts",
+          "counts",
+          "baselines",
+          "findings",
+          "previous_week_posts"
+        ],
+        "title": "WeeklyReviewOut",
         "type": "object"
       }
     }
@@ -18504,6 +18762,66 @@
         "summary": "Today",
         "tags": [
           "today"
+        ]
+      }
+    },
+    "/brands/{brand_id}/weekly-review": {
+      "get": {
+        "description": "A week's posts against each channel's own usual, with plain findings. `week` is any day\nof the week wanted; without it, last week.",
+        "operationId": "weekly_review_brands__brand_id__weekly_review_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "week",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Week"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Weekly Review",
+        "tags": [
+          "goals"
         ]
       }
     },

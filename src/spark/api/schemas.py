@@ -1540,6 +1540,50 @@ class FollowerGoalsIn(BaseModel):
     goals: list[FollowerGoalIn] = Field(max_length=200)
 
 
+class ReviewPostOut(BaseModel):
+    post_id: int
+    target_id: int
+    account_id: int
+    handle: str
+    platform: str
+    text: str
+    post_type: str
+    pillar: str | None
+    published_at: datetime | None
+    engagements: int | None
+    seen: int | None
+    engagement_rate_pct: float | None
+    vs_usual: float | None  # engagements against the channel's median; None when unrated
+    vs_usual_seen: float | None
+    verdict: Literal["above", "usual", "below", "unrated"]
+
+
+class ReviewBaseline(BaseModel):
+    account_id: int
+    handle: str
+    median_engagements: float
+    median_seen: float
+    posts: int
+
+
+class ReviewCounts(BaseModel):
+    posts: int
+    above: int
+    usual: int
+    below: int
+    unrated: int
+
+
+class WeeklyReviewOut(BaseModel):
+    week_start: date
+    week_end: date
+    posts: list[ReviewPostOut]
+    counts: ReviewCounts
+    baselines: list[ReviewBaseline]
+    findings: list[str]
+    previous_week_posts: int
+
+
 class ConnectLinkIn(BaseModel):
     platforms: list[str] = Field(default_factory=list, max_length=20)
     days: int = Field(7, ge=1, le=30)

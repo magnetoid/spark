@@ -110,6 +110,23 @@ async def _context(
     return accounts, pillars, "\n".join(lines)
 
 
+async def _review_note(db: AsyncSession, brand: Brand) -> str:
+    """Last week's review findings for the weekly plan, or nothing when there are none."""
+    from spark.services import review
+
+    try:
+        findings = (await review.weekly_review(db, brand))["findings"]
+    except Exception:  # a plan without the review beats no plan
+        log.exception("weekly review for brand %s failed", brand.id)
+        return ""
+    if not findings:
+        return ""
+    return (
+        "\n\nLast week's review, each post against its channel's own usual (lean into what "
+        "beat it, rethink what trailed it):\n" + "\n".join(f"- {f}" for f in findings)
+    )
+
+
 async def _task(
     db: AsyncSession, brand: Brand, kind: str, prompt: str | None, extra: dict | None = None
 ) -> str:
@@ -130,6 +147,7 @@ async def _task(
             f"and the content pillars by their target share, give every post a `when` on one of the posting times, and write each post "
             f"in full in the brand's voice. Look at recent posts and ideas first so nothing repeats."
             + (f"\n\nNotes from the team: {prompt}" if prompt else "")
+            + await _review_note(db, brand)
         )
     if kind == "voice":
         rows = (
