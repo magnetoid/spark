@@ -4,6 +4,14 @@ Changes that matter to people who run Spark. Dates are when the change reached `
 
 ## Unreleased
 
+### Follower goals
+- **Follower goals** on Analytics: a target per channel and, optionally, a date. Spark draws a
+  straight line through the channel's own daily follower counts (the last 60 days, from two
+  weeks of counts on) and says whether it is on track, when the target is reached at this pace,
+  the count expected on the date, and what a week needs when it is behind.
+- Next to it, the channel's last twelve weeks: average follower gain in weeks with more posts
+  against the other weeks, with how many weeks each rests on (from six weeks of history).
+
 ### Posting goals
 - **Weekly goals per channel** on Today: how many posts a channel should get each week (Monday
   to Sunday in the brand's timezone), this week's published and planned posts, how many are
@@ -12,7 +20,7 @@ Changes that matter to people who run Spark. Dates are when the change reached `
 - From Thursday morning, Today lists channels short of their goal and owners and editors get
   one email per brand that week (Preferences: "A channel is short of its weekly goal").
 
-**Before you upgrade:** a migration adds three nullable columns; it runs when the container
+**Before you upgrade:** migrations add seven nullable columns; they run when the container
 starts.
 
 ### Client connect links and a wider CSV import

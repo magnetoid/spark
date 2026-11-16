@@ -794,6 +794,30 @@ export interface paths {
         patch: operations["update_feed_brands__brand_id__feeds__feed_id__patch"];
         trace?: never;
     };
+    "/brands/{brand_id}/follower-goals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Follower Goals
+         * @description Followers per channel, the goal and its forecast from the channel's own history.
+         */
+        get: operations["get_follower_goals_brands__brand_id__follower_goals_get"];
+        /**
+         * Set Follower Goals
+         * @description Set or clear follower goals. A changed goal remembers today's followers as its start.
+         */
+        put: operations["set_follower_goals_brands__brand_id__follower_goals_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/brands/{brand_id}/goals": {
         parameters: {
             query?: never;
@@ -3670,6 +3694,70 @@ export interface components {
             name?: string | null;
             /** Use Ai */
             use_ai?: boolean | null;
+        };
+        /** FollowerDriver */
+        FollowerDriver: {
+            /** Gain Less */
+            gain_less: number;
+            /** Gain More */
+            gain_more: number;
+            /** Threshold */
+            threshold: number;
+            /** Weeks Less */
+            weeks_less: number;
+            /** Weeks More */
+            weeks_more: number;
+        };
+        /** FollowerGoalChannel */
+        FollowerGoalChannel: {
+            /** Account Id */
+            account_id: number;
+            /** By */
+            by: string | null;
+            driver: components["schemas"]["FollowerDriver"] | null;
+            /** Eta */
+            eta: string | null;
+            /** Expected By Date */
+            expected_by_date: number | null;
+            /** Followers */
+            followers: number | null;
+            /** Goal */
+            goal: number | null;
+            /** Handle */
+            handle: string;
+            /** History Days */
+            history_days: number;
+            /** Needed Per Week */
+            needed_per_week: number | null;
+            /** Per Week */
+            per_week: number | null;
+            /** Platform */
+            platform: string;
+            /** Since */
+            since: string | null;
+            /** Start */
+            start: number | null;
+            /** Status */
+            status: ("reached" | "on_track" | "behind" | "stalled" | "learning") | null;
+        };
+        /** FollowerGoalIn */
+        FollowerGoalIn: {
+            /** Account Id */
+            account_id: number;
+            /** By */
+            by?: string | null;
+            /** Target */
+            target?: number | null;
+        };
+        /** FollowerGoalsIn */
+        FollowerGoalsIn: {
+            /** Goals */
+            goals: components["schemas"]["FollowerGoalIn"][];
+        };
+        /** FollowerGoalsOut */
+        FollowerGoalsOut: {
+            /** Channels */
+            channels: components["schemas"]["FollowerGoalChannel"][];
         };
         /** GenerateIn */
         GenerateIn: {
@@ -7811,6 +7899,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FeedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_follower_goals_brands__brand_id__follower_goals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowerGoalsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_follower_goals_brands__brand_id__follower_goals_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FollowerGoalsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowerGoalsOut"];
                 };
             };
             /** @description Validation Error */

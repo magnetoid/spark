@@ -3404,6 +3404,279 @@
         "title": "FeedUpdate",
         "type": "object"
       },
+      "FollowerDriver": {
+        "properties": {
+          "gain_less": {
+            "title": "Gain Less",
+            "type": "integer"
+          },
+          "gain_more": {
+            "title": "Gain More",
+            "type": "integer"
+          },
+          "threshold": {
+            "title": "Threshold",
+            "type": "integer"
+          },
+          "weeks_less": {
+            "title": "Weeks Less",
+            "type": "integer"
+          },
+          "weeks_more": {
+            "title": "Weeks More",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "threshold",
+          "gain_more",
+          "gain_less",
+          "weeks_more",
+          "weeks_less"
+        ],
+        "title": "FollowerDriver",
+        "type": "object"
+      },
+      "FollowerGoalChannel": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By"
+          },
+          "driver": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowerDriver"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eta": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta"
+          },
+          "expected_by_date": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected By Date"
+          },
+          "followers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Followers"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "history_days": {
+            "title": "History Days",
+            "type": "integer"
+          },
+          "needed_per_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Needed Per Week"
+          },
+          "per_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Week"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "since": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Since"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "reached",
+                  "on_track",
+                  "behind",
+                  "stalled",
+                  "learning"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "account_id",
+          "platform",
+          "handle",
+          "followers",
+          "goal",
+          "by",
+          "start",
+          "since",
+          "history_days",
+          "per_week",
+          "eta",
+          "expected_by_date",
+          "needed_per_week",
+          "status",
+          "driver"
+        ],
+        "title": "FollowerGoalChannel",
+        "type": "object"
+      },
+      "FollowerGoalIn": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "maximum": 1000000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "required": [
+          "account_id"
+        ],
+        "title": "FollowerGoalIn",
+        "type": "object"
+      },
+      "FollowerGoalsIn": {
+        "properties": {
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/FollowerGoalIn"
+            },
+            "maxItems": 200,
+            "title": "Goals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "goals"
+        ],
+        "title": "FollowerGoalsIn",
+        "type": "object"
+      },
+      "FollowerGoalsOut": {
+        "properties": {
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/FollowerGoalChannel"
+            },
+            "title": "Channels",
+            "type": "array"
+          }
+        },
+        "required": [
+          "channels"
+        ],
+        "title": "FollowerGoalsOut",
+        "type": "object"
+      },
       "GenerateIn": {
         "properties": {
           "brief": {
@@ -12918,6 +13191,100 @@
         "summary": "Update Feed",
         "tags": [
           "links"
+        ]
+      }
+    },
+    "/brands/{brand_id}/follower-goals": {
+      "get": {
+        "description": "Followers per channel, the goal and its forecast from the channel's own history.",
+        "operationId": "get_follower_goals_brands__brand_id__follower_goals_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowerGoalsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Follower Goals",
+        "tags": [
+          "goals"
+        ]
+      },
+      "put": {
+        "description": "Set or clear follower goals. A changed goal remembers today's followers as its start.",
+        "operationId": "set_follower_goals_brands__brand_id__follower_goals_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowerGoalsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowerGoalsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Follower Goals",
+        "tags": [
+          "goals"
         ]
       }
     },

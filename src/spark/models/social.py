@@ -1,9 +1,10 @@
 import enum
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     JSON,
     Boolean,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
@@ -45,6 +46,10 @@ class SocialAccount(TimestampMixin, Base):
     alerted_for: Mapped[str | None] = mapped_column(String(24))
     posting_goal: Mapped[int | None] = mapped_column(Integer)  # posts a week; None = no goal
     posting_goal_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    follower_goal: Mapped[int | None] = mapped_column(Integer)  # followers to reach
+    follower_goal_by: Mapped[date | None] = mapped_column(Date)  # optional deadline
+    follower_goal_start: Mapped[int | None] = mapped_column(Integer)  # followers when it was set
+    follower_goal_since: Mapped[date | None] = mapped_column(Date)
 
     brand: Mapped["Brand"] = relationship(back_populates="accounts")  # noqa: F821
 

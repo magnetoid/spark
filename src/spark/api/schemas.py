@@ -1500,6 +1500,46 @@ class GoalsIn(BaseModel):
     goals: list[GoalIn] = Field(max_length=200)
 
 
+class FollowerDriver(BaseModel):
+    threshold: int  # posts a week that count as "more"
+    gain_more: int  # average weekly follower gain in those weeks
+    gain_less: int
+    weeks_more: int
+    weeks_less: int
+
+
+class FollowerGoalChannel(BaseModel):
+    account_id: int
+    platform: str
+    handle: str
+    followers: int | None
+    goal: int | None
+    by: date | None
+    start: int | None
+    since: date | None
+    history_days: int
+    per_week: int | None  # growth a week at the current pace; None until there is enough history
+    eta: date | None
+    expected_by_date: int | None
+    needed_per_week: int | None
+    status: Literal["reached", "on_track", "behind", "stalled", "learning"] | None
+    driver: FollowerDriver | None
+
+
+class FollowerGoalsOut(BaseModel):
+    channels: list[FollowerGoalChannel]
+
+
+class FollowerGoalIn(BaseModel):
+    account_id: int
+    target: int | None = Field(None, ge=1, le=1_000_000_000)
+    by: date | None = None
+
+
+class FollowerGoalsIn(BaseModel):
+    goals: list[FollowerGoalIn] = Field(max_length=200)
+
+
 class ConnectLinkIn(BaseModel):
     platforms: list[str] = Field(default_factory=list, max_length=20)
     days: int = Field(7, ge=1, le=30)
