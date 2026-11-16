@@ -1464,6 +1464,44 @@ class ShareLinkCreated(ShareLinkOut):
     url: str
 
 
+class ConnectLinkIn(BaseModel):
+    platforms: list[str] = Field(default_factory=list, max_length=20)
+    days: int = Field(7, ge=1, le=30)
+
+
+class ConnectLinkOut(BaseModel):
+    id: int
+    prefix: str
+    url_hint: str
+    platforms: list[str]
+    expires_at: datetime | None
+    created_at: datetime | None
+    last_used_at: datetime | None
+    connected: int = 0
+
+
+class ConnectLinkCreated(ConnectLinkOut):
+    url: str
+
+
+class ConnectPlatform(BaseModel):
+    platform: str
+    label: str
+
+
+class ConnectChannel(BaseModel):
+    platform: str
+    handle: str
+    health: str
+
+
+class ConnectPage(BaseModel):
+    brand: dict[str, str]
+    expires_at: datetime | None
+    platforms: list[ConnectPlatform]
+    channels: list[ConnectChannel]
+
+
 class ReviewChannel(BaseModel):
     platform: str
     handle: str

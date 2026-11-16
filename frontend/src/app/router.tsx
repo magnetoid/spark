@@ -12,6 +12,7 @@ import { LoginPage } from "@/pages/login";
 import { SetupPage } from "@/pages/setup";
 import { TwoFactorPage } from "@/pages/two-factor";
 import { ReviewPage } from "@/pages/review";
+import { ConnectPage } from "@/pages/connect";
 import { PublicReportPage, ReportPage } from "@/pages/report";
 import { TodayPage } from "@/pages/today";
 import { PublishingPage } from "@/pages/publishing";
@@ -60,6 +61,7 @@ const twoFactorRoute = createRoute({
   component: TwoFactorPage,
 });
 const reviewRoute = createRoute({ getParentRoute: () => rootRoute, path: "/review/$token", component: ReviewPage });
+const connectRoute = createRoute({ getParentRoute: () => rootRoute, path: "/c/$token", component: ConnectPage });
 const publicReportRoute = createRoute({ getParentRoute: () => rootRoute, path: "/r/$token", component: PublicReportPage });
 const reportRoute = createRoute({ getParentRoute: () => rootRoute, path: "/brands/$brandId/reports/$reportId", component: ReportPage });
 
@@ -86,6 +88,7 @@ export const routeTree = rootRoute.addChildren([
   twoFactorRoute,
   reviewRoute,
   publicReportRoute,
+  connectRoute,
   reportRoute,
   shellRoute.addChildren([
     page("/", TodayPage),

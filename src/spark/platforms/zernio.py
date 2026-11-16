@@ -170,7 +170,11 @@ class ZernioAdapter(PlatformAdapter):
         if resp.status_code == 401:
             raise PlatformError("Zernio rejected the API key (401)", retryable=False)
         if resp.status_code == 402:
-            raise PlatformError("Zernio: plan limit reached (402)", retryable=False)
+            try:
+                why = str(resp.json().get("error") or "").strip()
+            except ValueError:
+                why = ""
+            raise NotAvailable(f"Zernio (402): {why or 'plan limit reached'}")
         return self.check(resp)
 
     # ---- profiles / accounts -------------------------------------------------
@@ -192,18 +196,22 @@ class ZernioAdapter(PlatformAdapter):
         brand.zernio_profile_id = resp.json()["profile"]["_id"]
         return brand.zernio_profile_id
 
-    def connect_url_params(self, profile_id: str, state: str) -> dict:
+    def connect_url_params(
+        self, profile_id: str, state: str, callback: str = "/accounts/zernio/callback"
+    ) -> dict:
         base = get_settings().base_url.rstrip("/")
         return {
             "profileId": profile_id,
-            "redirect_url": f"{base}/accounts/zernio/callback?state={state}",
+            "redirect_url": f"{base}{callback}?state={state}",
         }
 
-    async def connect_url(self, profile_id: str, state: str) -> str:
+    async def connect_url(
+        self, profile_id: str, state: str, callback: str = "/accounts/zernio/callback"
+    ) -> str:
         resp = await self._req(
             "GET",
             f"/connect/{to_zernio(self.platform)}",
-            params=self.connect_url_params(profile_id, state),
+            params=self.connect_url_params(profile_id, state, callback),
         )
         return resp.json()["authUrl"]
 

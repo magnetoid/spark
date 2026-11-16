@@ -24,6 +24,7 @@ from spark.api.routes import (
     campaigns,
     channels,
     collab,
+    connect_links,
     events,
     ideas,
     inbox,
@@ -76,6 +77,8 @@ for r in (
     webhooks.router,
     setup.router,
     agency.router,
+    connect_links.router,
+    connect_links.public,
 ):
     api.include_router(r)
 

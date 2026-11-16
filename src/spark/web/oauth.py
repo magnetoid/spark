@@ -7,8 +7,9 @@ the callback, save what came back and send the browser to the Channels page with
 import logging
 from urllib.parse import urlencode
 
+import httpx
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +17,7 @@ from spark.db import get_db
 from spark.models import Brand, User
 from spark.platforms import PlatformError, get_adapter
 from spark.platforms.zernio import ZernioAdapter
-from spark.security import token
+from spark.security import token as token_
 from spark.services.accounts import save_connected
 from spark.web.deps import editor
 
@@ -76,7 +77,7 @@ async def connect(
         return _back(
             f"{adapter.label} developer app is not configured on this server", "error", brand
         )
-    state = token(16)
+    state = token_(16)
     start = adapter.oauth_start(state)
     request.session["oauth"] = {
         "state": state,
@@ -134,7 +135,7 @@ async def zernio_connect(
     adapter = ZernioAdapter.for_platform(platform)
     if not adapter.is_configured():
         return _back("Add the Zernio API key under Settings → Connectors first", "error", brand)
-    state = token(16)
+    state = token_(16)
     try:
         profile_id = await adapter.ensure_profile(brand)
         await db.commit()
@@ -176,3 +177,146 @@ async def zernio_callback(
     return _back(
         "Zernio did not return the connected account yet; use “Import from Zernio”", "error", brand
     )
+
+
+# ---- connect links: a client connects their own channels, no Spark account -------------------
+CLIENT_CALLBACK = "/accounts/zernio/client-callback"
+TEAM_NOTE = "This channel can't be connected right now. We've told the team that manages it."
+
+
+def _client_back(token: str, **q: str) -> RedirectResponse:
+    return RedirectResponse(f"/c/{token}?{urlencode(q)}", 303)
+
+
+def _dead_link(status: int = 404) -> HTMLResponse:
+    return HTMLResponse(
+        "<p>This connect link is no longer valid. Ask the team that sent it for a new one.</p>",
+        status,
+    )
+
+
+def _label(platform: str) -> str:
+    from spark.platforms.zernio import ZERNIO_PLATFORMS
+
+    meta = ZERNIO_PLATFORMS.get(platform)
+    return meta.label if meta else platform
+
+
+@router.get("/c/{token}/go/{platform}")
+async def client_connect(
+    token: str, platform: str, request: Request, db: AsyncSession = Depends(get_db)
+):
+    """Start Zernio's hosted connect for the brand behind a connect link."""
+    from spark.services import activity, connect_links
+
+    found = await connect_links.find(db, token)
+    if found is None:
+        return _dead_link()
+    link, brand = found
+    if platform not in connect_links.platforms(link):
+        await db.commit()
+        return _client_back(token, error="This link cannot connect that network.")
+    adapter = ZernioAdapter.for_platform(platform)
+    if not adapter.is_configured():
+        await db.commit()
+        return _client_back(token, error=TEAM_NOTE)
+    state = token_(16)
+    try:
+        profile_id = await adapter.ensure_profile(brand)
+        await db.commit()
+        url = await adapter.connect_url(profile_id, state, CLIENT_CALLBACK)
+    except (PlatformError, httpx.HTTPError) as e:
+        activity.record(
+            db,
+            brand.id,
+            None,
+            "could not connect",
+            "channel",
+            None,
+            f"{_label(platform)} through a client link: {e}",
+            actor_name="Client (connect link)",
+        )
+        await db.commit()
+        return _client_back(token, error=TEAM_NOTE)
+    request.session["zernio_client"] = {
+        "state": state,
+        "platform": platform,
+        "link_id": link.id,
+        "token": token,
+    }
+    return RedirectResponse(url, 303)
+
+
+@router.get(CLIENT_CALLBACK)
+async def client_callback(request: Request, db: AsyncSession = Depends(get_db)):
+    """Zernio sends the client back here; save the channel into the link's brand only."""
+    from spark.services import activity, connect_links
+
+    pending = request.session.pop("zernio_client", None)
+    q = request.query_params
+    if not pending:
+        return HTMLResponse(
+            "<p>This connection could not be finished. Open your connect link and try again.</p>",
+            400,
+        )
+    token = pending["token"]
+    if pending["state"] != q.get("state"):
+        return _client_back(token, error="The connection expired. Please try again.")
+    found = await connect_links.find(db, token)
+    if found is None or found[0].id != pending["link_id"]:
+        return _dead_link()
+    link, brand = found
+    platform = pending["platform"]
+    who = "Client (connect link)"
+    if q.get("error"):
+        activity.record(
+            db,
+            brand.id,
+            None,
+            "could not connect",
+            "channel",
+            None,
+            f"{_label(platform)} through a client link: {q['error']}",
+            actor_name=who,
+        )
+        await db.commit()
+        if q["error"] == "oauth_denied":
+            return _client_back(token, error="The connection was cancelled. You can try again.")
+        return _client_back(
+            token,
+            error="The network did not connect this channel. Please try again, or ask the team "
+            "that manages it.",
+        )
+    if not brand.zernio_profile_id:  # never list every profile on Zernio for a client
+        await db.commit()
+        return _client_back(token, error=TEAM_NOTE)
+    try:
+        pairs = await ZernioAdapter.for_platform(platform).list_accounts(brand.zernio_profile_id)
+    except (PlatformError, httpx.HTTPError) as e:
+        log.warning("client connect callback for brand %s failed: %s", brand.id, e)
+        await db.commit()
+        return _client_back(token, error=TEAM_NOTE)
+    if account_id := q.get("accountId"):
+        pairs = [(p, a) for p, a in pairs if a.external_id == account_id]
+    rows = []
+    for plat, acc in pairs:
+        rows += await save_connected(db, brand, plat, [acc], provider="zernio")
+    for acc in rows:
+        activity.record(
+            db,
+            brand.id,
+            None,
+            "connected",
+            "channel",
+            acc.id,
+            f"@{acc.handle} ({_label(acc.platform)}) through a client link",
+            actor_name=who,
+        )
+    connect_links.count_connected(link, len(rows))
+    await db.commit()
+    if not rows:
+        return _client_back(
+            token, error="The network has not confirmed the channel yet. Please try again shortly."
+        )
+    await connect_links.tell_team(db, brand, rows)
+    return _client_back(token, connected=", ".join(f"@{a.handle}" for a in rows))

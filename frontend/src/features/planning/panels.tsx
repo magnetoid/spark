@@ -130,13 +130,14 @@ export function ImportCsvButton({ className }: { className?: string }) {
           <DialogHeader><DialogTitle>Import posts from a CSV</DialogTitle></DialogHeader>
           {result ? (
             <div className="space-y-3 text-sm">
-              <p>{result.created} {result.created === 1 ? "post" : "posts"} imported into {brand.name}. Rows with a date are scheduled; the rest are drafts.</p>
+              <p>{result.created} {result.created === 1 ? "post" : "posts"} imported into {brand.name}. Rows with a date are scheduled; the rest are drafts. Notes below say what was changed or left out.</p>
               {result.errors.length > 0 && <ul className="max-h-48 space-y-1 overflow-y-auto rounded-control border border-line p-3 text-xs">{result.errors.map((e) => <li key={e.row}><span className="font-medium tnum">Row {e.row}:</span> {e.error}</li>)}</ul>}
               <DialogFooter><Button onClick={close}>Done</Button></DialogFooter>
             </div>
           ) : (
             <div className="space-y-3 text-sm">
-              <p className="text-ink-2">Columns: <code className="rounded bg-hover px-1">content, link, when, channels, pillar</code>. <code className="rounded bg-hover px-1">when</code> is <code className="rounded bg-hover px-1">YYYY-MM-DD HH:MM</code> in {brand.timezone}; leave it empty for a draft. Channels are handles or platforms separated by <code className="rounded bg-hover px-1">;</code>, empty means every channel.</p>
+              <p className="text-ink-2">Columns: <code className="rounded bg-hover px-1">content, link, when, channels, pillar, media, first_comment, post_type</code>. Only <code className="rounded bg-hover px-1">content</code> is required. <code className="rounded bg-hover px-1">when</code> is <code className="rounded bg-hover px-1">YYYY-MM-DD HH:MM</code> in {brand.timezone}; leave it empty for a draft. Channels are handles or platforms separated by <code className="rounded bg-hover px-1">;</code>, empty means every channel.</p>
+              <p className="text-ink-2"><code className="rounded bg-hover px-1">media</code> takes file names from the library or public image and video links, separated by <code className="rounded bg-hover px-1">;</code>. Links are downloaded into the library; a row whose media can't be used stays a draft. <code className="rounded bg-hover px-1">post_type</code> is post, carousel, reel, story or document; a channel without that type gets a plain post.</p>
               <Input type="file" accept=".csv,text/csv" onChange={(e) => onFile(e.target.files?.[0])} aria-label="CSV file" />
               <Textarea rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder={"content,link,when,channels\n\"Three tips for better briefs\",https://example.com/briefs,2026-11-12 09:00,linkedin\nA draft for later,,,"} className={cn("font-mono text-xs")} aria-label="CSV text" />
               <DialogFooter><Button variant="ghost" onClick={close}>Cancel</Button><Button disabled={!text.trim() || run.isPending} onClick={() => run.mutate(text, { onSuccess: setResult })}>{run.isPending ? "Importing…" : "Import"}</Button></DialogFooter>

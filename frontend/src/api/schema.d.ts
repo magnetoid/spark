@@ -558,6 +558,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/brands/{brand_id}/connect-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Connect Links */
+        get: operations["list_connect_links_brands__brand_id__connect_links_get"];
+        put?: never;
+        /**
+         * Create Connect Link
+         * @description A link for a client to connect their channels without a Spark account. The full link is
+         *     shown once; Spark keeps only its hash.
+         */
+        post: operations["create_connect_link_brands__brand_id__connect_links_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/connect-links/{link_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Connect Link */
+        delete: operations["revoke_connect_link_brands__brand_id__connect_links__link_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/brands/{brand_id}/contacts": {
         parameters: {
             query?: never;
@@ -1451,8 +1490,11 @@ export interface paths {
         put?: never;
         /**
          * Import Posts
-         * @description Rows of `content, link, when, channels, pillar`: a `when` schedules the post (brand timezone),
-         *     otherwise it is a draft. Channels are handles or platforms separated by `;`, empty = every channel.
+         * @description Rows of `content, link, when, channels, pillar, media, first_comment, post_type`: a `when`
+         *     schedules the post (brand timezone), otherwise it is a draft. Channels are handles or platforms
+         *     separated by `;`, empty = every channel. Media are library file names or public URLs separated
+         *     by `;`; a row whose media cannot all be used stays a draft. A post type a channel lacks is sent
+         *     as a plain post there.
          */
         post: operations["import_posts_brands__brand_id__posts_import_post"];
         delete?: never;
@@ -2083,6 +2125,26 @@ export interface paths {
          * @description Every brand you can see and what needs you there, the most urgent first.
          */
         get: operations["overview_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/connect/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Connect Page
+         * @description What a connect link may connect, and the brand's channels through Zernio with their state.
+         */
+        get: operations["connect_page_public_connect__token__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3183,6 +3245,91 @@ export interface components {
             id: number;
             /** Kind */
             kind: string;
+        };
+        /** ConnectChannel */
+        ConnectChannel: {
+            /** Handle */
+            handle: string;
+            /** Health */
+            health: string;
+            /** Platform */
+            platform: string;
+        };
+        /** ConnectLinkCreated */
+        ConnectLinkCreated: {
+            /**
+             * Connected
+             * @default 0
+             */
+            connected: number;
+            /** Created At */
+            created_at: string | null;
+            /** Expires At */
+            expires_at: string | null;
+            /** Id */
+            id: number;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Platforms */
+            platforms: string[];
+            /** Prefix */
+            prefix: string;
+            /** Url */
+            url: string;
+            /** Url Hint */
+            url_hint: string;
+        };
+        /** ConnectLinkIn */
+        ConnectLinkIn: {
+            /**
+             * Days
+             * @default 7
+             */
+            days: number;
+            /** Platforms */
+            platforms?: string[];
+        };
+        /** ConnectLinkOut */
+        ConnectLinkOut: {
+            /**
+             * Connected
+             * @default 0
+             */
+            connected: number;
+            /** Created At */
+            created_at: string | null;
+            /** Expires At */
+            expires_at: string | null;
+            /** Id */
+            id: number;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Platforms */
+            platforms: string[];
+            /** Prefix */
+            prefix: string;
+            /** Url Hint */
+            url_hint: string;
+        };
+        /** ConnectPage */
+        ConnectPage: {
+            /** Brand */
+            brand: {
+                [key: string]: string;
+            };
+            /** Channels */
+            channels: components["schemas"]["ConnectChannel"][];
+            /** Expires At */
+            expires_at: string | null;
+            /** Platforms */
+            platforms: components["schemas"]["ConnectPlatform"][];
+        };
+        /** ConnectPlatform */
+        ConnectPlatform: {
+            /** Label */
+            label: string;
+            /** Platform */
+            platform: string;
         };
         /** ConnectResult */
         ConnectResult: {
@@ -6911,6 +7058,102 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GridOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_connect_links_brands__brand_id__connect_links_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectLinkOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_connect_link_brands__brand_id__connect_links_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectLinkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectLinkCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_connect_link_brands__brand_id__connect_links__link_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                link_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -10983,6 +11226,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OverviewOut"];
+                };
+            };
+        };
+    };
+    connect_page_public_connect__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

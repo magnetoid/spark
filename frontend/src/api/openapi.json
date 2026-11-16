@@ -2171,6 +2171,268 @@
         "title": "CommentOut",
         "type": "object"
       },
+      "ConnectChannel": {
+        "properties": {
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "health": {
+            "title": "Health",
+            "type": "string"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "handle",
+          "health"
+        ],
+        "title": "ConnectChannel",
+        "type": "object"
+      },
+      "ConnectLinkCreated": {
+        "properties": {
+          "connected": {
+            "default": 0,
+            "title": "Connected",
+            "type": "integer"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "platforms": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Platforms",
+            "type": "array"
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "url_hint": {
+            "title": "Url Hint",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "prefix",
+          "url_hint",
+          "platforms",
+          "expires_at",
+          "created_at",
+          "last_used_at",
+          "url"
+        ],
+        "title": "ConnectLinkCreated",
+        "type": "object"
+      },
+      "ConnectLinkIn": {
+        "properties": {
+          "days": {
+            "default": 7,
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Days",
+            "type": "integer"
+          },
+          "platforms": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Platforms",
+            "type": "array"
+          }
+        },
+        "title": "ConnectLinkIn",
+        "type": "object"
+      },
+      "ConnectLinkOut": {
+        "properties": {
+          "connected": {
+            "default": 0,
+            "title": "Connected",
+            "type": "integer"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "platforms": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Platforms",
+            "type": "array"
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          },
+          "url_hint": {
+            "title": "Url Hint",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "prefix",
+          "url_hint",
+          "platforms",
+          "expires_at",
+          "created_at",
+          "last_used_at"
+        ],
+        "title": "ConnectLinkOut",
+        "type": "object"
+      },
+      "ConnectPage": {
+        "properties": {
+          "brand": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Brand",
+            "type": "object"
+          },
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectChannel"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "platforms": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectPlatform"
+            },
+            "title": "Platforms",
+            "type": "array"
+          }
+        },
+        "required": [
+          "brand",
+          "expires_at",
+          "platforms",
+          "channels"
+        ],
+        "title": "ConnectPage",
+        "type": "object"
+      },
+      "ConnectPlatform": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "label"
+        ],
+        "title": "ConnectPlatform",
+        "type": "object"
+      },
       "ConnectResult": {
         "properties": {
           "accounts": {
@@ -11455,6 +11717,147 @@
         ]
       }
     },
+    "/brands/{brand_id}/connect-links": {
+      "get": {
+        "operationId": "list_connect_links_brands__brand_id__connect_links_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectLinkOut"
+                  },
+                  "title": "Response List Connect Links Brands  Brand Id  Connect Links Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Connect Links",
+        "tags": [
+          "channels"
+        ]
+      },
+      "post": {
+        "description": "A link for a client to connect their channels without a Spark account. The full link is\nshown once; Spark keeps only its hash.",
+        "operationId": "create_connect_link_brands__brand_id__connect_links_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectLinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectLinkCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Connect Link",
+        "tags": [
+          "channels"
+        ]
+      }
+    },
+    "/brands/{brand_id}/connect-links/{link_id}": {
+      "delete": {
+        "operationId": "revoke_connect_link_brands__brand_id__connect_links__link_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "required": true,
+            "schema": {
+              "title": "Link Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Connect Link",
+        "tags": [
+          "channels"
+        ]
+      }
+    },
     "/brands/{brand_id}/contacts": {
       "get": {
         "operationId": "list_contacts_brands__brand_id__contacts_get",
@@ -15580,7 +15983,7 @@
     },
     "/brands/{brand_id}/posts/import": {
       "post": {
-        "description": "Rows of `content, link, when, channels, pillar`: a `when` schedules the post (brand timezone),\notherwise it is a draft. Channels are handles or platforms separated by `;`, empty = every channel.",
+        "description": "Rows of `content, link, when, channels, pillar, media, first_comment, post_type`: a `when`\nschedules the post (brand timezone), otherwise it is a draft. Channels are handles or platforms\nseparated by `;`, empty = every channel. Media are library file names or public URLs separated\nby `;`; a row whose media cannot all be used stays a draft. A post type a channel lacks is sent\nas a plain post there.",
         "operationId": "import_posts_brands__brand_id__posts_import_post",
         "parameters": [
           {
@@ -17871,6 +18274,49 @@
         "summary": "Overview",
         "tags": [
           "agency"
+        ]
+      }
+    },
+    "/public/connect/{token}": {
+      "get": {
+        "description": "What a connect link may connect, and the brand's channels through Zernio with their state.",
+        "operationId": "connect_page_public_connect__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Connect Page",
+        "tags": [
+          "channels"
         ]
       }
     },

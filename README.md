@@ -23,7 +23,8 @@ account.
 **Less work per client**
 - Many brands in one install, each with its own colour, voice, team and approval rules.
 - Roles: owner, editor, viewer, and client (sees one brand, reads and approves).
-- Review links that clients open without an account, comments on posts and an activity log.
+- Review links that clients open without an account, connect links that let clients connect their
+  own channels, comments on posts and an activity log.
 - An inbox for comments, messages, reviews and mentions, with suggested replies, saved replies,
   assignment and rules that prepare a reply for approval.
 

@@ -105,3 +105,46 @@ async def fetch_page_text(url: str, http: httpx.AsyncClient | None = None) -> st
     finally:
         if own:
             await http.aclose()
+
+
+async def fetch_file(
+    url: str, max_bytes: int, http: httpx.AsyncClient | None = None
+) -> tuple[bytes, str] | str:
+    """Download a public file (for importing media by URL): (bytes, declared type), or the reason
+    it could not be used. Same address checks as pages, every redirect hop included."""
+    import asyncio
+
+    if not await asyncio.to_thread(is_public_url, url):
+        return "not a public web address"
+    own = http is None
+    http = http or httpx.AsyncClient(timeout=15, follow_redirects=False)
+    headers = {"User-Agent": "Spark/1.0 (+https://github.com/magnetoid/spark)"}
+    try:
+        async with asyncio.timeout(30):  # a picture or a short video
+            for _ in range(MAX_HOPS):
+                async with http.stream("GET", url, headers=headers, follow_redirects=False) as resp:
+                    if resp.is_redirect:
+                        url = (
+                            str(resp.next_request.url)
+                            if resp.next_request
+                            else resp.headers.get("location", "")
+                        )
+                        if not await asyncio.to_thread(is_public_url, url):
+                            return "redirects to an address that is not public"
+                        continue
+                    if resp.status_code >= 400:
+                        return f"the server answered {resp.status_code}"
+                    chunks, size = [], 0
+                    async for chunk in resp.aiter_bytes():
+                        chunks.append(chunk)
+                        size += len(chunk)
+                        if size > max_bytes:
+                            return f"larger than {max_bytes // (1024 * 1024)} MB"
+                    kind = (resp.headers.get("content-type") or "").split(";")[0].strip().lower()
+                    return b"".join(chunks), kind
+            return "too many redirects"
+    except (httpx.HTTPError, TimeoutError):
+        return "could not be downloaded"
+    finally:
+        if own:
+            await http.aclose()

@@ -20,4 +20,4 @@ export const useDeletePillar = (b: number) => useAction(async (id: number) =>
 
 export const useImportPosts = (b: number) => useAction(async (csv: string) => unwrap(await api.POST("/brands/{brand_id}/posts/import", { ...bp(b), body: { csv } })),
   [["posts", b], ["queue", b], ["today", b], ["activity", b]],
-  (r) => `${r.created} ${r.created === 1 ? "post" : "posts"} imported${r.errors.length ? `, ${r.errors.length} ${r.errors.length === 1 ? "row" : "rows"} skipped` : ""}`);
+  (r) => `${r.created} ${r.created === 1 ? "post" : "posts"} imported${r.errors.length ? `, ${r.errors.length} ${r.errors.length === 1 ? "note" : "notes"} to read` : ""}`);

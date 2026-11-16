@@ -117,7 +117,7 @@ export function ActivitySection({ limit = 12 }: { limit?: number }) {
         <ul className="divide-y divide-line text-sm">
           {items.map((a) => (
             <li key={a.id} className="flex flex-wrap items-baseline gap-x-2 py-2">
-              <span><span className="font-medium">{a.actor.name}</span> {a.verb} {a.object_type === "post" ? "a post" : a.object_type === "member" ? "a member" : a.object_type === "share_link" ? "a review link" : a.object_type === "brand" ? "the brand" : a.object_type}</span>
+              <span><span className="font-medium">{a.actor.name}</span> {a.verb} {a.object_type === "post" ? "a post" : a.object_type === "member" ? "a member" : a.object_type === "share_link" ? "a review link" : a.object_type === "connect_link" ? "a connect link" : a.object_type === "brand" ? "the brand" : a.object_type}</span>
               {a.summary && <span className="min-w-0 flex-1 truncate text-ink-2">{a.summary}</span>}
               <span className="ml-auto shrink-0 text-xs text-ink-2 tnum">{fmtDateTime(a.created_at, brand.timezone)}</span>
             </li>

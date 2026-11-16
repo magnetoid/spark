@@ -4,6 +4,17 @@ Changes that matter to people who run Spark. Dates are when the change reached `
 
 ## Unreleased
 
+### Client connect links and a wider CSV import
+- **Connect links**: on **Channels**, an owner makes a link (for chosen networks or any, for 1 to
+  30 days) that a client opens without a Spark account to connect or reconnect their own
+  channels through Zernio. Channels land only in that brand; owners get an email, and the
+  activity log says what happened. Links are shown once and can be revoked.
+- When Zernio refuses a connect because of the plan (for example the free tier's account
+  limit), Spark now shows Zernio's reason to the team instead of "plan limit reached".
+- **CSV import** takes `media` (library file names or public links, downloaded into the
+  library), `first_comment` and `post_type`. A row whose media can't be used stays a draft; a
+  channel without the chosen post type gets a plain post. Each row says what was changed.
+
 ### Agency tools
 - **All clients** (`/overview`): every brand you work on with failed posts, channels to reconnect, approvals waiting or past due, replies waiting and empty days in the next week, the most urgent first.
 - **Approval deadlines**: a brand can ask for approval some hours before a post's time. Approvers get one reminder before it; after it the post keeps waiting or goes back to drafts and its author is told. A deadline never publishes a post.

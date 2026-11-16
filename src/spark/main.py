@@ -24,6 +24,7 @@ SPA_CSP = (
 # ---- rate limiting (token bucket per client+bucket; in-process, good enough per web container) ----
 RATE_LIMITS = {  # path prefix -> (methods, requests, per_seconds)
     "/l/": ({"GET"}, 120, 60),
+    "/c/": ({"GET"}, 30, 60),
     "/b/": ({"GET", "POST"}, 60, 60),
     "/e/": ({"GET", "POST"}, 120, 60),
     "/webhooks/": ({"POST"}, 600, 60),

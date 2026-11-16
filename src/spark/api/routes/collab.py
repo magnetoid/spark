@@ -321,7 +321,11 @@ async def list_share_links(
         (
             await db.execute(
                 select(ShareLink)
-                .where(ShareLink.brand_id == ctx.brand.id, ShareLink.revoked_at.is_(None))
+                .where(
+                    ShareLink.brand_id == ctx.brand.id,
+                    ShareLink.revoked_at.is_(None),
+                    ShareLink.kind != "connect",
+                )
                 .order_by(ShareLink.created_at.desc())
             )
         )

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useConnectCredentials, usePlatforms, useRemoveAccount, useToggleAccount, useZernioImport, type PlatformsOut } from "@/features/api4";
 import { useAccounts, type AccountOut } from "@/features/posts/api";
+import { ClientConnectLinks } from "@/features/channels/connect-links";
 import { ChannelSettingsDialog, HealthBadge, PLATFORMS_WITH_SETTINGS, reconnectHref } from "@/features/channels/health";
 import { PlatformMark, platformLabel } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
@@ -85,6 +86,7 @@ export function ChannelsPage() {
               </div>
             )}
           </section>
+          {isOwner && platforms.zernio_ready && <ClientConnectLinks networks={platforms.zernio} />}
           <section>
             <h2 className="font-semibold">Connect directly</h2>
             <p className="mb-3 text-sm text-ink-2">With your own developer app per network. Bluesky, Mastodon and Telegram need only credentials.{platforms.force_dry_run && " This server is in dry-run mode: every network connects as a test channel."}</p>
