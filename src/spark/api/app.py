@@ -42,6 +42,7 @@ from spark.api.routes import (
     setup,
     today,
     webhooks,
+    winners,
 )
 
 log = logging.getLogger("spark.api")
@@ -81,6 +82,7 @@ for r in (
     connect_links.router,
     connect_links.public,
     goals.router,
+    winners.router,
 ):
     api.include_router(r)
 

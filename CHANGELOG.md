@@ -4,6 +4,14 @@ Changes that matter to people who run Spark. Dates are when the change reached `
 
 ## Unreleased
 
+### Winners
+- **Winners** on Analytics: posts from the last 30 days in the top tenth of their own channel's
+  engagement rate, at 1.5 times the channel's usual rate or more. A channel is rated from ten
+  posts with numbers in the last 90 days; posts seen by fewer than 20 people are left out.
+- Two offers for each: **New angle** has the AI write the idea again for the same channel, and
+  **Post to other channels** copies it to the active channels it missed. Both make a draft and
+  open it; nothing is scheduled until a person does it. The drafts show under the winner.
+
 ### Week in review
 - **Week in review** on Analytics: last week's posts (or any earlier week) against their
   channel's own usual, the middle result of its posts in the 90 days before (from five posts

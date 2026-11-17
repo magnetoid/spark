@@ -10529,6 +10529,291 @@
         ],
         "title": "WeeklyReviewOut",
         "type": "object"
+      },
+      "WinnerAngleIn": {
+        "properties": {
+          "instruction": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          }
+        },
+        "title": "WinnerAngleIn",
+        "type": "object"
+      },
+      "WinnerChannel": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "posts": {
+            "title": "Posts",
+            "type": "integer"
+          },
+          "rated": {
+            "title": "Rated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "account_id",
+          "handle",
+          "platform",
+          "posts",
+          "rated"
+        ],
+        "title": "WinnerChannel",
+        "type": "object"
+      },
+      "WinnerDraftOut": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "post_id": {
+            "title": "Post Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "post_id",
+          "message"
+        ],
+        "title": "WinnerDraftOut",
+        "type": "object"
+      },
+      "WinnerFollowUp": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "share",
+              "angle"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "post_id": {
+            "title": "Post Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "post_id",
+          "kind",
+          "status"
+        ],
+        "title": "WinnerFollowUp",
+        "type": "object"
+      },
+      "WinnerMissed": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "platform",
+          "handle"
+        ],
+        "title": "WinnerMissed",
+        "type": "object"
+      },
+      "WinnerOut": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "channel_posts": {
+            "title": "Channel Posts",
+            "type": "integer"
+          },
+          "engagement_rate_pct": {
+            "title": "Engagement Rate Pct",
+            "type": "number"
+          },
+          "engagements": {
+            "title": "Engagements",
+            "type": "integer"
+          },
+          "follow_ups": {
+            "items": {
+              "$ref": "#/components/schemas/WinnerFollowUp"
+            },
+            "title": "Follow Ups",
+            "type": "array"
+          },
+          "handle": {
+            "title": "Handle",
+            "type": "string"
+          },
+          "median_rate_pct": {
+            "title": "Median Rate Pct",
+            "type": "number"
+          },
+          "missed": {
+            "items": {
+              "$ref": "#/components/schemas/WinnerMissed"
+            },
+            "title": "Missed",
+            "type": "array"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "post_id": {
+            "title": "Post Id",
+            "type": "integer"
+          },
+          "post_type": {
+            "title": "Post Type",
+            "type": "string"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "seen": {
+            "title": "Seen",
+            "type": "integer"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "vs_usual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vs Usual"
+          }
+        },
+        "required": [
+          "post_id",
+          "target_id",
+          "account_id",
+          "handle",
+          "platform",
+          "text",
+          "post_type",
+          "published_at",
+          "engagements",
+          "seen",
+          "engagement_rate_pct",
+          "median_rate_pct",
+          "vs_usual",
+          "channel_posts",
+          "missed",
+          "follow_ups"
+        ],
+        "title": "WinnerOut",
+        "type": "object"
+      },
+      "WinnerShareIn": {
+        "properties": {
+          "account_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Account Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "account_ids"
+        ],
+        "title": "WinnerShareIn",
+        "type": "object"
+      },
+      "WinnersOut": {
+        "properties": {
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/WinnerChannel"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "min_posts": {
+            "title": "Min Posts",
+            "type": "integer"
+          },
+          "top_share_pct": {
+            "title": "Top Share Pct",
+            "type": "integer"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": "integer"
+          },
+          "winners": {
+            "items": {
+              "$ref": "#/components/schemas/WinnerOut"
+            },
+            "title": "Winners",
+            "type": "array"
+          }
+        },
+        "required": [
+          "winners",
+          "channels",
+          "min_posts",
+          "top_share_pct",
+          "window_days"
+        ],
+        "title": "WinnersOut",
+        "type": "object"
       }
     }
   },
@@ -18822,6 +19107,173 @@
         "summary": "Weekly Review",
         "tags": [
           "goals"
+        ]
+      }
+    },
+    "/brands/{brand_id}/winners": {
+      "get": {
+        "description": "Recent posts in the top tenth of their own channel's engagement rate, with what to do next.",
+        "operationId": "get_winners_brands__brand_id__winners_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WinnersOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Winners",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/brands/{brand_id}/winners/{target_id}/new-angle": {
+      "post": {
+        "description": "The AI writes the winning idea from a new angle for the same channel, as a draft.",
+        "operationId": "new_angle_brands__brand_id__winners__target_id__new_angle_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "title": "Target Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WinnerAngleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WinnerDraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "New Angle",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/brands/{brand_id}/winners/{target_id}/share": {
+      "post": {
+        "description": "A draft of the winning post for channels it did not go to. A person schedules it.",
+        "operationId": "share_winner_brands__brand_id__winners__target_id__share_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "title": "Target Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "brand_id",
+            "required": true,
+            "schema": {
+              "title": "Brand Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WinnerShareIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WinnerDraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Share Winner",
+        "tags": [
+          "analytics"
         ]
       }
     },

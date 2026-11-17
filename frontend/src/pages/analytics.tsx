@@ -13,6 +13,7 @@ import { fmtDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { FollowerGoals } from "@/features/goals/followers";
 import { WeeklyReview } from "@/features/goals/review";
+import { Winners } from "@/features/goals/winners";
 
 const RANGES = [7, 30, 90];
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -39,7 +40,7 @@ export function AnalyticsPage() {
                     {canEdit && <Button size="sm" variant="outline" onClick={() => refresh.mutate()} disabled={refresh.isPending}><RefreshCw className={cn("size-4", refresh.isPending && "animate-spin")} />Pull latest</Button>}
                   </>} />
       {data && <MetricsNotice status={data.metrics_status} />}
-      <div className="mb-6 space-y-6"><FollowerGoals /><WeeklyReview /></div>
+      <div className="mb-6 space-y-6"><FollowerGoals /><WeeklyReview /><Winners /></div>
       {isPending || !data ? <Skeleton className="h-80" /> : data.impressions === 0 && data.published === 0 ? (
         <EmptyState icon={BarChart3} title="No numbers yet" body="Metrics arrive a few hours after posts go out. Publish something and come back." />
       ) : (

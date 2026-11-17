@@ -1927,3 +1927,63 @@ class CopySetupIn(BaseModel):
 class CopySetupOut(BaseModel):
     copied: dict[str, int]
     brand: BrandOut
+
+
+class WinnerMissed(BaseModel):
+    account_id: int
+    platform: str
+    handle: str
+
+
+class WinnerFollowUp(BaseModel):
+    post_id: int
+    kind: Literal["share", "angle"]
+    status: str
+
+
+class WinnerOut(BaseModel):
+    post_id: int
+    target_id: int
+    account_id: int
+    handle: str
+    platform: str
+    text: str
+    post_type: str
+    published_at: datetime | None
+    engagements: int
+    seen: int
+    engagement_rate_pct: float
+    median_rate_pct: float
+    vs_usual: float | None  # the post's rate against the channel's median rate
+    channel_posts: int
+    missed: list[WinnerMissed]
+    follow_ups: list[WinnerFollowUp]
+
+
+class WinnerChannel(BaseModel):
+    account_id: int
+    handle: str
+    platform: str
+    posts: int  # posts with numbers in the last 90 days
+    rated: bool
+
+
+class WinnersOut(BaseModel):
+    winners: list[WinnerOut]
+    channels: list[WinnerChannel]
+    min_posts: int
+    top_share_pct: int
+    window_days: int
+
+
+class WinnerShareIn(BaseModel):
+    account_ids: list[int] = Field(min_length=1, max_length=50)
+
+
+class WinnerAngleIn(BaseModel):
+    instruction: str | None = Field(default=None, max_length=500)
+
+
+class WinnerDraftOut(BaseModel):
+    post_id: int
+    message: str

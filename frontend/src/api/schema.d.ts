@@ -2018,6 +2018,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/brands/{brand_id}/winners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Winners
+         * @description Recent posts in the top tenth of their own channel's engagement rate, with what to do next.
+         */
+        get: operations["get_winners_brands__brand_id__winners_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/winners/{target_id}/new-angle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * New Angle
+         * @description The AI writes the winning idea from a new angle for the same channel, as a draft.
+         */
+        post: operations["new_angle_brands__brand_id__winners__target_id__new_angle_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/brands/{brand_id}/winners/{target_id}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Share Winner
+         * @description A draft of the winning post for channels it did not go to. A person schedules it.
+         */
+        post: operations["share_winner_brands__brand_id__winners__target_id__share_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events": {
         parameters: {
             query?: never;
@@ -6076,6 +6136,105 @@ export interface components {
              * Format: date
              */
             week_start: string;
+        };
+        /** WinnerAngleIn */
+        WinnerAngleIn: {
+            /** Instruction */
+            instruction?: string | null;
+        };
+        /** WinnerChannel */
+        WinnerChannel: {
+            /** Account Id */
+            account_id: number;
+            /** Handle */
+            handle: string;
+            /** Platform */
+            platform: string;
+            /** Posts */
+            posts: number;
+            /** Rated */
+            rated: boolean;
+        };
+        /** WinnerDraftOut */
+        WinnerDraftOut: {
+            /** Message */
+            message: string;
+            /** Post Id */
+            post_id: number;
+        };
+        /** WinnerFollowUp */
+        WinnerFollowUp: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "share" | "angle";
+            /** Post Id */
+            post_id: number;
+            /** Status */
+            status: string;
+        };
+        /** WinnerMissed */
+        WinnerMissed: {
+            /** Account Id */
+            account_id: number;
+            /** Handle */
+            handle: string;
+            /** Platform */
+            platform: string;
+        };
+        /** WinnerOut */
+        WinnerOut: {
+            /** Account Id */
+            account_id: number;
+            /** Channel Posts */
+            channel_posts: number;
+            /** Engagement Rate Pct */
+            engagement_rate_pct: number;
+            /** Engagements */
+            engagements: number;
+            /** Follow Ups */
+            follow_ups: components["schemas"]["WinnerFollowUp"][];
+            /** Handle */
+            handle: string;
+            /** Median Rate Pct */
+            median_rate_pct: number;
+            /** Missed */
+            missed: components["schemas"]["WinnerMissed"][];
+            /** Platform */
+            platform: string;
+            /** Post Id */
+            post_id: number;
+            /** Post Type */
+            post_type: string;
+            /** Published At */
+            published_at: string | null;
+            /** Seen */
+            seen: number;
+            /** Target Id */
+            target_id: number;
+            /** Text */
+            text: string;
+            /** Vs Usual */
+            vs_usual: number | null;
+        };
+        /** WinnerShareIn */
+        WinnerShareIn: {
+            /** Account Ids */
+            account_ids: number[];
+        };
+        /** WinnersOut */
+        WinnersOut: {
+            /** Channels */
+            channels: components["schemas"]["WinnerChannel"][];
+            /** Min Posts */
+            min_posts: number;
+            /** Top Share Pct */
+            top_share_pct: number;
+            /** Window Days */
+            window_days: number;
+            /** Winners */
+            winners: components["schemas"]["WinnerOut"][];
         };
     };
     responses: never;
@@ -11323,6 +11482,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WeeklyReviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_winners_brands__brand_id__winners_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WinnersOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    new_angle_brands__brand_id__winners__target_id__new_angle_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WinnerAngleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WinnerDraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    share_winner_brands__brand_id__winners__target_id__share_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_id: number;
+                brand_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WinnerShareIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WinnerDraftOut"];
                 };
             };
             /** @description Validation Error */
